@@ -28,6 +28,7 @@
   "Auth": {
     "signInWithGoogle": "Mit Google anmelden",
     "signOut": "Abmelden",
+    "goToDashboard": "Zum Dashboard",
     "signingIn": "Anmeldung läuft...",
     "signInWithEmail": "Mit E-Mail anmelden",
     "signInWithGoogleInstead": "Stattdessen mit Google anmelden",

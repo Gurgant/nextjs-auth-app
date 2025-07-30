@@ -28,6 +28,7 @@
   "Auth": {
     "signInWithGoogle": "Se connecter avec Google",
     "signOut": "Se déconnecter",
+    "goToDashboard": "Aller au Tableau de Bord",
     "signingIn": "Connexion en cours...",
     "signInWithEmail": "Se connecter avec Email",
     "signInWithGoogleInstead": "Se connecter avec Google à la place",

@@ -28,6 +28,7 @@
   "Auth": {
     "signInWithGoogle": "Iniciar sesión con Google",
     "signOut": "Cerrar sesión",
+    "goToDashboard": "Ir al Dashboard",
     "signingIn": "Iniciando sesión...",
     "signInWithEmail": "Iniciar sesión con Email",
     "signInWithGoogleInstead": "Iniciar sesión con Google en su lugar",

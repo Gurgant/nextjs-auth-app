@@ -28,6 +28,7 @@
   "Auth": {
     "signInWithGoogle": "Sign in with Google",
     "signOut": "Sign out",
+    "goToDashboard": "Go to Dashboard",
     "signingIn": "Signing in...",
     "signInWithEmail": "Sign in with Email",
     "signInWithGoogleInstead": "Sign in with Google instead",
