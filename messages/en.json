@@ -1,0 +1,21 @@
+{
+  "Home": {
+    "title": "Welcome to Our App",
+    "subtitle": "Simple authentication with Google OAuth"
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "message": "You are logged in! This is a protected page.",
+    "welcome": "Welcome, {name}!",
+    "email": "Email: {email}"
+  },
+  "Auth": {
+    "signInWithGoogle": "Sign in with Google",
+    "signOut": "Sign out",
+    "signingIn": "Signing in..."
+  },
+  "Common": {
+    "loading": "Loading...",
+    "error": "An error occurred"
+  }
+}

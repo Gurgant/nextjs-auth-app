@@ -1,0 +1,21 @@
+{
+  "Home": {
+    "title": "Bienvenido a Nuestra App",
+    "subtitle": "Autenticación simple con Google OAuth"
+  },
+  "Dashboard": {
+    "title": "Panel de Control",
+    "message": "¡Has iniciado sesión! Esta es una página protegida.",
+    "welcome": "¡Bienvenido, {name}!",
+    "email": "Correo: {email}"
+  },
+  "Auth": {
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "signOut": "Cerrar sesión",
+    "signingIn": "Iniciando sesión..."
+  },
+  "Common": {
+    "loading": "Cargando...",
+    "error": "Ocurrió un error"
+  }
+}
