@@ -5,12 +5,16 @@ import { useTranslations } from 'next-intl'
 import { SignInButton } from '@/components/auth/sign-in-button'
 import { CredentialsForm } from '@/components/auth/credentials-form'
 import { useSession } from 'next-auth/react'
+import { useParams } from 'next/navigation'
+import Link from 'next/link'
 
 export default function HomePage() {
   const t = useTranslations('Home')
   const tAuth = useTranslations('Auth')
   const { data: session } = useSession()
   const [showCredentials, setShowCredentials] = useState(false)
+  const params = useParams()
+  const currentLocale = params.locale as string || 'en'
 
   if (session) {
     return (
@@ -105,6 +109,19 @@ export default function HomePage() {
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Registration Link */}
+          <div className="text-center mt-6">
+            <p className="text-gray-600 text-sm">
+              {tAuth('dontHaveAccount')}{' '}
+              <Link 
+                href={`/${currentLocale}/register`}
+                className="font-medium text-green-600 hover:text-green-700 transition-colors duration-200"
+              >
+                {tAuth('registerHere')}
+              </Link>
+            </p>
           </div>
 
           {/* Footer */}

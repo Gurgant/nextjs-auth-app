@@ -15,7 +15,8 @@
     "performance": "Performances",
     "performanceDescription": "Construit avec Next.js 15",
     "sessionManagement": "Gestion de Session",
-    "sessionManagementDescription": "Prêt à vous déconnecter? Votre session sera terminée de manière sécurisée."
+    "sessionManagementDescription": "Prêt à vous déconnecter? Votre session sera terminée de manière sécurisée.",
+    "accountSettings": "Paramètres du Compte"
   },
   "Home": {
     "title": "Bienvenue dans Notre App",
@@ -34,13 +35,66 @@
     "signInToAccount": "Connectez-vous à votre compte",
     "enterCredentials": "Entrez vos identifiants pour continuer",
     "welcomeBack": "Bon retour",
-    "chooseSignInMethod": "Choisissez votre méthode de connexion préférée"
+    "chooseSignInMethod": "Choisissez votre méthode de connexion préférée",
+    "register": "Créer un Compte",
+    "registerNow": "S'inscrire Maintenant",
+    "alreadyHaveAccount": "Vous avez déjà un compte?",
+    "dontHaveAccount": "Vous n'avez pas de compte?",
+    "signInHere": "Connectez-vous ici",
+    "registerHere": "Inscrivez-vous ici"
   },
   "Common": {
     "loading": "Chargement...",
     "error": "Une erreur s'est produite",
     "selectLanguage": "Sélectionner la Langue",
     "languageSettings": "Paramètres de Langue",
-    "languagesCount": "{count} langues"
+    "languagesCount": "{count} langues",
+    "name": "Nom",
+    "email": "Email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "submit": "Soumettre",
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "delete": "Supprimer",
+    "success": "Succès",
+    "failed": "Échec"
+  },
+  "Registration": {
+    "title": "Créez Votre Compte",
+    "subtitle": "Rejoignez-nous aujourd'hui et commencez",
+    "fullName": "Nom Complet",
+    "emailAddress": "Adresse Email",
+    "createPassword": "Créer un Mot de Passe",
+    "confirmPassword": "Confirmer le Mot de Passe",
+    "agreeToTerms": "J'accepte les Conditions de Service et la Politique de Confidentialité",
+    "createAccount": "Créer un Compte",
+    "creating": "Création du compte...",
+    "success": "Compte créé avec succès!",
+    "errorEmailExists": "Un compte avec cet email existe déjà",
+    "errorPasswordMismatch": "Les mots de passe ne correspondent pas",
+    "errorWeakPassword": "Le mot de passe doit contenir au moins 8 caractères",
+    "errorInvalidEmail": "Veuillez entrer une adresse email valide",
+    "errorNameRequired": "Le nom complet est requis",
+    "backToSignIn": "Retour à la Connexion"
+  },
+  "Account": {
+    "title": "Paramètres du Compte",
+    "subtitle": "Gérez votre compte et vos préférences",
+    "profile": "Informations du Profil",
+    "security": "Paramètres de Sécurité",
+    "dangerZone": "Zone de Danger",
+    "accountDeletion": "Suppression du Compte",
+    "deleteAccountWarning": "Une fois que vous supprimez votre compte, il n'y a pas de retour en arrière. Soyez certain.",
+    "deleteAccount": "Supprimer le Compte",
+    "confirmDeletion": "Êtes-vous sûr de vouloir supprimer votre compte?",
+    "confirmDeletionText": "Cette action ne peut pas être annulée. Toutes vos données seront définitivement supprimées.",
+    "typeEmailToConfirm": "Tapez votre email pour confirmer: {email}",
+    "emailConfirmation": "Confirmation email",
+    "accountDeleted": "Votre compte a été supprimé avec succès",
+    "deletionFailed": "Échec de la suppression du compte. Veuillez réessayer.",
+    "updateProfile": "Mettre à Jour le Profil",
+    "profileUpdated": "Profil mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour du profil"
   }
 }

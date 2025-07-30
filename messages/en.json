@@ -15,7 +15,8 @@
     "performance": "Performance",
     "performanceDescription": "Built with Next.js 15",
     "sessionManagement": "Session Management",
-    "sessionManagementDescription": "Ready to sign out? Your session will be securely terminated."
+    "sessionManagementDescription": "Ready to sign out? Your session will be securely terminated.",
+    "accountSettings": "Account Settings"
   },
   "Home": {
     "title": "Welcome to Our App",
@@ -34,13 +35,66 @@
     "signInToAccount": "Sign in to your account",
     "enterCredentials": "Enter your credentials to continue",
     "welcomeBack": "Welcome back",
-    "chooseSignInMethod": "Choose your preferred sign-in method"
+    "chooseSignInMethod": "Choose your preferred sign-in method",
+    "register": "Create Account",
+    "registerNow": "Register Now",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "signInHere": "Sign in here",
+    "registerHere": "Register here"
   },
   "Common": {
     "loading": "Loading...",
     "error": "An error occurred",
     "selectLanguage": "Select Language",
     "languageSettings": "Language Settings",
-    "languagesCount": "{count} languages"
+    "languagesCount": "{count} languages",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "success": "Success",
+    "failed": "Failed"
+  },
+  "Registration": {
+    "title": "Create Your Account",
+    "subtitle": "Join us today and get started",
+    "fullName": "Full Name",
+    "emailAddress": "Email Address",
+    "createPassword": "Create Password",
+    "confirmPassword": "Confirm Password",
+    "agreeToTerms": "I agree to the Terms of Service and Privacy Policy",
+    "createAccount": "Create Account",
+    "creating": "Creating account...",
+    "success": "Account created successfully!",
+    "errorEmailExists": "An account with this email already exists",
+    "errorPasswordMismatch": "Passwords do not match",
+    "errorWeakPassword": "Password must be at least 8 characters long",
+    "errorInvalidEmail": "Please enter a valid email address",
+    "errorNameRequired": "Full name is required",
+    "backToSignIn": "Back to Sign In"
+  },
+  "Account": {
+    "title": "Account Settings",
+    "subtitle": "Manage your account and preferences",
+    "profile": "Profile Information",
+    "security": "Security Settings",
+    "dangerZone": "Danger Zone",
+    "accountDeletion": "Account Deletion",
+    "deleteAccountWarning": "Once you delete your account, there is no going back. Please be certain.",
+    "deleteAccount": "Delete Account",
+    "confirmDeletion": "Are you sure you want to delete your account?",
+    "confirmDeletionText": "This action cannot be undone. All your data will be permanently deleted.",
+    "typeEmailToConfirm": "Type your email to confirm: {email}",
+    "emailConfirmation": "Email confirmation",
+    "accountDeleted": "Your account has been successfully deleted",
+    "deletionFailed": "Failed to delete account. Please try again.",
+    "updateProfile": "Update Profile",
+    "profileUpdated": "Profile updated successfully",
+    "updateFailed": "Failed to update profile"
   }
 }

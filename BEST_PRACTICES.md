@@ -102,6 +102,82 @@ return <h1>Welcome</h1> // Not translatable!
 redirect('/dashboard') // Missing locale!
 ```
 
+### 5. **SSR/CSR Consistency & Hydration**
+
+#### ✅ DO:
+```typescript
+// Use Next.js hooks for route parameters
+'use client'
+import { useParams } from 'next/navigation'
+
+export function Component() {
+  const params = useParams()
+  const locale = params.locale as string || 'en'
+  return <Link href={`/${locale}/page`}>Link</Link>
+}
+
+// Conditional rendering with suppressHydrationWarning for browser-specific content
+export function BrowserSpecific() {
+  const [mounted, setMounted] = useState(false)
+  
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+  
+  return <div suppressHydrationWarning>{window.location.href}</div>
+}
+
+// Use server components for consistent data
+export default async function Page({ params }: { params: { locale: string } }) {
+  const locale = params.locale
+  return <ClientComponent locale={locale} />
+}
+```
+
+#### ❌ DON'T:
+```typescript
+// Never use window object directly in components that affect SSR
+'use client'
+export function BadComponent() {
+  // HYDRATION ERROR: Different on server vs client!
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+  const locale = pathname.split('/')[1] || 'en'
+  return <Link href={`/${locale}/page`}>Link</Link>
+}
+
+// Don't access DOM APIs during initial render
+export function BadBrowserCheck() {
+  // HYDRATION ERROR: undefined on server, string on client!
+  const userAgent = typeof window !== 'undefined' ? navigator.userAgent : undefined
+  return <div>Browser: {userAgent}</div>
+}
+
+// Don't use different logic for server vs client
+export function InconsistentRendering() {
+  const isClient = typeof window !== 'undefined'
+  return (
+    <div>
+      {isClient ? <ClientOnlyComponent /> : <ServerOnlyComponent />}
+    </div>
+  )
+}
+```
+
+#### 🚨 **Hydration Debugging Tips:**
+```typescript
+// 1. Use React DevTools Profiler to identify hydration mismatches
+// 2. Check browser console for hydration warnings
+// 3. Use suppressHydrationWarning sparingly and only when necessary
+// 4. Test with JavaScript disabled to verify SSR content
+
+// Debug hydration issues
+if (process.env.NODE_ENV === 'development') {
+  console.log('Server render:', typeof window === 'undefined')
+}
+```
+
 ## 🔒 Security Checklist
 
 ### Environment Variables

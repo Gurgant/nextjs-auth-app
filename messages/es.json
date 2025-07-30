@@ -15,7 +15,8 @@
     "performance": "Rendimiento",
     "performanceDescription": "Construido con Next.js 15",
     "sessionManagement": "Gestión de Sesión",
-    "sessionManagementDescription": "¿Listo para cerrar sesión? Tu sesión será terminada de forma segura."
+    "sessionManagementDescription": "¿Listo para cerrar sesión? Tu sesión será terminada de forma segura.",
+    "accountSettings": "Configuración de Cuenta"
   },
   "Home": {
     "title": "Bienvenido a Nuestra App",
@@ -34,13 +35,66 @@
     "signInToAccount": "Inicia sesión en tu cuenta",
     "enterCredentials": "Ingresa tus credenciales para continuar",
     "welcomeBack": "Bienvenido de nuevo",
-    "chooseSignInMethod": "Elige tu método de inicio de sesión preferido"
+    "chooseSignInMethod": "Elige tu método de inicio de sesión preferido",
+    "register": "Crear Cuenta",
+    "registerNow": "Registrarse Ahora",
+    "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+    "dontHaveAccount": "¿No tienes una cuenta?",
+    "signInHere": "Inicia sesión aquí",
+    "registerHere": "Regístrate aquí"
   },
   "Common": {
     "loading": "Cargando...",
     "error": "Ocurrió un error",
     "selectLanguage": "Seleccionar Idioma",
     "languageSettings": "Configuración de Idioma",
-    "languagesCount": "{count} idiomas"
+    "languagesCount": "{count} idiomas",
+    "name": "Nombre",
+    "email": "Correo",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "submit": "Enviar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "success": "Éxito",
+    "failed": "Falló"
+  },
+  "Registration": {
+    "title": "Crea Tu Cuenta",
+    "subtitle": "Únete hoy y comienza",
+    "fullName": "Nombre Completo",
+    "emailAddress": "Dirección de Correo",
+    "createPassword": "Crear Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "agreeToTerms": "Acepto los Términos de Servicio y Política de Privacidad",
+    "createAccount": "Crear Cuenta",
+    "creating": "Creando cuenta...",
+    "success": "¡Cuenta creada exitosamente!",
+    "errorEmailExists": "Ya existe una cuenta con este correo",
+    "errorPasswordMismatch": "Las contraseñas no coinciden",
+    "errorWeakPassword": "La contraseña debe tener al menos 8 caracteres",
+    "errorInvalidEmail": "Por favor ingresa un correo válido",
+    "errorNameRequired": "El nombre completo es requerido",
+    "backToSignIn": "Volver al Inicio de Sesión"
+  },
+  "Account": {
+    "title": "Configuración de Cuenta",
+    "subtitle": "Gestiona tu cuenta y preferencias",
+    "profile": "Información del Perfil",
+    "security": "Configuración de Seguridad",
+    "dangerZone": "Zona de Peligro",
+    "accountDeletion": "Eliminación de Cuenta",
+    "deleteAccountWarning": "Una vez que elimines tu cuenta, no hay vuelta atrás. Ten certeza.",
+    "deleteAccount": "Eliminar Cuenta",
+    "confirmDeletion": "¿Estás seguro de eliminar tu cuenta?",
+    "confirmDeletionText": "Esta acción no se puede deshacer. Todos tus datos serán eliminados permanentemente.",
+    "typeEmailToConfirm": "Escribe tu correo para confirmar: {email}",
+    "emailConfirmation": "Confirmación de correo",
+    "accountDeleted": "Tu cuenta ha sido eliminada exitosamente",
+    "deletionFailed": "Falló al eliminar la cuenta. Inténtalo de nuevo.",
+    "updateProfile": "Actualizar Perfil",
+    "profileUpdated": "Perfil actualizado exitosamente",
+    "updateFailed": "Falló al actualizar el perfil"
   }
 }
