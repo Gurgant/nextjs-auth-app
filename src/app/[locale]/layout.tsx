@@ -36,7 +36,7 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale}>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <AuthSessionProvider>
           <NextIntlClientProvider messages={messages}>
             <div className="min-h-screen flex flex-col">
