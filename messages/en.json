@@ -96,6 +96,26 @@
     "deletionFailed": "Failed to delete account. Please try again.",
     "updateProfile": "Update Profile",
     "profileUpdated": "Profile updated successfully",
-    "updateFailed": "Failed to update profile"
+    "updateFailed": "Failed to update profile",
+    "passwordManagement": "Password Management",
+    "setPassword": "Set Password",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmNewPassword": "Confirm New Password",
+    "passwordStrength": "Password Strength",
+    "addPasswordDescription": "Set a password to enable email/password authentication as a backup for your Google account.",
+    "changePasswordDescription": "Update your current password for enhanced security.",
+    "passwordAdded": "Password added successfully!",
+    "passwordChanged": "Password changed successfully!",
+    "authenticationMethods": "Authentication Methods",
+    "googleAccount": "Google Account",
+    "emailPassword": "Email & Password",
+    "linkedOn": "Linked on {date}",
+    "notLinked": "Not linked",
+    "primaryMethod": "Primary",
+    "backupMethod": "Backup",
+    "accountProviders": "Account Providers",
+    "securityOverview": "Security Overview"
   }
 }

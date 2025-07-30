@@ -18,6 +18,7 @@
     "docker:logs": "docker-compose logs -f",
     "typecheck": "tsc --noEmit",
     "create-user": "tsx scripts/create-user.ts",
+    "migrate-users": "tsx scripts/migrate-user-metadata.ts",
     "validate-translations": "node scripts/validate-translations.js",
     "pre-commit": "pnpm validate-translations && pnpm typecheck && pnpm lint"
   },

@@ -96,6 +96,26 @@
     "deletionFailed": "Échec de la suppression du compte. Veuillez réessayer.",
     "updateProfile": "Mettre à Jour le Profil",
     "profileUpdated": "Profil mis à jour avec succès",
-    "updateFailed": "Échec de la mise à jour du profil"
+    "updateFailed": "Échec de la mise à jour du profil",
+    "passwordManagement": "Gestion des Mots de Passe",
+    "setPassword": "Définir un Mot de Passe",
+    "changePassword": "Changer le Mot de Passe",
+    "currentPassword": "Mot de Passe Actuel",
+    "newPassword": "Nouveau Mot de Passe",
+    "confirmNewPassword": "Confirmer le Nouveau Mot de Passe",
+    "passwordStrength": "Force du Mot de Passe",
+    "addPasswordDescription": "Définir un mot de passe pour activer l'authentification email/mot de passe comme sauvegarde pour votre compte Google.",
+    "changePasswordDescription": "Mettez à jour votre mot de passe actuel pour une sécurité renforcée.",
+    "passwordAdded": "Mot de passe ajouté avec succès!",
+    "passwordChanged": "Mot de passe changé avec succès!",
+    "authenticationMethods": "Méthodes d'Authentification",
+    "googleAccount": "Compte Google",
+    "emailPassword": "Email et Mot de Passe",
+    "linkedOn": "Lié le {date}",
+    "notLinked": "Non lié",
+    "primaryMethod": "Principal",
+    "backupMethod": "Sauvegarde",
+    "accountProviders": "Fournisseurs de Compte",
+    "securityOverview": "Aperçu de la Sécurité"
   }
 }

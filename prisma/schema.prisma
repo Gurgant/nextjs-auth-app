@@ -55,10 +55,81 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
-  accounts Account[]
-  sessions Session[]
+  // Password Management
+  passwordSetAt     DateTime? // When password was last set/changed
+  requiresPasswordChange Boolean @default(false) // Force password change
+  
+  // Account Linking
+  hasGoogleAccount  Boolean @default(false) // Has linked Google account
+  hasEmailAccount   Boolean @default(false) // Has email/password auth
+  primaryAuthMethod String? // 'google' or 'email'
+  
+  // Security Audit
+  lastPasswordChange DateTime?
+  loginAttempts      Int      @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  
+  accounts           Account[]
+  sessions           Session[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  accountLinkRequests AccountLinkRequest[]
   
   @@index([email])
+  @@index([lastLoginAt])
+}
+
+// Password Reset Tokens
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
+}
+
+// Email Verification Tokens
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  email     String   // Email to verify
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
+}
+
+// Account Linking Requests
+model AccountLinkRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  requestType String   // 'link_google' or 'link_email'
+  token       String   @unique
+  expires     DateTime
+  completed   Boolean  @default(false)
+  metadata    Json?    // Store additional data like Google account info
+  createdAt   DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
 }
 
 model VerificationToken {

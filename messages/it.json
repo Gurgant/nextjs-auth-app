@@ -96,6 +96,26 @@
     "deletionFailed": "Impossibile eliminare l'account. Riprova.",
     "updateProfile": "Aggiorna Profilo",
     "profileUpdated": "Profilo aggiornato con successo",
-    "updateFailed": "Impossibile aggiornare il profilo"
+    "updateFailed": "Impossibile aggiornare il profilo",
+    "passwordManagement": "Gestione Password",
+    "setPassword": "Imposta Password",
+    "changePassword": "Cambia Password",
+    "currentPassword": "Password Attuale",
+    "newPassword": "Nuova Password",
+    "confirmNewPassword": "Conferma Nuova Password",
+    "passwordStrength": "Forza Password",
+    "addPasswordDescription": "Imposta una password per abilitare l'autenticazione email/password come backup per il tuo account Google.",
+    "changePasswordDescription": "Aggiorna la tua password attuale per una sicurezza maggiore.",
+    "passwordAdded": "Password aggiunta con successo!",
+    "passwordChanged": "Password cambiata con successo!",
+    "authenticationMethods": "Metodi di Autenticazione",
+    "googleAccount": "Account Google",
+    "emailPassword": "Email e Password",
+    "linkedOn": "Collegato il {date}",
+    "notLinked": "Non collegato",
+    "primaryMethod": "Principale",
+    "backupMethod": "Backup",
+    "accountProviders": "Provider Account",
+    "securityOverview": "Panoramica Sicurezza"
   }
 }

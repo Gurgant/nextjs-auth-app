@@ -64,6 +64,47 @@ export const {
     })
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Update user metadata on successful sign-in
+      if (user.id && account) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: { accounts: true }
+          })
+
+          if (existingUser) {
+            const hasGoogleAccount = existingUser.accounts.some(acc => acc.provider === 'google')
+            const hasPassword = !!existingUser.password
+            
+            // Update user login metadata
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                hasGoogleAccount: hasGoogleAccount,
+                hasEmailAccount: hasPassword,
+                primaryAuthMethod: existingUser.primaryAuthMethod || (account.provider === 'google' ? 'google' : 'email'),
+                lastLoginAt: new Date(),
+                // Set password timestamps for existing password users
+                passwordSetAt: existingUser.password && !existingUser.passwordSetAt ? existingUser.createdAt : existingUser.passwordSetAt,
+                lastPasswordChange: existingUser.password && !existingUser.lastPasswordChange ? existingUser.createdAt : existingUser.lastPasswordChange
+              }
+            })
+
+            console.log('Updated user login metadata:', { 
+              userId: user.id, 
+              provider: account.provider,
+              hasGoogleAccount,
+              hasPassword
+            })
+          }
+        } catch (error) {
+          console.error('Error updating user metadata on sign-in:', error)
+          // Don't block sign-in if metadata update fails
+        }
+      }
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id

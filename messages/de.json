@@ -96,6 +96,26 @@
     "deletionFailed": "Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
     "updateProfile": "Profil Aktualisieren",
     "profileUpdated": "Profil erfolgreich aktualisiert",
-    "updateFailed": "Profil konnte nicht aktualisiert werden"
+    "updateFailed": "Profil konnte nicht aktualisiert werden",
+    "passwordManagement": "Passwort-Verwaltung",
+    "setPassword": "Passwort Festlegen",
+    "changePassword": "Passwort Ändern",
+    "currentPassword": "Aktuelles Passwort",
+    "newPassword": "Neues Passwort",
+    "confirmNewPassword": "Neues Passwort Bestätigen",
+    "passwordStrength": "Passwort-Stärke",
+    "addPasswordDescription": "Legen Sie ein Passwort fest, um die Email/Passwort-Authentifizierung als Backup für Ihr Google-Konto zu aktivieren.",
+    "changePasswordDescription": "Aktualisieren Sie Ihr aktuelles Passwort für erhöhte Sicherheit.",
+    "passwordAdded": "Passwort erfolgreich hinzugefügt!",
+    "passwordChanged": "Passwort erfolgreich geändert!",
+    "authenticationMethods": "Authentifizierungsmethoden",
+    "googleAccount": "Google-Konto",
+    "emailPassword": "Email und Passwort",
+    "linkedOn": "Verknüpft am {date}",
+    "notLinked": "Nicht verknüpft",
+    "primaryMethod": "Primär",
+    "backupMethod": "Backup",
+    "accountProviders": "Konto-Anbieter",
+    "securityOverview": "Sicherheitsübersicht"
   }
 }

@@ -96,6 +96,26 @@
     "deletionFailed": "Falló al eliminar la cuenta. Inténtalo de nuevo.",
     "updateProfile": "Actualizar Perfil",
     "profileUpdated": "Perfil actualizado exitosamente",
-    "updateFailed": "Falló al actualizar el perfil"
+    "updateFailed": "Falló al actualizar el perfil",
+    "passwordManagement": "Gestión de Contraseñas",
+    "setPassword": "Establecer Contraseña",
+    "changePassword": "Cambiar Contraseña",
+    "currentPassword": "Contraseña Actual",
+    "newPassword": "Nueva Contraseña",
+    "confirmNewPassword": "Confirmar Nueva Contraseña",
+    "passwordStrength": "Fortaleza de Contraseña",
+    "addPasswordDescription": "Establece una contraseña para habilitar la autenticación por email/contraseña como respaldo para tu cuenta de Google.",
+    "changePasswordDescription": "Actualiza tu contraseña actual para mayor seguridad.",
+    "passwordAdded": "¡Contraseña añadida con éxito!",
+    "passwordChanged": "¡Contraseña cambiada con éxito!",
+    "authenticationMethods": "Métodos de Autenticación",
+    "googleAccount": "Cuenta de Google",
+    "emailPassword": "Email y Contraseña",
+    "linkedOn": "Vinculado el {date}",
+    "notLinked": "No vinculado",
+    "primaryMethod": "Principal",
+    "backupMethod": "Respaldo",
+    "accountProviders": "Proveedores de Cuenta",
+    "securityOverview": "Resumen de Seguridad"
   }
 }
