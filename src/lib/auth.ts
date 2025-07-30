@@ -85,11 +85,44 @@ export const {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
+      // Handle language-aware redirects
+      console.log('Auth redirect called with:', { url, baseUrl })
+      
+      const supportedLocales = ['en', 'es', 'fr', 'it', 'de']
+      
+      // If it's a relative URL, handle it
+      if (url.startsWith("/")) {
+        const segments = url.split('/').filter(Boolean)
+        const possibleLocale = segments[0]
+        
+        if (supportedLocales.includes(possibleLocale)) {
+          // URL already has locale, ensure it goes to dashboard
+          if (segments[1] === 'dashboard') {
+            return `${baseUrl}${url}`
+          } else {
+            return `${baseUrl}/${possibleLocale}/dashboard`
+          }
+        } else {
+          // No locale in URL, default to English and dashboard
+          return `${baseUrl}/en/dashboard`
+        }
+      }
+      
+      // If it's a callback URL on the same origin
+      else if (new URL(url).origin === baseUrl) {
+        const urlObj = new URL(url)
+        const segments = urlObj.pathname.split('/').filter(Boolean)
+        const possibleLocale = segments[0]
+        
+        if (supportedLocales.includes(possibleLocale)) {
+          return `${baseUrl}/${possibleLocale}/dashboard`
+        } else {
+          return `${baseUrl}/en/dashboard`
+        }
+      }
+      
+      // Default fallback to English dashboard
+      return `${baseUrl}/en/dashboard`
     },
   },
   pages: {

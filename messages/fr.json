@@ -3,12 +3,26 @@
     "title": "Tableau de Bord",
     "message": "Vous êtes connecté! Ceci est une page protégée.",
     "welcome": "Bienvenue, {name}!",
-    "email": "Email: {email}"
+    "email": "Email: {email}",
+    "activeSession": "Session active",
+    "sessionStatus": "Statut de Session",
+    "active": "Actif",
+    "authenticatedSuccessfully": "Authentifié avec succès",
+    "security": "Sécurité",
+    "securityDescription": "Protégé avec NextAuth.js",
+    "multiLanguage": "Multi-langues",
+    "multiLanguageDescription": "5 langues supportées",
+    "performance": "Performances",
+    "performanceDescription": "Construit avec Next.js 15",
+    "sessionManagement": "Gestion de Session",
+    "sessionManagementDescription": "Prêt à vous déconnecter? Votre session sera terminée de manière sécurisée."
   },
   "Home": {
     "title": "Bienvenue dans Notre App",
     "subtitle": "Authentification simple avec Google OAuth",
-    "welcomeBack": "Bon retour, {name}!"
+    "welcomeBack": "Bon retour, {name}!",
+    "successfullySignedIn": "Vous êtes connecté avec succès!",
+    "secureAuth": "Authentification sécurisée avec cryptage standard de l'industrie"
   },
   "Auth": {
     "signInWithGoogle": "Se connecter avec Google",
@@ -16,10 +30,17 @@
     "signingIn": "Connexion en cours...",
     "signInWithEmail": "Se connecter avec Email",
     "signInWithGoogleInstead": "Se connecter avec Google à la place",
-    "or": "Ou"
+    "or": "Ou",
+    "signInToAccount": "Connectez-vous à votre compte",
+    "enterCredentials": "Entrez vos identifiants pour continuer",
+    "welcomeBack": "Bon retour",
+    "chooseSignInMethod": "Choisissez votre méthode de connexion préférée"
   },
   "Common": {
     "loading": "Chargement...",
-    "error": "Une erreur s'est produite"
+    "error": "Une erreur s'est produite",
+    "selectLanguage": "Sélectionner la Langue",
+    "languageSettings": "Paramètres de Langue",
+    "languagesCount": "{count} langues"
   }
 }

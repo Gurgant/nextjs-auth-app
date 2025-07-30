@@ -3,12 +3,26 @@
     "title": "Dashboard",
     "message": "You are logged in! This is a protected page.",
     "welcome": "Welcome, {name}!",
-    "email": "Email: {email}"
+    "email": "Email: {email}",
+    "activeSession": "Active session",
+    "sessionStatus": "Session Status",
+    "active": "Active",
+    "authenticatedSuccessfully": "Authenticated successfully",
+    "security": "Security",
+    "securityDescription": "Protected with NextAuth.js",
+    "multiLanguage": "Multi-language",
+    "multiLanguageDescription": "5 languages supported",
+    "performance": "Performance",
+    "performanceDescription": "Built with Next.js 15",
+    "sessionManagement": "Session Management",
+    "sessionManagementDescription": "Ready to sign out? Your session will be securely terminated."
   },
   "Home": {
     "title": "Welcome to Our App",
     "subtitle": "Simple authentication with Google OAuth",
-    "welcomeBack": "Welcome back, {name}!"
+    "welcomeBack": "Welcome back, {name}!",
+    "successfullySignedIn": "You're successfully signed in!",
+    "secureAuth": "Secure authentication with industry-standard encryption"
   },
   "Auth": {
     "signInWithGoogle": "Sign in with Google",
@@ -16,10 +30,17 @@
     "signingIn": "Signing in...",
     "signInWithEmail": "Sign in with Email",
     "signInWithGoogleInstead": "Sign in with Google instead",
-    "or": "Or"
+    "or": "Or",
+    "signInToAccount": "Sign in to your account",
+    "enterCredentials": "Enter your credentials to continue",
+    "welcomeBack": "Welcome back",
+    "chooseSignInMethod": "Choose your preferred sign-in method"
   },
   "Common": {
     "loading": "Loading...",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "selectLanguage": "Select Language",
+    "languageSettings": "Language Settings",
+    "languagesCount": "{count} languages"
   }
 }

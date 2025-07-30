@@ -3,12 +3,26 @@
     "title": "Dashboard",
     "message": "Sie sind angemeldet! Dies ist eine geschützte Seite.",
     "welcome": "Willkommen, {name}!",
-    "email": "E-Mail: {email}"
+    "email": "E-Mail: {email}",
+    "activeSession": "Aktive Sitzung",
+    "sessionStatus": "Sitzungsstatus",
+    "active": "Aktiv",
+    "authenticatedSuccessfully": "Erfolgreich authentifiziert",
+    "security": "Sicherheit",
+    "securityDescription": "Geschützt mit NextAuth.js",
+    "multiLanguage": "Mehrsprachig",
+    "multiLanguageDescription": "5 Sprachen unterstützt",
+    "performance": "Leistung",
+    "performanceDescription": "Erstellt mit Next.js 15",
+    "sessionManagement": "Sitzungsverwaltung",
+    "sessionManagementDescription": "Bereit zum Abmelden? Ihre Sitzung wird sicher beendet."
   },
   "Home": {
     "title": "Willkommen in unserer App",
     "subtitle": "Einfache Authentifizierung mit Google OAuth",
-    "welcomeBack": "Willkommen zurück, {name}!"
+    "welcomeBack": "Willkommen zurück, {name}!",
+    "successfullySignedIn": "Sie sind erfolgreich angemeldet!",
+    "secureAuth": "Sichere Authentifizierung mit branchenstandard Verschlüsselung"
   },
   "Auth": {
     "signInWithGoogle": "Mit Google anmelden",
@@ -16,10 +30,17 @@
     "signingIn": "Anmeldung läuft...",
     "signInWithEmail": "Mit E-Mail anmelden",
     "signInWithGoogleInstead": "Stattdessen mit Google anmelden",
-    "or": "Oder"
+    "or": "Oder",
+    "signInToAccount": "Bei Ihrem Konto anmelden",
+    "enterCredentials": "Geben Sie Ihre Anmeldedaten ein, um fortzufahren",
+    "welcomeBack": "Willkommen zurück",
+    "chooseSignInMethod": "Wählen Sie Ihre bevorzugte Anmeldemethode"
   },
   "Common": {
     "loading": "Wird geladen...",
-    "error": "Ein Fehler ist aufgetreten"
+    "error": "Ein Fehler ist aufgetreten",
+    "selectLanguage": "Sprache Auswählen",
+    "languageSettings": "Spracheinstellungen",
+    "languagesCount": "{count} Sprachen"
   }
 }
