@@ -1,0 +1,25 @@
+{
+  "Dashboard": {
+    "title": "Dashboard",
+    "message": "Hai effettuato l'accesso! Questa è una pagina protetta.",
+    "welcome": "Benvenuto, {name}!",
+    "email": "Email: {email}"
+  },
+  "Home": {
+    "title": "Benvenuto nella Nostra App",
+    "subtitle": "Autenticazione semplice con Google OAuth",
+    "welcomeBack": "Bentornato, {name}!"
+  },
+  "Auth": {
+    "signInWithGoogle": "Accedi con Google",
+    "signOut": "Esci",
+    "signingIn": "Accesso in corso...",
+    "signInWithEmail": "Accedi con Email",
+    "signInWithGoogleInstead": "Accedi con Google invece",
+    "or": "Oppure"
+  },
+  "Common": {
+    "loading": "Caricamento...",
+    "error": "Si è verificato un errore"
+  }
+}

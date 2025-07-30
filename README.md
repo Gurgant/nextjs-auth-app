@@ -5,10 +5,10 @@ A minimal, production-ready Next.js 15 application with Google OAuth authenticat
 ## 🚀 Tech Stack
 
 - **Next.js 15.4.5** - App Router with Server Components
-- **NextAuth.js 5.0.0-beta.29** - Latest beta with database sessions
+- **NextAuth.js 5.0.0-beta.29** - Latest beta with JWT sessions and dual authentication
 - **Prisma 6.13.0** - Type-safe database ORM
 - **PostgreSQL 16** - Database with Docker
-- **next-intl 4.3.4** - Internationalization (EN/ES/FR)
+- **next-intl 4.3.4** - Internationalization (EN/ES/FR/IT/DE)
 - **Tailwind CSS 3.4.16** - Styling framework (v4 downgraded for stability)
 - **TypeScript 5.8.3** - Type safety
 
@@ -17,13 +17,16 @@ A minimal, production-ready Next.js 15 application with Google OAuth authenticat
 - Node.js 18+ and pnpm
 - Docker and Docker Compose
 - Google OAuth credentials
+- bcryptjs for password hashing
 
 ## ✅ Recent Improvements
 
+- **Dual Authentication**: Added email/password credentials alongside Google OAuth
+- **JWT Strategy**: Switched to JWT sessions to support credentials provider
+- **Multi-language Support**: Added Italian and German translations (5 languages total)
+- **Security**: Password hashing with bcryptjs, proper session handling
 - **Fixed Edge Runtime Errors**: Middleware now only handles i18n, auth checks moved to page level
 - **Production Ready**: Debug mode disabled in production, proper environment configuration
-- **Performance**: Optimized middleware for faster execution
-- **Security**: Improved auth flow with proper session handling
 
 ## 🛠️ Setup Instructions
 
@@ -107,24 +110,40 @@ pnpm docker:down  # Stop Docker containers
 pnpm docker:logs  # View Docker container logs
 pnpm db:setup     # Setup database (generate + push)
 pnpm prisma:studio # Open Prisma Studio GUI
+pnpm create-user    # Create test user for credentials auth
 ```
 
 ## 🌍 Internationalization
 
-The app supports three languages:
+The app supports five languages:
 - English (en) - Default
 - Spanish (es)
 - French (fr)
+- Italian (it)
+- German (de)
 
 Language can be changed using the dropdown in the navigation bar.
 
 ## 🔒 Authentication Flow
 
+### Google OAuth
 1. User clicks "Sign in with Google"
 2. Redirected to Google OAuth
 3. After approval, redirected back to app
-4. Session stored in PostgreSQL
+4. JWT session created
 5. Protected routes accessible
+
+### Email/Password Credentials
+1. User enters email and password
+2. Password verified with bcrypt
+3. JWT session created
+4. Protected routes accessible
+
+### Creating Test Users
+```bash
+pnpm create-user
+# Creates test@example.com with password: password123
+```
 
 ## 🐛 Troubleshooting
 
@@ -149,7 +168,8 @@ pnpm prisma:push --force-reset
 
 1. **Security**
    - Environment variables for secrets
-   - Database sessions (not JWT)
+   - JWT sessions with secure tokens
+   - Password hashing with bcryptjs (12 rounds)
    - CSRF protection via NextAuth
    - Secure middleware implementation
 

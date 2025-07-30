@@ -1,0 +1,25 @@
+{
+  "Dashboard": {
+    "title": "Dashboard",
+    "message": "Sie sind angemeldet! Dies ist eine geschützte Seite.",
+    "welcome": "Willkommen, {name}!",
+    "email": "E-Mail: {email}"
+  },
+  "Home": {
+    "title": "Willkommen in unserer App",
+    "subtitle": "Einfache Authentifizierung mit Google OAuth",
+    "welcomeBack": "Willkommen zurück, {name}!"
+  },
+  "Auth": {
+    "signInWithGoogle": "Mit Google anmelden",
+    "signOut": "Abmelden",
+    "signingIn": "Anmeldung läuft...",
+    "signInWithEmail": "Mit E-Mail anmelden",
+    "signInWithGoogleInstead": "Stattdessen mit Google anmelden",
+    "or": "Oder"
+  },
+  "Common": {
+    "loading": "Wird geladen...",
+    "error": "Ein Fehler ist aufgetreten"
+  }
+}
