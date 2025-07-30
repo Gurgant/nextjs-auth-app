@@ -48,8 +48,9 @@ model Session {
 model User {
   id            String    @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String    @unique  // Required for all users
   emailVerified DateTime?
+  password      String?   // For credentials auth
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
