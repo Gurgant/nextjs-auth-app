@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { TwoFactorVerification } from "@/components/auth/two-factor-verification";
 import { getEnhancedUserAccountInfo } from "@/lib/actions/advanced-auth";
+import { getTranslations } from "next-intl/server";
 
 interface TwoFactorPageProps {
   params: {
@@ -21,6 +22,7 @@ export default async function TwoFactorPage({
 }: TwoFactorPageProps) {
   const { locale } = params;
   const { userId, email, callbackUrl, error } = searchParams;
+  const t = await getTranslations('TwoFactor');
 
   // Check if user is already fully authenticated
   const session = await auth();
@@ -75,14 +77,11 @@ export default async function TwoFactorPage({
                 />
               </svg>
               <p className="text-sm font-medium text-red-700">
-                {error === "2fa_failed" &&
-                  "Too many failed attempts. Please sign in again."}
-                {error === "invalid_code" &&
-                  "Invalid verification code. Please try again."}
-                {error === "expired" &&
-                  "Session expired. Please sign in again."}
+                {error === "2fa_failed" && t('tooManyAttempts')}
+                {error === "invalid_code" && t('invalidCode')}
+                {error === "expired" && t('sessionExpired')}
                 {!["2fa_failed", "invalid_code", "expired"].includes(error) &&
-                  "Authentication error. Please try again."}
+                  t('authError')}
               </p>
             </div>
           </div>
@@ -104,9 +103,11 @@ export async function generateMetadata({
 }: {
   params: { locale: string };
 }) {
+  const t = await getTranslations('TwoFactor');
+  
   return {
-    title: "Two-Factor Authentication - Auth App",
-    description: "Complete your sign-in with two-factor authentication",
+    title: t('metaTitle'),
+    description: t('metaDescription'),
     robots: "noindex, nofollow", // Don't index auth pages
   };
 }

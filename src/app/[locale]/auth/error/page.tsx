@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { AlertCircle, ArrowLeft, Mail, Key, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -182,9 +183,9 @@ export default function AuthErrorPage() {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             {t('error.needHelp')}{' '}
-            <a href="/support" className="font-medium text-indigo-600 hover:text-indigo-500">
+            <Link href="/support" className="font-medium text-indigo-600 hover:text-indigo-500">
               {t('error.contactSupport')}
-            </a>
+            </Link>
           </p>
         </div>
       </div>

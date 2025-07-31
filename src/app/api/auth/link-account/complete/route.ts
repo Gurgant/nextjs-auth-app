@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         data: { 
           completed: true,
           metadata: {
-            ...linkRequest.metadata,
+            ...(linkRequest.metadata as Record<string, any> || {}),
             completedAt: new Date().toISOString(),
             linkedAccountId: account.id
           }

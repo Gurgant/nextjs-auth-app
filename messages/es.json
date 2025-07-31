@@ -42,7 +42,35 @@
     "alreadyHaveAccount": "¿Ya tienes una cuenta?",
     "dontHaveAccount": "¿No tienes una cuenta?",
     "signInHere": "Inicia sesión aquí",
-    "registerHere": "Regístrate aquí"
+    "registerHere": "Regístrate aquí",
+    "error": {
+      "title": "Error de Inicio de Sesión",
+      "accountAlreadyExists": "La Cuenta Ya Existe",
+      "accountAlreadyExistsDescription": "Ya existe una cuenta con esta dirección de correo electrónico utilizando un método de inicio de sesión diferente.",
+      "accountAlreadyExistsDetails": "Anteriormente creaste una cuenta con email y contraseña. Para vincular tu cuenta de Google, por favor inicia sesión con tu email primero.",
+      "accessDenied": "Acceso Denegado",
+      "accessDeniedDescription": "No tienes permiso para iniciar sesión.",
+      "accessDeniedDetails": "Esto podría deberse a restricciones de cuenta o violaciones de políticas.",
+      "configurationError": "Error de Configuración",
+      "configurationErrorDescription": "Hay un problema con la configuración del servidor.",
+      "configurationErrorDetails": "Por favor contacta soporte si este problema persiste.",
+      "authenticationError": "Error de Autenticación",
+      "authenticationErrorDescription": "Ocurrió un error inesperado durante el inicio de sesión.",
+      "authenticationErrorDetails": "Por favor intenta de nuevo o contacta soporte si el problema continúa.",
+      "oauthCallbackError": "Error de Conexión OAuth",
+      "oauthCallbackErrorDescription": "Hubo un problema conectando con tu proveedor OAuth.",
+      "oauthCallbackErrorDetails": "Esto podría deberse a problemas de red, caída del proveedor o problemas de configuración. Por favor intenta iniciar sesión de nuevo.",
+      "howToResolve": "Cómo resolver esto:",
+      "signInWithEmailFirst": "Inicia sesión con tu email y contraseña primero",
+      "goToAccountSettings": "Ve a Configuración de Cuenta",
+      "linkGoogleAccount": "Vincula tu cuenta de Google desde ahí",
+      "tryEmailSignIn": "Intentar Inicio de Sesión con Email",
+      "tryDifferentAccount": "Intentar Cuenta Diferente",
+      "tryAgain": "Intentar de Nuevo",
+      "goBack": "Volver",
+      "needHelp": "¿Necesitas ayuda?",
+      "contactSupport": "Contactar Soporte"
+    }
   },
   "Common": {
     "loading": "Cargando...",
@@ -77,7 +105,11 @@
     "errorWeakPassword": "La contraseña debe tener al menos 8 caracteres",
     "errorInvalidEmail": "Por favor ingresa un correo válido",
     "errorNameRequired": "El nombre completo es requerido",
-    "backToSignIn": "Volver al Inicio de Sesión"
+    "backToSignIn": "Volver al Inicio de Sesión",
+    "namePlaceholder": "Juan Pérez",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "passwordPlaceholder": "••••••••",
+    "confirmPasswordPlaceholder": "••••••••"
   },
   "Account": {
     "title": "Configuración de Cuenta",
@@ -117,5 +149,41 @@
     "backupMethod": "Respaldo",
     "accountProviders": "Proveedores de Cuenta",
     "securityOverview": "Resumen de Seguridad"
+  },
+  "TwoFactor": {
+    "tooManyAttempts": "Demasiados intentos fallidos. Por favor inicia sesión de nuevo.",
+    "invalidCode": "Código de verificación inválido. Por favor intenta de nuevo.",
+    "sessionExpired": "Sesión expirada. Por favor inicia sesión de nuevo.",
+    "authError": "Error de autenticación. Por favor intenta de nuevo.",
+    "metaTitle": "Autenticación de Dos Factores - Auth App",
+    "metaDescription": "Completa tu inicio de sesión con autenticación de dos factores",
+    "authFailure": "Falló completar la autenticación",
+    "signInFailure": "Falló completar el inicio de sesión. Por favor intenta de nuevo.",
+    "unexpectedError": "Ocurrió un error inesperado. Por favor intenta de nuevo.",
+    "title": "Autenticación de Dos Factores",
+    "backupCodeInstructions": "Ingresa uno de tus códigos de respaldo para completar el inicio de sesión",
+    "verificationCodeInstructions": "Ingresa el código de verificación de tu aplicación autenticadora",
+    "attemptsRemaining": "{count} intento{plural} restante{plural}",
+    "backupCodeLabel": "Código de Respaldo",
+    "verificationCodeLabel": "Código de Verificación",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verificationCodePlaceholder": "123456",
+    "verifying": "Verificando...",
+    "verifyButton": "Verificar e Iniciar Sesión",
+    "useAuthenticatorInstead": "← Usar aplicación autenticadora en su lugar",
+    "useBackupCodeInstead": "Usar código de respaldo en su lugar →",
+    "cancel": "Cancelar",
+    "backupCodeNote": "Cada código de respaldo solo puede usarse una vez",
+    "codeRefreshNote": "Los códigos se actualizan cada 30 segundos"
+  },
+  "CredentialsForm": {
+    "invalidCredentials": "Email o contraseña inválidos",
+    "genericError": "Algo salió mal",
+    "emailLabel": "Dirección de Correo Electrónico",
+    "passwordLabel": "Contraseña",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "passwordPlaceholder": "••••••••",
+    "signingIn": "Iniciando sesión...",
+    "signInButton": "Iniciar sesión con Email"
   }
 }

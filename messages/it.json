@@ -42,7 +42,35 @@
     "alreadyHaveAccount": "Hai già un account?",
     "dontHaveAccount": "Non hai un account?",
     "signInHere": "Accedi qui",
-    "registerHere": "Registrati qui"
+    "registerHere": "Registrati qui",
+    "error": {
+      "title": "Errore di Accesso",
+      "accountAlreadyExists": "L'Account Esiste Già",
+      "accountAlreadyExistsDescription": "Un account con questo indirizzo email esiste già utilizzando un metodo di accesso diverso.",
+      "accountAlreadyExistsDetails": "Hai precedentemente creato un account con email e password. Per collegare il tuo account Google, accedi prima con la tua email.",
+      "accessDenied": "Accesso Negato",
+      "accessDeniedDescription": "Non hai il permesso di accedere.",
+      "accessDeniedDetails": "Questo potrebbe essere dovuto a restrizioni dell'account o violazioni delle politiche.",
+      "configurationError": "Errore di Configurazione",
+      "configurationErrorDescription": "C'è un problema con la configurazione del server.",
+      "configurationErrorDetails": "Per favore contatta il support se questo problema persiste.",
+      "authenticationError": "Errore di Autenticazione",
+      "authenticationErrorDescription": "Si è verificato un errore inaspettato durante l'accesso.",
+      "authenticationErrorDetails": "Per favore riprova o contatta il support se il problema continua.",
+      "oauthCallbackError": "Errore di Connessione OAuth",
+      "oauthCallbackErrorDescription": "C'è stato un problema di connessione con il tuo provider OAuth.",
+      "oauthCallbackErrorDetails": "Questo potrebbe essere dovuto a problemi di rete, interruzione del provider o problemi di configurazione. Per favore prova ad accedere di nuovo.",
+      "howToResolve": "Come risolvere questo:",
+      "signInWithEmailFirst": "Accedi prima con la tua email e password",
+      "goToAccountSettings": "Vai alle Impostazioni Account",
+      "linkGoogleAccount": "Collega il tuo account Google da lì",
+      "tryEmailSignIn": "Prova Accesso Email",
+      "tryDifferentAccount": "Prova Account Diverso",
+      "tryAgain": "Riprova",
+      "goBack": "Indietro",
+      "needHelp": "Hai bisogno di aiuto?",
+      "contactSupport": "Contatta Support"
+    }
   },
   "Common": {
     "loading": "Caricamento...",
@@ -77,7 +105,11 @@
     "errorWeakPassword": "La password deve essere lunga almeno 8 caratteri",
     "errorInvalidEmail": "Per favore inserisci un indirizzo email valido",
     "errorNameRequired": "Il nome completo è richiesto",
-    "backToSignIn": "Torna al Login"
+    "backToSignIn": "Torna al Login",
+    "namePlaceholder": "Mario Rossi",
+    "emailPlaceholder": "tu@esempio.com",
+    "passwordPlaceholder": "••••••••",
+    "confirmPasswordPlaceholder": "••••••••"
   },
   "Account": {
     "title": "Impostazioni Account",
@@ -117,5 +149,41 @@
     "backupMethod": "Backup",
     "accountProviders": "Provider Account",
     "securityOverview": "Panoramica Sicurezza"
+  },
+  "TwoFactor": {
+    "tooManyAttempts": "Troppi tentativi falliti. Per favore accedi di nuovo.",
+    "invalidCode": "Codice di verifica non valido. Per favore riprova.",
+    "sessionExpired": "Sessione scaduta. Per favore accedi di nuovo.",
+    "authError": "Errore di autenticazione. Per favore riprova.",
+    "metaTitle": "Autenticazione a Due Fattori - Auth App",
+    "metaDescription": "Completa il tuo accesso con l'autenticazione a due fattori",
+    "authFailure": "Impossibile completare l'autenticazione",
+    "signInFailure": "Impossibile completare l'accesso. Per favore riprova.",
+    "unexpectedError": "Si è verificato un errore inaspettato. Per favore riprova.",
+    "title": "Autenticazione a Due Fattori",
+    "backupCodeInstructions": "Inserisci uno dei tuoi codici di backup per completare l'accesso",
+    "verificationCodeInstructions": "Inserisci il codice di verifica dalla tua app di autenticazione",
+    "attemptsRemaining": "{count} tentativo/i rimanente/i",
+    "backupCodeLabel": "Codice di Backup",
+    "verificationCodeLabel": "Codice di Verifica",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verificationCodePlaceholder": "123456",
+    "verifying": "Verifica in corso...",
+    "verifyButton": "Verifica e Accedi",
+    "useAuthenticatorInstead": "← Usa l'app di autenticazione invece",
+    "useBackupCodeInstead": "Usa il codice di backup invece →",
+    "cancel": "Annulla",
+    "backupCodeNote": "Ogni codice di backup può essere utilizzato solo una volta",
+    "codeRefreshNote": "I codici si aggiornano ogni 30 secondi"
+  },
+  "CredentialsForm": {
+    "invalidCredentials": "Email o password non validi",
+    "genericError": "Qualcosa è andato storto",
+    "emailLabel": "Indirizzo Email",
+    "passwordLabel": "Password",
+    "emailPlaceholder": "tu@esempio.com",
+    "passwordPlaceholder": "••••••••",
+    "signingIn": "Accesso in corso...",
+    "signInButton": "Accedi con Email"
   }
 }

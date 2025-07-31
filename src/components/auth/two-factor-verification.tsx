@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import {
   verifyTwoFactorCode,
   complete2FAAuthentication,
@@ -26,6 +27,7 @@ export function TwoFactorVerification({
 }: TwoFactorVerificationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('TwoFactor');
 
   const [code, setCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -93,14 +95,14 @@ export function TwoFactorVerification({
             setResult({
               success: false,
               message:
-                completionResult.message || "Failed to complete authentication",
+                completionResult.message || t('authFailure'),
             });
           }
         } catch (error) {
           console.error("Error completing 2FA authentication:", error);
           setResult({
             success: false,
-            message: "Failed to complete sign-in. Please try again.",
+            message: t('signInFailure'),
           });
         }
       } else {
@@ -116,7 +118,7 @@ export function TwoFactorVerification({
       console.error("2FA verification error:", error);
       setResult({
         success: false,
-        message: "An unexpected error occurred. Please try again.",
+        message: t('unexpectedError'),
       });
     } finally {
       setIsVerifying(false);
@@ -159,12 +161,12 @@ export function TwoFactorVerification({
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Two-Factor Authentication
+              {t('title')}
             </h1>
             <p className="text-gray-600">
               {useBackupCode
-                ? "Enter one of your backup codes to complete sign-in"
-                : "Enter the verification code from your authenticator app"}
+                ? t('backupCodeInstructions')
+                : t('verificationCodeInstructions')}
             </p>
             <p className="text-sm text-gray-500 mt-2">{email}</p>
           </div>
@@ -187,8 +189,10 @@ export function TwoFactorVerification({
                   />
                 </svg>
                 <p className="text-sm font-medium text-yellow-800">
-                  {attemptsLeft} attempt{attemptsLeft !== 1 ? "s" : ""}{" "}
-                  remaining
+                  {t('attemptsRemaining', { 
+                    count: attemptsLeft, 
+                    plural: attemptsLeft !== 1 ? 's' : '' 
+                  })}
                 </p>
               </div>
             </div>
@@ -205,7 +209,7 @@ export function TwoFactorVerification({
                 htmlFor="code"
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                {useBackupCode ? "Backup Code" : "Verification Code"}
+                {useBackupCode ? t('backupCodeLabel') : t('verificationCodeLabel')}
               </label>
               <input
                 ref={inputRef}
@@ -227,7 +231,7 @@ export function TwoFactorVerification({
                     setCode(value.replace(/\D/g, "").slice(0, 6));
                   }
                 }}
-                placeholder={useBackupCode ? "XXXX-XXXX" : "123456"}
+                placeholder={useBackupCode ? t('backupCodePlaceholder') : t('verificationCodePlaceholder')}
                 className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 text-center text-2xl font-mono tracking-widest"
                 maxLength={useBackupCode ? 9 : 6}
                 required
@@ -317,10 +321,10 @@ export function TwoFactorVerification({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       ></path>
                     </svg>
-                    Verifying...
+                    {t('verifying')}
                   </>
                 ) : (
-                  "Verify & Sign In"
+                  t('verifyButton')
                 )}
               </button>
 
@@ -331,8 +335,8 @@ export function TwoFactorVerification({
                 className="w-full text-sm text-gray-600 hover:text-gray-800 py-2"
               >
                 {useBackupCode
-                  ? "← Use authenticator app instead"
-                  : "Use backup code instead →"}
+                  ? t('useAuthenticatorInstead')
+                  : t('useBackupCodeInstead')}
               </button>
 
               {/* Cancel */}
@@ -341,7 +345,7 @@ export function TwoFactorVerification({
                 onClick={handleCancel}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </form>
@@ -350,8 +354,8 @@ export function TwoFactorVerification({
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
               {useBackupCode
-                ? "Each backup code can only be used once"
-                : "Codes refresh every 30 seconds"}
+                ? t('backupCodeNote')
+                : t('codeRefreshNote')}
             </p>
           </div>
         </div>

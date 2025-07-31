@@ -78,7 +78,7 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
                 type="text"
                 required
                 className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                placeholder="John Doe"
+                placeholder={t('namePlaceholder')}
               />
             </div>
             {result?.errors?.name && (
@@ -103,7 +103,7 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
                 type="email"
                 required
                 className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                placeholder="you@example.com"
+                placeholder={t('emailPlaceholder')}
               />
             </div>
             {result?.errors?.email && (
@@ -129,7 +129,7 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
                 required
                 minLength={8}
                 className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
               />
             </div>
             {result?.errors?.password && (
@@ -155,7 +155,7 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
                 required
                 minLength={8}
                 className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                placeholder="••••••••"
+                placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
             {result?.errors?.confirmPassword && (

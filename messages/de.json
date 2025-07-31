@@ -42,7 +42,35 @@
     "alreadyHaveAccount": "Haben Sie bereits ein Konto?",
     "dontHaveAccount": "Haben Sie noch kein Konto?",
     "signInHere": "Hier anmelden",
-    "registerHere": "Hier registrieren"
+    "registerHere": "Hier registrieren",
+    "error": {
+      "title": "Anmeldefehler",
+      "accountAlreadyExists": "Konto Existiert Bereits",
+      "accountAlreadyExistsDescription": "Ein Konto mit dieser E-Mail-Adresse existiert bereits mit einer anderen Anmeldemethode.",
+      "accountAlreadyExistsDetails": "Sie haben zuvor ein Konto mit E-Mail und Passwort erstellt. Um Ihr Google-Konto zu verknüpfen, melden Sie sich bitte zuerst mit Ihrer E-Mail an.",
+      "accessDenied": "Zugriff Verweigert",
+      "accessDeniedDescription": "Sie haben keine Berechtigung zur Anmeldung.",
+      "accessDeniedDetails": "Dies könnte auf Kontobeschränkungen oder Richtlinienverletzungen zurückzuführen sein.",
+      "configurationError": "Konfigurationsfehler",
+      "configurationErrorDescription": "Es gibt ein Problem mit der Serverkonfiguration.",
+      "configurationErrorDetails": "Bitte kontaktieren Sie den Support, wenn dieses Problem weiterhin besteht.",
+      "authenticationError": "Authentifizierungsfehler",
+      "authenticationErrorDescription": "Ein unerwarteter Fehler ist während der Anmeldung aufgetreten.",
+      "authenticationErrorDetails": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Support, wenn das Problem weiterhin besteht.",
+      "oauthCallbackError": "OAuth-Verbindungsfehler",
+      "oauthCallbackErrorDescription": "Es gab ein Problem bei der Verbindung mit Ihrem OAuth-Anbieter.",
+      "oauthCallbackErrorDetails": "Dies könnte auf Netzwerkprobleme, Anbieterausfall oder Konfigurationsprobleme zurückzuführen sein. Bitte versuchen Sie sich erneut anzumelden.",
+      "howToResolve": "So lösen Sie dies:",
+      "signInWithEmailFirst": "Melden Sie sich zuerst mit Ihrer E-Mail und Ihrem Passwort an",
+      "goToAccountSettings": "Gehen Sie zu den Kontoeinstellungen",
+      "linkGoogleAccount": "Verknüpfen Sie Ihr Google-Konto von dort",
+      "tryEmailSignIn": "E-Mail-Anmeldung Versuchen",
+      "tryDifferentAccount": "Anderes Konto Versuchen",
+      "tryAgain": "Erneut Versuchen",
+      "goBack": "Zurück",
+      "needHelp": "Benötigen Sie Hilfe?",
+      "contactSupport": "Support Kontaktieren"
+    }
   },
   "Common": {
     "loading": "Wird geladen...",
@@ -76,8 +104,12 @@
     "errorPasswordMismatch": "Passwörter stimmen nicht überein",
     "errorWeakPassword": "Das Passwort muss mindestens 8 Zeichen lang sein",
     "errorInvalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
-    "errorNameRequired": "Vollständiger Name ist erforderlich",
-    "backToSignIn": "Zurück zur Anmeldung"
+    "errorNameRequired": "Vollständiger Name ist erforderlich",  
+    "backToSignIn": "Zurück zur Anmeldung",
+    "namePlaceholder": "Max Mustermann",
+    "emailPlaceholder": "sie@beispiel.com",
+    "passwordPlaceholder": "••••••••",
+    "confirmPasswordPlaceholder": "••••••••"
   },
   "Account": {
     "title": "Kontoeinstellungen",
@@ -117,5 +149,41 @@
     "backupMethod": "Backup",
     "accountProviders": "Konto-Anbieter",
     "securityOverview": "Sicherheitsübersicht"
+  },
+  "TwoFactor": {
+    "tooManyAttempts": "Zu viele fehlgeschlagene Versuche. Bitte melden Sie sich erneut an.",
+    "invalidCode": "Ungültiger Verifizierungscode. Bitte versuchen Sie es erneut.",
+    "sessionExpired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",
+    "authError": "Authentifizierungsfehler. Bitte versuchen Sie es erneut.",
+    "metaTitle": "Zwei-Faktor-Authentifizierung - Auth App",
+    "metaDescription": "Vervollständigen Sie Ihre Anmeldung mit Zwei-Faktor-Authentifizierung",
+    "authFailure": "Authentifizierung konnte nicht abgeschlossen werden",
+    "signInFailure": "Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
+    "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "title": "Zwei-Faktor-Authentifizierung",
+    "backupCodeInstructions": "Geben Sie einen Ihrer Backup-Codes ein, um die Anmeldung abzuschließen",
+    "verificationCodeInstructions": "Geben Sie den Verifizierungscode aus Ihrer Authenticator-App ein",
+    "attemptsRemaining": "{count} Versuch(e) verbleibend",
+    "backupCodeLabel": "Backup-Code",
+    "verificationCodeLabel": "Verifizierungscode",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verificationCodePlaceholder": "123456",
+    "verifying": "Verifizierung läuft...",
+    "verifyButton": "Verifizieren und Anmelden",
+    "useAuthenticatorInstead": "← Authenticator-App stattdessen verwenden",
+    "useBackupCodeInstead": "Backup-Code stattdessen verwenden →",
+    "cancel": "Abbrechen",
+    "backupCodeNote": "Jeder Backup-Code kann nur einmal verwendet werden",
+    "codeRefreshNote": "Codes erneuern sich alle 30 Sekunden"
+  },
+  "CredentialsForm": {
+    "invalidCredentials": "Ungültige E-Mail oder Passwort",
+    "genericError": "Etwas ist schief gelaufen",
+    "emailLabel": "E-Mail-Adresse",
+    "passwordLabel": "Passwort",
+    "emailPlaceholder": "sie@beispiel.com",
+    "passwordPlaceholder": "••••••••",
+    "signingIn": "Anmeldung läuft...",
+    "signInButton": "Mit E-Mail anmelden"
   }
 }

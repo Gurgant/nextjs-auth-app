@@ -105,7 +105,11 @@
     "errorWeakPassword": "Password must be at least 8 characters long",
     "errorInvalidEmail": "Please enter a valid email address",
     "errorNameRequired": "Full name is required",
-    "backToSignIn": "Back to Sign In"
+    "backToSignIn": "Back to Sign In",
+    "namePlaceholder": "John Doe",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "confirmPasswordPlaceholder": "••••••••"
   },
   "Account": {
     "title": "Account Settings",
@@ -145,5 +149,41 @@
     "backupMethod": "Backup",
     "accountProviders": "Account Providers",
     "securityOverview": "Security Overview"
+  },
+  "TwoFactor": {
+    "tooManyAttempts": "Too many failed attempts. Please sign in again.",
+    "invalidCode": "Invalid verification code. Please try again.",
+    "sessionExpired": "Session expired. Please sign in again.",
+    "authError": "Authentication error. Please try again.",
+    "metaTitle": "Two-Factor Authentication - Auth App",
+    "metaDescription": "Complete your sign-in with two-factor authentication",
+    "authFailure": "Failed to complete authentication",
+    "signInFailure": "Failed to complete sign-in. Please try again.",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "title": "Two-Factor Authentication",
+    "backupCodeInstructions": "Enter one of your backup codes to complete sign-in",
+    "verificationCodeInstructions": "Enter the verification code from your authenticator app",
+    "attemptsRemaining": "{count} attempt{plural} remaining",
+    "backupCodeLabel": "Backup Code",
+    "verificationCodeLabel": "Verification Code",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verificationCodePlaceholder": "123456",
+    "verifying": "Verifying...",
+    "verifyButton": "Verify & Sign In",
+    "useAuthenticatorInstead": "← Use authenticator app instead",
+    "useBackupCodeInstead": "Use backup code instead →",
+    "cancel": "Cancel",
+    "backupCodeNote": "Each backup code can only be used once",
+    "codeRefreshNote": "Codes refresh every 30 seconds"
+  },
+  "CredentialsForm": {
+    "invalidCredentials": "Invalid email or password",
+    "genericError": "Something went wrong",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "••••••••",
+    "signingIn": "Signing in...",
+    "signInButton": "Sign in with Email"
   }
 }

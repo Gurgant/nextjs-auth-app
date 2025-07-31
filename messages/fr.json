@@ -42,7 +42,35 @@
     "alreadyHaveAccount": "Vous avez déjà un compte?",
     "dontHaveAccount": "Vous n'avez pas de compte?",
     "signInHere": "Connectez-vous ici",
-    "registerHere": "Inscrivez-vous ici"
+    "registerHere": "Inscrivez-vous ici",
+    "error": {
+      "title": "Erreur de Connexion",
+      "accountAlreadyExists": "Le Compte Existe Déjà",
+      "accountAlreadyExistsDescription": "Un compte avec cette adresse email existe déjà en utilisant une méthode de connexion différente.",
+      "accountAlreadyExistsDetails": "Vous avez précédemment créé un compte avec email et mot de passe. Pour lier votre compte Google, veuillez vous connecter avec votre email d'abord.",
+      "accessDenied": "Accès Refusé",
+      "accessDeniedDescription": "Vous n'avez pas la permission de vous connecter.",
+      "accessDeniedDetails": "Cela pourrait être dû à des restrictions de compte ou à des violations de politique.",
+      "configurationError": "Erreur de Configuration",
+      "configurationErrorDescription": "Il y a un problème avec la configuration du serveur.",
+      "configurationErrorDetails": "Veuillez contacter le support si ce problème persiste.",
+      "authenticationError": "Erreur d'Authentification",
+      "authenticationErrorDescription": "Une erreur inattendue s'est produite lors de la connexion.",
+      "authenticationErrorDetails": "Veuillez réessayer ou contacter le support si le problème continue.",
+      "oauthCallbackError": "Erreur de Connexion OAuth",
+      "oauthCallbackErrorDescription": "Il y a eu un problème de connexion avec votre fournisseur OAuth.",
+      "oauthCallbackErrorDetails": "Cela pourrait être dû à des problèmes de réseau, une panne du fournisseur ou des problèmes de configuration. Veuillez essayer de vous connecter à nouveau.",
+      "howToResolve": "Comment résoudre ceci:",
+      "signInWithEmailFirst": "Connectez-vous d'abord avec votre email et mot de passe",
+      "goToAccountSettings": "Allez aux Paramètres du Compte",
+      "linkGoogleAccount": "Liez votre compte Google de là",
+      "tryEmailSignIn": "Essayer la Connexion Email",
+      "tryDifferentAccount": "Essayer un Compte Différent",
+      "tryAgain": "Réessayer",
+      "goBack": "Retour",
+      "needHelp": "Besoin d'aide?",
+      "contactSupport": "Contacter le Support"
+    }
   },
   "Common": {
     "loading": "Chargement...",
@@ -77,7 +105,11 @@
     "errorWeakPassword": "Le mot de passe doit contenir au moins 8 caractères",
     "errorInvalidEmail": "Veuillez entrer une adresse email valide",
     "errorNameRequired": "Le nom complet est requis",
-    "backToSignIn": "Retour à la Connexion"
+    "backToSignIn": "Retour à la Connexion",
+    "namePlaceholder": "Jean Dupont",
+    "emailPlaceholder": "vous@exemple.com",
+    "passwordPlaceholder": "••••••••",
+    "confirmPasswordPlaceholder": "••••••••"
   },
   "Account": {
     "title": "Paramètres du Compte",
@@ -117,5 +149,41 @@
     "backupMethod": "Sauvegarde",
     "accountProviders": "Fournisseurs de Compte",
     "securityOverview": "Aperçu de la Sécurité"
+  },
+  "TwoFactor": {
+    "tooManyAttempts": "Trop de tentatives échouées. Veuillez vous reconnecter.",
+    "invalidCode": "Code de vérification invalide. Veuillez réessayer.",
+    "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
+    "authError": "Erreur d'authentification. Veuillez réessayer.",
+    "metaTitle": "Authentification à Deux Facteurs - Auth App",
+    "metaDescription": "Complétez votre connexion avec l'authentification à deux facteurs",
+    "authFailure": "Échec de l'authentification",
+    "signInFailure": "Échec de la connexion. Veuillez réessayer.",
+    "unexpectedError": "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "title": "Authentification à Deux Facteurs",
+    "backupCodeInstructions": "Entrez l'un de vos codes de sauvegarde pour terminer la connexion",
+    "verificationCodeInstructions": "Entrez le code de vérification de votre application d'authentification",
+    "attemptsRemaining": "{count} tentative{plural} restante{plural}",
+    "backupCodeLabel": "Code de Sauvegarde",
+    "verificationCodeLabel": "Code de Vérification",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verificationCodePlaceholder": "123456",
+    "verifying": "Vérification...",
+    "verifyButton": "Vérifier et Se Connecter",
+    "useAuthenticatorInstead": "← Utiliser l'application d'authentification à la place",
+    "useBackupCodeInstead": "Utiliser le code de sauvegarde à la place →",
+    "cancel": "Annuler",
+    "backupCodeNote": "Chaque code de sauvegarde ne peut être utilisé qu'une seule fois",
+    "codeRefreshNote": "Les codes se renouvellent toutes les 30 secondes"
+  },
+  "CredentialsForm": {
+    "invalidCredentials": "Email ou mot de passe invalide",
+    "genericError": "Quelque chose s'est mal passé",
+    "emailLabel": "Adresse Email",
+    "passwordLabel": "Mot de Passe",
+    "emailPlaceholder": "vous@exemple.com",
+    "passwordPlaceholder": "••••••••",
+    "signingIn": "Connexion en cours...",
+    "signInButton": "Se connecter avec Email"
   }
 }
