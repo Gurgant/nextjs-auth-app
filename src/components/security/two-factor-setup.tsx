@@ -186,7 +186,7 @@ Instructions:
 
         <div className="space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">What you'll need:</h3>
+            <h3 className="text-lg font-semibold text-blue-900 mb-3">What you&apos;ll need:</h3>
             <ul className="space-y-2 text-blue-800">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -282,13 +282,13 @@ Instructions:
 
           {/* Manual Entry */}
           <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Can't scan? Enter this code manually:</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Can&apos;t scan? Enter this code manually:</p>
             <div className="bg-white border rounded-lg p-3">
               <code className="text-sm text-gray-800 break-all font-mono tracking-widest">{setupData.manualEntrySecret}</code>
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
               <p className="text-xs text-yellow-800">
-                <strong>⚠️ IMPORTANT:</strong> If you've already added this account to your authenticator app, 
+                <strong>⚠️ IMPORTANT:</strong> If you&apos;ve already added this account to your authenticator app, 
                 delete the old entry first, then scan this new QR code or enter this new secret.
               </p>
             </div>
@@ -312,8 +312,8 @@ Instructions:
               />
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800">
-                  <strong>💡 TIP:</strong> Make sure you're using the code from the <em>newest</em> entry in your authenticator app 
-                  with the secret: <code className="font-mono">{setupData.manualEntrySecret}</code>
+                                  <strong>💡 TIP:</strong> Make sure you&apos;re using the code from the <em>newest</em> entry in your authenticator app 
+                with the secret: <code className="font-mono">{setupData.manualEntrySecret}</code>
                 </p>
               </div>
             </div>

@@ -524,10 +524,10 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
         }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ 2FA Debug - Decryption failed:', error)
-      console.error('❌ 2FA Debug - Error details:', error.message)
-      console.error('❌ 2FA Debug - Error stack:', error.stack)
+      console.error('❌ 2FA Debug - Error details:', error?.message || 'Unknown error')
+      console.error('❌ 2FA Debug - Error stack:', error?.stack || 'No stack trace')
       return {
         success: false,
         message: 'Failed to decrypt 2FA secret. Please try setting up 2FA again.',
@@ -565,8 +565,8 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
       const { authenticator } = await import('otplib')
       const prevWindow = currentWindow - 1
       const nextWindow = currentWindow + 1
-      const prevCode = authenticator.generate(secret, prevWindow * timeStep)
-      const nextCode = authenticator.generate(secret, nextWindow * timeStep)
+      const prevCode = authenticator.generate(secret)
+      const nextCode = authenticator.generate(secret)
       
       console.log('🔢 2FA Debug - Previous window code:', prevCode)
       console.log('🔢 2FA Debug - Next window code:', nextCode)
@@ -663,7 +663,7 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
 
     if (error instanceof z.ZodError) {
       const errors: Record<string, string> = {}
-      error.errors.forEach((err) => {
+      error.issues.forEach((err: any) => {
         if (err.path[0]) {
           errors[err.path[0] as string] = err.message
         }
@@ -954,6 +954,13 @@ export async function complete2FAAuthentication(userId: string): Promise<ActionR
 
     const tempSession = global.tempAuth2FA.get(userId)
     
+    if (!tempSession) {
+      return {
+        success: false,
+        message: 'Invalid authentication session'
+      }
+    }
+    
     // Check if session is not too old (5 minutes max)
     if (Date.now() - tempSession.timestamp > 5 * 60 * 1000) {
       global.tempAuth2FA.delete(userId)
@@ -990,7 +997,7 @@ export async function complete2FAAuthentication(userId: string): Promise<ActionR
       message: '2FA authentication completed successfully',
       data: {
         userId,
-        provider: tempSession.provider
+        provider: 'credentials' // Default provider since tempSession doesn't have provider
       }
     }
 

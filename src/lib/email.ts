@@ -1,14 +1,16 @@
-import { Resend } from 'resend'
+import { Resend } from "resend";
 
 // Conditional Resend initialization to prevent crashes in development
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
-const fromEmail = process.env.EMAIL_FROM || 'noreply@authapp.com'
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
+const fromEmail = process.env.EMAIL_FROM || "noreply@authapp.com";
 
 export interface EmailTemplate {
-  to: string
-  subject: string
-  html: string
-  text?: string
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
 }
 
 // Email verification template
@@ -16,57 +18,72 @@ export function createEmailVerificationTemplate(
   userEmail: string,
   userName: string,
   verificationLink: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): EmailTemplate {
   const translations = {
     en: {
-      subject: 'Verify your email address',
-      greeting: `Hello ${userName || 'there'},`,
-      message: 'Please click the button below to verify your email address.',
-      button: 'Verify Email',
-      footer: 'If you didn\'t create this account, you can safely ignore this email.',
-      expires: 'This link expires in 30 minutes.',
-      alternative: 'If the button doesn\'t work, copy and paste this link into your browser:'
+      subject: "Verify your email address",
+      greeting: `Hello ${userName || "there"},`,
+      message: "Please click the button below to verify your email address.",
+      button: "Verify Email",
+      footer:
+        "If you didn't create this account, you can safely ignore this email.",
+      expires: "This link expires in 30 minutes.",
+      alternative:
+        "If the button doesn't work, copy and paste this link into your browser:",
     },
     es: {
-      subject: 'Verifica tu dirección de correo',
-      greeting: `Hola ${userName || 'usuario'},`,
-      message: 'Por favor haz clic en el botón de abajo para verificar tu dirección de correo.',
-      button: 'Verificar Correo',
-      footer: 'Si no creaste esta cuenta, puedes ignorar este correo de manera segura.',
-      expires: 'Este enlace expira en 30 minutos.',
-      alternative: 'Si el botón no funciona, copia y pega este enlace en tu navegador:'
+      subject: "Verifica tu dirección de correo",
+      greeting: `Hola ${userName || "usuario"},`,
+      message:
+        "Por favor haz clic en el botón de abajo para verificar tu dirección de correo.",
+      button: "Verificar Correo",
+      footer:
+        "Si no creaste esta cuenta, puedes ignorar este correo de manera segura.",
+      expires: "Este enlace expira en 30 minutos.",
+      alternative:
+        "Si el botón no funciona, copia y pega este enlace en tu navegador:",
     },
     fr: {
-      subject: 'Vérifiez votre adresse e-mail',
-      greeting: `Bonjour ${userName || 'utilisateur'},`,
-      message: 'Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse e-mail.',
-      button: 'Vérifier l\'e-mail',
-      footer: 'Si vous n\'avez pas créé ce compte, vous pouvez ignorer cet e-mail en toute sécurité.',
-      expires: 'Ce lien expire dans 30 minutes.',
-      alternative: 'Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur:'
+      subject: "Vérifiez votre adresse e-mail",
+      greeting: `Bonjour ${userName || "utilisateur"},`,
+      message:
+        "Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse e-mail.",
+      button: "Vérifier l'e-mail",
+      footer:
+        "Si vous n'avez pas créé ce compte, vous pouvez ignorer cet e-mail en toute sécurité.",
+      expires: "Ce lien expire dans 30 minutes.",
+      alternative:
+        "Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur:",
     },
     it: {
-      subject: 'Verifica il tuo indirizzo email',
-      greeting: `Ciao ${userName || 'utente'},`,
-      message: 'Per favore clicca sul pulsante qui sotto per verificare il tuo indirizzo email.',
-      button: 'Verifica Email',
-      footer: 'Se non hai creato questo account, puoi ignorare questa email in sicurezza.',
-      expires: 'Questo link scade tra 30 minuti.',
-      alternative: 'Se il pulsante non funziona, copia e incolla questo link nel tuo browser:'
+      subject: "Verifica il tuo indirizzo email",
+      greeting: `Ciao ${userName || "utente"},`,
+      message:
+        "Per favore clicca sul pulsante qui sotto per verificare il tuo indirizzo email.",
+      button: "Verifica Email",
+      footer:
+        "Se non hai creato questo account, puoi ignorare questa email in sicurezza.",
+      expires: "Questo link scade tra 30 minuti.",
+      alternative:
+        "Se il pulsante non funziona, copia e incolla questo link nel tuo browser:",
     },
     de: {
-      subject: 'E-Mail-Adresse bestätigen',
-      greeting: `Hallo ${userName || 'Benutzer'},`,
-      message: 'Bitte klicken Sie auf die Schaltfläche unten, um Ihre E-Mail-Adresse zu bestätigen.',
-      button: 'E-Mail bestätigen',
-      footer: 'Falls Sie dieses Konto nicht erstellt haben, können Sie diese E-Mail sicher ignorieren.',
-      expires: 'Dieser Link läuft in 30 Minuten ab.',
-      alternative: 'Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link und fügen Sie ihn in Ihren Browser ein:'
-    }
-  }
+      subject: "E-Mail-Adresse bestätigen",
+      greeting: `Hallo ${userName || "Benutzer"},`,
+      message:
+        "Bitte klicken Sie auf die Schaltfläche unten, um Ihre E-Mail-Adresse zu bestätigen.",
+      button: "E-Mail bestätigen",
+      footer:
+        "Falls Sie dieses Konto nicht erstellt haben, können Sie diese E-Mail sicher ignorieren.",
+      expires: "Dieser Link läuft in 30 Minuten ab.",
+      alternative:
+        "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link und fügen Sie ihn in Ihren Browser ein:",
+    },
+  };
 
-  const t = translations[locale as keyof typeof translations] || translations.en
+  const t =
+    translations[locale as keyof typeof translations] || translations.en;
 
   const html = `
     <!DOCTYPE html>
@@ -108,7 +125,7 @@ export function createEmailVerificationTemplate(
         </div>
       </body>
     </html>
-  `
+  `;
 
   const text = `
     ${t.greeting}
@@ -120,39 +137,42 @@ export function createEmailVerificationTemplate(
     ${t.expires}
     
     ${t.footer}
-  `
+  `;
 
   return {
     to: userEmail,
     subject: t.subject,
     html,
-    text
-  }
+    text,
+  };
 }
 
 // Account linking notification template
 export function createAccountLinkTemplate(
   userEmail: string,
   userName: string,
-  linkType: 'google' | 'email',
+  linkType: "google" | "email",
   confirmationLink: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): EmailTemplate {
   const translations = {
     en: {
-      subject: 'Account Linking Request',
-      greeting: `Hello ${userName || 'there'},`,
-      message: linkType === 'google' 
-        ? 'Someone requested to link a Google account to your email account.'
-        : 'Someone requested to link an email/password account to your Google account.',
-      button: 'Confirm Account Linking',
-      security: 'If this wasn\'t you, please ignore this email or contact support.',
-      expires: 'This link expires in 15 minutes.'
-    }
+      subject: "Account Linking Request",
+      greeting: `Hello ${userName || "there"},`,
+      message:
+        linkType === "google"
+          ? "Someone requested to link a Google account to your email account."
+          : "Someone requested to link an email/password account to your Google account.",
+      button: "Confirm Account Linking",
+      security:
+        "If this wasn't you, please ignore this email or contact support.",
+      expires: "This link expires in 15 minutes.",
+    },
     // Add other languages as needed
-  }
+  };
 
-  const t = translations[locale as keyof typeof translations] || translations.en
+  const t =
+    translations[locale as keyof typeof translations] || translations.en;
 
   const html = `
     <!DOCTYPE html>
@@ -179,36 +199,41 @@ export function createAccountLinkTemplate(
         </div>
       </body>
     </html>
-  `
+  `;
 
   return {
     to: userEmail,
     subject: t.subject,
-    html
-  }
+    html,
+  };
 }
 
 // Security alert template
 export function createSecurityAlertTemplate(
   userEmail: string,
   userName: string,
-  alertType: 'suspicious_login' | 'password_changed' | '2fa_enabled' | 'account_linked',
+  alertType:
+    | "suspicious_login"
+    | "password_changed"
+    | "2fa_enabled"
+    | "account_linked",
   details: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): EmailTemplate {
   const translations = {
     en: {
-      subject: 'Security Alert - Your Account',
-      greeting: `Hello ${userName || 'there'},`,
-      message: 'We detected important activity on your account:',
-      footer: 'If this wasn\'t you, please contact support immediately.',
-      time: 'Time',
-      action: 'Review Account'
-    }
+      subject: "Security Alert - Your Account",
+      greeting: `Hello ${userName || "there"},`,
+      message: "We detected important activity on your account:",
+      footer: "If this wasn't you, please contact support immediately.",
+      time: "Time",
+      action: "Review Account",
+    },
     // Add other languages as needed
-  }
+  };
 
-  const t = translations[locale as keyof typeof translations] || translations.en
+  const t =
+    translations[locale as keyof typeof translations] || translations.en;
 
   const html = `
     <!DOCTYPE html>
@@ -236,27 +261,27 @@ export function createSecurityAlertTemplate(
         </div>
       </body>
     </html>
-  `
+  `;
 
   return {
     to: userEmail,
     subject: t.subject,
-    html
-  }
+    html,
+  };
 }
 
 // Send email function
 export async function sendEmail(template: EmailTemplate): Promise<boolean> {
   try {
     if (!resend || !process.env.RESEND_API_KEY) {
-      console.warn('⚠️ RESEND_API_KEY not configured, simulating email send')
-      console.log('📧 Email that would be sent:', {
+      console.warn("⚠️ RESEND_API_KEY not configured, simulating email send");
+      console.log("📧 Email that would be sent:", {
         to: template.to,
         subject: template.subject,
-        preview: template.html.substring(0, 200) + '...'
-      })
+        preview: template.html.substring(0, 200) + "...",
+      });
       // Return true in development to not break flows
-      return true
+      return true;
     }
 
     const data = await resend.emails.send({
@@ -264,14 +289,14 @@ export async function sendEmail(template: EmailTemplate): Promise<boolean> {
       to: template.to,
       subject: template.subject,
       html: template.html,
-      text: template.text
-    })
+      text: template.text,
+    });
 
-    console.log('✅ Email sent successfully:', data.id)
-    return true
+    console.log("✅ Email sent successfully:", data.data?.id || "unknown");
+    return true;
   } catch (error) {
-    console.error('❌ Failed to send email:', error)
-    return false
+    console.error("❌ Failed to send email:", error);
+    return false;
   }
 }
 
@@ -280,38 +305,59 @@ export async function sendVerificationEmail(
   userEmail: string,
   userName: string,
   token: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): Promise<boolean> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-  const verificationLink = `${baseUrl}/${locale}/verify-email/${token}`
-  
-  const template = createEmailVerificationTemplate(userEmail, userName, verificationLink, locale)
-  return await sendEmail(template)
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const verificationLink = `${baseUrl}/${locale}/verify-email/${token}`;
+
+  const template = createEmailVerificationTemplate(
+    userEmail,
+    userName,
+    verificationLink,
+    locale
+  );
+  return await sendEmail(template);
 }
 
 // Helper function to send account linking confirmation
 export async function sendAccountLinkConfirmation(
   userEmail: string,
   userName: string,
-  linkType: 'google' | 'email',
+  linkType: "google" | "email",
   token: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): Promise<boolean> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-  const confirmationLink = `${baseUrl}/${locale}/link-account/confirm/${token}`
-  
-  const template = createAccountLinkTemplate(userEmail, userName, linkType, confirmationLink, locale)
-  return await sendEmail(template)
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const confirmationLink = `${baseUrl}/${locale}/link-account/confirm/${token}`;
+
+  const template = createAccountLinkTemplate(
+    userEmail,
+    userName,
+    linkType,
+    confirmationLink,
+    locale
+  );
+  return await sendEmail(template);
 }
 
 // Helper function to send security alerts
 export async function sendSecurityAlert(
   userEmail: string,
   userName: string,
-  alertType: 'suspicious_login' | 'password_changed' | '2fa_enabled' | 'account_linked',
+  alertType:
+    | "suspicious_login"
+    | "password_changed"
+    | "2fa_enabled"
+    | "account_linked",
   details: string,
-  locale: string = 'en'
+  locale: string = "en"
 ): Promise<boolean> {
-  const template = createSecurityAlertTemplate(userEmail, userName, alertType, details, locale)
-  return await sendEmail(template)
+  const template = createSecurityAlertTemplate(
+    userEmail,
+    userName,
+    alertType,
+    details,
+    locale
+  );
+  return await sendEmail(template);
 }

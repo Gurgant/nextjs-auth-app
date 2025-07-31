@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { SignInButton } from '@/components/auth/sign-in-button'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 
 export function DashboardContent({ user }: { user: any }) {
@@ -33,9 +34,11 @@ export function DashboardContent({ user }: { user: any }) {
             <div className="flex items-center space-x-6">
               <div className="relative">
                 {user.image ? (
-                  <img 
+                  <Image 
                     src={user.image} 
                     alt={user.name || 'User'} 
+                    width={80}
+                    height={80}
                     className="w-20 h-20 rounded-full ring-4 ring-blue-100 shadow-lg"
                   />
                 ) : (
