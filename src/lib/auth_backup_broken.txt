@@ -57,7 +57,43 @@ export const authOptions = {
           return null
         }
 
-        // Basic authentication successful
+        // Check if 2FA is enabled - store info but allow normal flow
+        if (user.twoFactorEnabled) {
+          console.log('🔐 2FA detected in authorize for user:', user.email)
+          
+          // Store temporary session data for 2FA verification
+          const tempSession = {
+            userId: user.id,
+            email: user.email,
+            provider: 'credentials',
+            timestamp: Date.now(),
+            requires2FA: true
+          }
+          
+          // Store in a temporary location
+          global.tempAuth2FA = global.tempAuth2FA || new Map()
+          global.tempAuth2FA.set(user.id, tempSession)
+          
+          // Set cleanup timer for incomplete 2FA (5 minutes)
+          setTimeout(() => {
+            const tempSession = global.tempAuth2FA?.get(user.id)
+            if (tempSession && !tempSession.completed) {
+              console.log('🧹 Cleaning up expired 2FA session for:', user.email)
+              global.tempAuth2FA.delete(user.id)
+            }
+          }, 5 * 60 * 1000)
+          
+          // Set cleanup timer for completed 2FA (1 hour to allow session creation)
+          setTimeout(() => {
+            const tempSession = global.tempAuth2FA?.get(user.id)
+            if (tempSession && tempSession.completed) {
+              console.log('🧹 Cleaning up completed 2FA session for:', user.email)
+              global.tempAuth2FA.delete(user.id)
+            }
+          }, 60 * 60 * 1000)
+          
+          console.log('🔄 2FA user authorized - will redirect in callback')
+        }
 
         return {
           id: user.id,
@@ -104,6 +140,14 @@ export const authOptions = {
               twoFactorEnabled: existingUser.twoFactorEnabled
             })
 
+            // CRITICAL: For credentials provider with 2FA, block sign-in to force redirect
+            if (account.provider === 'credentials' && existingUser.twoFactorEnabled) {
+              const tempSession = global.tempAuth2FA?.get(user.id)
+              if (tempSession && tempSession.requires2FA && !tempSession.completed) {
+                console.log('🚫 Blocking credentials sign-in for 2FA user:', user.email)
+                return `/en/auth/2fa?userId=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}`
+              }
+            }
           }
         } catch (error) {
           console.error('Error updating user metadata on sign-in:', error)
@@ -114,6 +158,26 @@ export const authOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
+        // Check if this user requires 2FA and hasn't completed it
+        const tempSession = global.tempAuth2FA?.get(user.id)
+        if (tempSession && tempSession.requires2FA && !tempSession.completed) {
+          console.log('🔒 JWT: Blocking token creation for incomplete 2FA user:', user.email)
+          // Return minimal token that doesn't establish a session
+          return { 
+            requires2FA: true,
+            userId: user.id,
+            email: user.email
+          }
+        }
+        
+        // If 2FA was completed, allow normal session creation and cleanup
+        if (tempSession && tempSession.completed) {
+          console.log('🔓 JWT: Creating token for 2FA-completed user:', user.email)
+          // Clean up the temporary session since we're now creating a real session
+          global.tempAuth2FA.delete(user.id)
+        }
+        
+        // Normal user or 2FA completed
         token.id = user.id
         token.email = user.email
         token.name = user.name
@@ -122,6 +186,13 @@ export const authOptions = {
       return token
     },
     async session({ session, token, user }) {
+      // Check if token indicates incomplete 2FA
+      if (token && (token as any).requires2FA) {
+        console.log('🔒 SESSION: Blocking session for incomplete 2FA user:', token.email)
+        // Return null to prevent session creation
+        return null
+      }
+      
       if (token && session.user && token.id) {
         session.user.id = token.id as string
         session.user.email = token.email as string
@@ -133,10 +204,46 @@ export const authOptions = {
       return session
     },
     async redirect({ url, baseUrl }) {
-      // Handle language-aware redirects
+      // Handle language-aware redirects and 2FA redirects
       console.log('Auth redirect called with:', { url, baseUrl })
       
       const supportedLocales = ['en', 'es', 'fr', 'it', 'de']
+      
+      // Check if any user requires 2FA authentication  
+      if (global.tempAuth2FA && global.tempAuth2FA.size > 0) {
+        // Find any user who requires 2FA and hasn't completed it
+        for (const [userId, tempSession] of global.tempAuth2FA.entries()) {
+          if (tempSession.requires2FA && !tempSession.completed) {
+            console.log('🔄 Redirecting to 2FA page for user:', tempSession.email)
+            
+            // CRITICAL: Always redirect to 2FA regardless of requested URL
+            return `${baseUrl}/en/auth/2fa?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(tempSession.email)}`
+          }
+        }
+      }
+      
+      // CRITICAL: Check if URL is already dashboard but session is blocked
+      if (url.includes('/dashboard') && global.tempAuth2FA && global.tempAuth2FA.size > 0) {
+        for (const [userId, tempSession] of global.tempAuth2FA.entries()) {
+          if (tempSession.requires2FA && !tempSession.completed) {
+            console.log('🚨 Dashboard access blocked - redirecting to 2FA for:', tempSession.email)
+            return `${baseUrl}/en/auth/2fa?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(tempSession.email)}`
+          }
+        }
+      }
+      
+      // Handle 2FA redirect URLs (direct access)
+      if (url.includes('/auth/2fa')) {
+        // Extract locale from the current context or default to 'en'
+        const urlObj = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`)
+        const searchParams = new URLSearchParams(urlObj.search)
+        const userId = searchParams.get('userId')
+        const email = searchParams.get('email')
+        
+        if (userId && email) {
+          return `${baseUrl}/en/auth/2fa?userId=${encodeURIComponent(userId)}&email=${encodeURIComponent(email)}`
+        }
+      }
       
       // If it's a relative URL, handle it
       if (url.startsWith("/")) {

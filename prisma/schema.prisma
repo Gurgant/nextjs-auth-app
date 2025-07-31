@@ -71,11 +71,21 @@ model User {
   lastLoginAt       DateTime?
   lastLoginIp       String?
   
+  // Two-Factor Authentication
+  twoFactorEnabled   Boolean  @default(false)
+  twoFactorSecret    String?  // Encrypted TOTP secret
+  backupCodes        String[] // Encrypted backup codes
+  twoFactorEnabledAt DateTime?
+  
+  // Enhanced Email Verification
+  emailVerificationRequired Boolean @default(true)
+  
   accounts           Account[]
   sessions           Session[]
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   accountLinkRequests AccountLinkRequest[]
+  securityEvents     SecurityEvent[]
   
   @@index([email])
   @@index([lastLoginAt])
@@ -139,4 +149,24 @@ model VerificationToken {
   
   @@unique([identifier, token])
   @@index([expires])
+}
+
+// Security Event Logging for Audit Trail
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String   // 'login', 'failed_login', '2fa_enabled', 'account_linked', 'password_changed', etc.
+  details   String?  // Human-readable event description
+  metadata  Json?    // Additional event data (IP, user agent, etc.)
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([ipAddress])
 }

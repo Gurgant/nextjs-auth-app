@@ -29,13 +29,19 @@
   "dependencies": {
     "@auth/prisma-adapter": "2.10.0",
     "@prisma/client": "6.13.0",
+    "@types/crypto-js": "^4.2.2",
+    "@types/qrcode": "^1.5.5",
     "bcryptjs": "^3.0.2",
+    "crypto-js": "^4.2.0",
     "negotiator": "1.0.0",
     "next": "15.4.5",
     "next-auth": "5.0.0-beta.29",
     "next-intl": "4.3.4",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.4",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "resend": "^4.7.0",
     "zod": "^4.0.14"
   },
   "devDependencies": {
