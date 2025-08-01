@@ -30,42 +30,45 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        let result = null;
-
-        if (credentials?.email && credentials?.password) {
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email as string,
-            },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              image: true,
-              password: true,
-              twoFactorEnabled: true,
-            },
-          });
-
-          if (user && user.password) {
-            const passwordMatch = await bcrypt.compare(
-              credentials.password as string,
-              user.password
-            );
-
-            if (passwordMatch) {
-              // Basic authentication successful
-              result = {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                image: user.image,
-              };
-            }
-          }
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
 
-        return result;
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials.email as string,
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            image: true,
+            password: true,
+            twoFactorEnabled: true,
+          },
+        });
+
+        if (!user || !user.password) {
+          return null;
+        }
+
+        const passwordMatch = await bcrypt.compare(
+          credentials.password as string,
+          user.password
+        );
+
+        if (!passwordMatch) {
+          return null;
+        }
+
+        // Basic authentication successful
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
       },
     }),
   ],
@@ -79,8 +82,6 @@ export const authOptions = {
       account?: any;
       profile?: any;
     }) {
-      let result = true; // Default to allow sign-in
-
       // Handle account linking for OAuth providers
       if (account && account.provider !== 'credentials') {
         try {
@@ -124,29 +125,29 @@ export const authOptions = {
                   console.log('✅ Account linked successfully during OAuth callback')
                   // Update the user object to reflect the linked account
                   user.id = existingUser.id
-                  result = true;
+                  return true
                 } else {
                   console.error('❌ Failed to complete account linking:', await response.text())
-                  result = false;
+                  return false
                 }
               } catch (linkError) {
                 console.error('❌ Error completing account linking:', linkError)
-                result = false;
+                return false
               }
             } else {
               // No pending link request - show the normal OAuth error
               console.log('🚫 OAuth account not linked and no pending link request')
-              result = false;
+              return false
             }
           }
         } catch (error) {
           console.error('Error in OAuth account linking check:', error)
-          result = false;
+          return false
         }
       }
 
-      // Normal sign-in flow for existing users or credentials - only process if result is still true
-      if (result && user.id && account) {
+      // Normal sign-in flow for existing users or credentials
+      if (user.id && account) {
         try {
           const existingUser = await prisma.user.findUnique({
             where: { id: user.id },
@@ -191,11 +192,10 @@ export const authOptions = {
           }
         } catch (error) {
           console.error("Error updating user metadata on sign-in:", error);
-          // Don't block sign-in if metadata update fails - keep result as true
+          // Don't block sign-in if metadata update fails
         }
       }
-      
-      return result;
+      return true;
     },
     async jwt({ token, user }: { token: any; user: any }) {
       if (user) {
@@ -230,7 +230,6 @@ export const authOptions = {
       console.log("Auth redirect called with:", { url, baseUrl });
 
       const supportedLocales = ["en", "es", "fr", "it", "de"];
-      let redirectUrl = `${baseUrl}/en/dashboard`; // Default fallback
 
       // If it's a relative URL, handle it
       if (url.startsWith("/")) {
@@ -240,59 +239,56 @@ export const authOptions = {
         if (supportedLocales.includes(possibleLocale)) {
           // URL already has locale, ensure it goes to dashboard
           if (segments[1] === "dashboard") {
-            redirectUrl = `${baseUrl}${url}`;
+            return `${baseUrl}${url}`;
           } else if (segments[1] === "auth" && segments[2] === "2fa") {
             // Allow 2FA page redirects
-            redirectUrl = `${baseUrl}${url}`;
+            return `${baseUrl}${url}`;
           } else {
-            redirectUrl = `${baseUrl}/${possibleLocale}/dashboard`;
+            return `${baseUrl}/${possibleLocale}/dashboard`;
           }
         } else {
           // No locale in URL, default to English and dashboard
-          redirectUrl = `${baseUrl}/en/dashboard`;
+          return `${baseUrl}/en/dashboard`;
         }
       }
+
       // Handle authentication errors - redirect all error URLs to our error page
-      else if (url.includes('error=')) {
+      if (url.includes('error=')) {
         const urlObj = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`)
         const errorType = urlObj.searchParams.get('error')
         
         if (errorType) {
           console.log('🚨 Auth error redirect:', errorType)
-          redirectUrl = `${baseUrl}/en/auth/error?error=${errorType}`;
+          return `${baseUrl}/en/auth/error?error=${errorType}`
         }
       }
+
       // Handle signin errors specifically (NextAuth redirects to /auth/signin?error=...)
-      else if (url.includes('/auth/signin') && url.includes('error=')) {
+      if (url.includes('/auth/signin') && url.includes('error=')) {
         const urlObj = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`)
         const errorType = urlObj.searchParams.get('error')
         
         if (errorType) {
           console.log('🚨 SignIn error redirect:', errorType)
-          redirectUrl = `${baseUrl}/en/auth/error?error=${errorType}`;
+          return `${baseUrl}/en/auth/error?error=${errorType}`
         }
       }
+
       // If it's a callback URL on the same origin
-      else {
-        try {
-          const urlObj = new URL(url);
-          if (urlObj.origin === baseUrl) {
-            const segments = urlObj.pathname.split("/").filter(Boolean);
-            const possibleLocale = segments[0];
+      if (new URL(url).origin === baseUrl) {
+        const urlObj = new URL(url);
+        const segments = urlObj.pathname.split("/").filter(Boolean);
+        const possibleLocale = segments[0];
 
-            if (supportedLocales.includes(possibleLocale)) {
-              redirectUrl = `${baseUrl}/${possibleLocale}/dashboard`;
-            } else {
-              redirectUrl = `${baseUrl}/en/dashboard`;
-            }
-          }
-        } catch (e) {
-          // If URL parsing fails, use default redirect
-          console.log("URL parsing failed, using default redirect");
+        if (supportedLocales.includes(possibleLocale)) {
+          return `${baseUrl}/${possibleLocale}/dashboard`;
+        } else {
+          return `${baseUrl}/en/dashboard`;
         }
       }
 
-      return redirectUrl;
+      // Default fallback to English dashboard
+      return `${baseUrl}/en/dashboard`;
     },
   },
   pages: {
