@@ -5,23 +5,23 @@ import { getEnhancedUserAccountInfo } from "@/lib/actions/advanced-auth";
 import { getTranslations } from "next-intl/server";
 
 interface TwoFactorPageProps {
-  params: {
+  params: Promise<{
     locale: string;
-  };
-  searchParams: {
+  }>;
+  searchParams: Promise<{
     userId?: string;
     email?: string;
     callbackUrl?: string;
     error?: string;
-  };
+  }>;
 }
 
 export default async function TwoFactorPage({
   params,
   searchParams,
 }: TwoFactorPageProps) {
-  const { locale } = params;
-  const { userId, email, callbackUrl, error } = searchParams;
+  const { locale } = await params;
+  const { userId, email, callbackUrl, error } = await searchParams;
   const t = await getTranslations('TwoFactor');
 
   // Check if user is already fully authenticated
@@ -101,7 +101,7 @@ export default async function TwoFactorPage({
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }) {
   const t = await getTranslations('TwoFactor');
   
