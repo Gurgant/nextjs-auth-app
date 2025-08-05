@@ -9,6 +9,8 @@ import {
   complete2FAAuthentication,
   type ActionResult,
 } from "@/lib/actions/advanced-auth";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { AlertMessage } from "@/components/ui/alert-message";
 
 interface TwoFactorVerificationProps {
   userId: string;
@@ -240,93 +242,28 @@ export function TwoFactorVerification({
             </div>
 
             {/* Result Messages */}
-            {result && (
-              <div
-                className={`rounded-xl p-4 ${
-                  result.success
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  {result.success ? (
-                    <svg
-                      className="h-5 w-5 text-green-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                  <p
-                    className={`text-sm font-medium ${
-                      result.success ? "text-green-700" : "text-red-700"
-                    }`}
-                  >
-                    {result.message}
-                  </p>
-                </div>
-              </div>
+            {result?.message && (
+              <AlertMessage
+                type={result.success ? 'success' : 'error'}
+                message={result.message}
+              />
             )}
 
             {/* Action Buttons */}
             <div className="space-y-4">
-              <button
+              <GradientButton
                 type="submit"
+                variant="red"
+                fullWidth
                 disabled={
-                  isVerifying ||
                   !code.trim() ||
                   (useBackupCode ? code.length < 8 : code.length !== 6)
                 }
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                loading={isVerifying}
+                loadingText={t('verifying')}
               >
-                {isVerifying ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    {t('verifying')}
-                  </>
-                ) : (
-                  t('verifyButton')
-                )}
-              </button>
+                {t('verifyButton')}
+              </GradientButton>
 
               {/* Toggle Backup Code */}
               <button

@@ -3,15 +3,15 @@
 import { signIn, signOut } from "next-auth/react"
 import { useSession } from "next-auth/react"
 import { useTranslations } from "next-intl"
-import { usePathname } from "next/navigation"
+import { GradientButton } from '@/components/ui/gradient-button'
+import { useSafeLocale } from '@/hooks/use-safe-locale'
 
 export function SignInButton() {
   const { data: session, status } = useSession()
   const t = useTranslations('Auth')
-  const pathname = usePathname()
   
-  // Extract current locale from pathname
-  const currentLocale = pathname.split('/')[1] || 'en'
+  // Use safe locale extraction
+  const currentLocale = useSafeLocale()
 
   if (status === "loading") {
     return (
@@ -21,15 +21,16 @@ export function SignInButton() {
 
   if (session) {
     return (
-      <button
-        onClick={() => signOut()}
-        className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+      <GradientButton
+        onClick={() => signOut({ callbackUrl: `/${currentLocale}` })}
+        variant="red"
+        fullWidth
       >
         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
         </svg>
         {t('signOut')}
-      </button>
+      </GradientButton>
     )
   }
 

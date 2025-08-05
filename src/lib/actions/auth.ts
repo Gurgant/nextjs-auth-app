@@ -5,64 +5,70 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { 
+  emailSchema, 
+  passwordSchema, 
+  nameSchema,
+  passwordMatchRefinement,
+  emailMatchRefinement
+} from "@/lib/validation";
+import { resolveFormLocale } from "@/lib/utils/form-locale-enhanced";
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  createValidationErrorResponse,
+  createFieldErrorResponse,
+  createGenericErrorResponse,
+  logActionError,
+  type ActionResponse
+} from "@/lib/utils/form-responses";
+import {
+  createErrorResponseI18n,
+  createSuccessResponseI18n,
+  createFieldErrorResponseI18n
+} from "@/lib/utils/form-responses-i18n";
 
 // Registration schema validation
 const registerSchema = z
   .object({
-    name: z.string().min(2, "Name must be at least 2 characters long"),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters long"),
+    name: nameSchema,
+    email: emailSchema,
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
+  .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
 
 // Account deletion schema
 const deleteAccountSchema = z
   .object({
-    email: z.string().email("Invalid email address"),
-    confirmEmail: z.string().email("Invalid email address"),
+    email: emailSchema,
+    confirmEmail: emailSchema,
   })
-  .refine((data) => data.email === data.confirmEmail, {
-    message: "Email confirmation doesn't match",
-    path: ["confirmEmail"],
-  });
+  .refine((data) => data.email === data.confirmEmail, emailMatchRefinement);
 
 // Add password schema (for Google users)
 const addPasswordSchema = z
   .object({
-    password: z.string().min(8, "Password must be at least 8 characters long"),
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
+  .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
 
 // Change password schema
 const changePasswordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z
-      .string()
-      .min(8, "New password must be at least 8 characters long"),
+    currentPassword: z.string().min(1, { message: "validation.password.required" }),
+    newPassword: passwordSchema,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "New passwords don't match",
-    path: ["confirmPassword"],
-  });
+  .refine((data) => data.newPassword === data.confirmPassword, passwordMatchRefinement);
 
-export interface ActionResult {
-  success: boolean;
-  message?: string;
-  errors?: Record<string, string>;
-}
+// Using ActionResponse from form-responses instead of ActionResult
+export type ActionResult = ActionResponse;
 
 export async function registerUser(formData: FormData): Promise<ActionResult> {
   try {
+    const locale = formData.get("locale") as string || "en";
     const data = {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
@@ -79,11 +85,12 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     });
 
     if (existingUser) {
-      return {
-        success: false,
-        message: "An account with this email already exists",
-        errors: { email: "An account with this email already exists" },
-      };
+      return await createFieldErrorResponseI18n(
+        "errors.accountAlreadyExists",
+        "email",
+        locale,
+        "An account with this email already exists"
+      );
     }
 
     // Hash password
@@ -108,31 +115,20 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
       email: user.email,
     });
 
-    return {
-      success: true,
-      message: "Account created successfully!",
-    };
+    return await createSuccessResponseI18n(
+      "success.accountCreated",
+      locale,
+      "Account created successfully!"
+    );
   } catch (error) {
-    console.error("Registration error:", error);
-
     if (error instanceof z.ZodError) {
-      const errors: Record<string, string> = {};
-      error.issues.forEach((err: any) => {
-        if (err.path[0]) {
-          errors[err.path[0] as string] = err.message;
-        }
-      });
-      return {
-        success: false,
-        message: "Please check the form for errors",
-        errors,
-      };
+      const locale = await resolveFormLocale(formData);
+      return createValidationErrorResponse(error, locale);
     }
 
-    return {
-      success: false,
-      message: "Something went wrong. Please try again.",
-    };
+    const locale = await resolveFormLocale(formData);
+    logActionError('registerUser', error);
+    return createGenericErrorResponse('unknown', undefined, locale);
   }
 }
 
@@ -140,6 +136,8 @@ export async function deleteUserAccount(
   formData: FormData,
   userEmail: string
 ): Promise<ActionResult> {
+  const locale = await resolveFormLocale(formData);
+  
   try {
     const data = {
       email: userEmail,
@@ -155,10 +153,7 @@ export async function deleteUserAccount(
     });
 
     if (!user) {
-      return {
-        success: false,
-        message: "User not found",
-      };
+      return createGenericErrorResponse('notFound', 'User not found', locale);
     }
 
     // Delete user account
@@ -168,31 +163,22 @@ export async function deleteUserAccount(
 
     console.log("User account deleted:", { email: validatedData.email });
 
-    return {
-      success: true,
-      message: "Account deleted successfully",
-    };
+    return await createSuccessResponseI18n(
+      "success.accountDeleted",
+      locale,
+      "Account deleted successfully"
+    );
   } catch (error) {
-    console.error("Account deletion error:", error);
-
     if (error instanceof z.ZodError) {
-      const errors: Record<string, string> = {};
-      error.issues.forEach((err: any) => {
-        if (err.path[0]) {
-          errors[err.path[0] as string] = err.message;
-        }
-      });
-      return {
-        success: false,
-        message: "Please check the form for errors",
-        errors,
-      };
+      return createValidationErrorResponse(error, locale);
     }
 
-    return {
-      success: false,
-      message: "Failed to delete account. Please try again.",
-    };
+    logActionError('deleteUserAccount', error);
+    return await createErrorResponseI18n(
+      "errors.failedToDeleteAccount",
+      locale,
+      "Failed to delete account. Please try again."
+    );
   }
 }
 
@@ -200,15 +186,18 @@ export async function updateUserProfile(
   formData: FormData,
   userId: string
 ): Promise<ActionResult> {
+  const locale = await resolveFormLocale(formData);
+  
   try {
     const name = formData.get("name") as string;
 
     if (!name || name.trim().length < 2) {
-      return {
-        success: false,
-        message: "Name must be at least 2 characters long",
-        errors: { name: "Name must be at least 2 characters long" },
-      };
+      return await createFieldErrorResponseI18n(
+        "errors.nameMinLength",
+        "name",
+        locale,
+        "Name must be at least 2 characters long"
+      );
     }
 
     // Update user profile
@@ -219,17 +208,19 @@ export async function updateUserProfile(
 
     console.log("User profile updated:", { userId, name });
 
-    return {
-      success: true,
-      message: "Profile updated successfully",
-    };
+    return await createSuccessResponseI18n(
+      "success.profileUpdated",
+      locale,
+      "Profile updated successfully"
+    );
   } catch (error) {
-    console.error("Profile update error:", error);
-
-    return {
-      success: false,
-      message: "Failed to update profile. Please try again.",
-    };
+    logActionError('updateUserProfile', error);
+    
+    return await createErrorResponseI18n(
+      "errors.failedToUpdateProfile",
+      locale,
+      "Failed to update profile. Please try again."
+    );
   }
 }
 
@@ -238,6 +229,8 @@ export async function addPasswordToGoogleUser(
   formData: FormData,
   userId: string
 ): Promise<ActionResult> {
+  const locale = await resolveFormLocale(formData);
+  
   try {
     const data = {
       password: formData.get("password") as string,
@@ -254,18 +247,16 @@ export async function addPasswordToGoogleUser(
     });
 
     if (!user) {
-      return {
-        success: false,
-        message: "User not found",
-      };
+      return createGenericErrorResponse('notFound', 'User not found', locale);
     }
 
     // Check if user already has a password
     if (user.password) {
-      return {
-        success: false,
-        message: "User already has a password. Use change password instead.",
-      };
+      return await createErrorResponseI18n(
+        "errors.userAlreadyHasPassword",
+        locale,
+        "User already has a password. Use change password instead."
+      );
     }
 
     // Check if user has Google account
@@ -273,10 +264,11 @@ export async function addPasswordToGoogleUser(
       (account) => account.provider === "google"
     );
     if (!hasGoogleAccount) {
-      return {
-        success: false,
-        message: "Only Google authenticated users can add passwords",
-      };
+      return await createErrorResponseI18n(
+        "errors.onlyGoogleUsers",
+        locale,
+        "Only Google authenticated users can add passwords"
+      );
     }
 
     // Hash password
@@ -297,32 +289,22 @@ export async function addPasswordToGoogleUser(
 
     console.log("Password added for Google user:", { userId });
 
-    return {
-      success: true,
-      message:
-        "Password added successfully! You can now sign in with email and password.",
-    };
+    return await createSuccessResponseI18n(
+      "success.passwordAdded",
+      locale,
+      "Password added successfully! You can now sign in with email and password."
+    );
   } catch (error) {
-    console.error("Add password error:", error);
-
     if (error instanceof z.ZodError) {
-      const errors: Record<string, string> = {};
-      error.issues.forEach((err: any) => {
-        if (err.path[0]) {
-          errors[err.path[0] as string] = err.message;
-        }
-      });
-      return {
-        success: false,
-        message: "Please check the form for errors",
-        errors,
-      };
+      return createValidationErrorResponse(error, locale);
     }
 
-    return {
-      success: false,
-      message: "Failed to add password. Please try again.",
-    };
+    logActionError('addPasswordToGoogleUser', error);
+    return await createErrorResponseI18n(
+      "errors.failedToAddPassword",
+      locale,
+      "Failed to add password. Please try again."
+    );
   }
 }
 
@@ -331,6 +313,8 @@ export async function changeUserPassword(
   formData: FormData,
   userId: string
 ): Promise<ActionResult> {
+  const locale = await resolveFormLocale(formData);
+  
   try {
     const data = {
       currentPassword: formData.get("currentPassword") as string,
@@ -347,17 +331,15 @@ export async function changeUserPassword(
     });
 
     if (!user) {
-      return {
-        success: false,
-        message: "User not found",
-      };
+      return createGenericErrorResponse('notFound', 'User not found', locale);
     }
 
     if (!user.password) {
-      return {
-        success: false,
-        message: "User does not have a password set",
-      };
+      return await createErrorResponseI18n(
+        "errors.userDoesNotHavePassword",
+        locale,
+        "User does not have a password set"
+      );
     }
 
     // Verify current password
@@ -366,11 +348,12 @@ export async function changeUserPassword(
       user.password
     );
     if (!currentPasswordMatch) {
-      return {
-        success: false,
-        message: "Current password is incorrect",
-        errors: { currentPassword: "Current password is incorrect" },
-      };
+      return await createFieldErrorResponseI18n(
+        "errors.currentPasswordIncorrect",
+        "currentPassword",
+        locale,
+        "Current password is incorrect"
+      );
     }
 
     // Check if new password is different from current
@@ -379,13 +362,12 @@ export async function changeUserPassword(
       user.password
     );
     if (samePassword) {
-      return {
-        success: false,
-        message: "New password must be different from current password",
-        errors: {
-          newPassword: "New password must be different from current password",
-        },
-      };
+      return await createFieldErrorResponseI18n(
+        "errors.passwordMustBeDifferent",
+        "newPassword",
+        locale,
+        "New password must be different from current password"
+      );
     }
 
     // Hash new password
@@ -403,31 +385,22 @@ export async function changeUserPassword(
 
     console.log("Password changed for user:", { userId });
 
-    return {
-      success: true,
-      message: "Password changed successfully!",
-    };
+    return await createSuccessResponseI18n(
+      "success.passwordChanged",
+      locale,
+      "Password changed successfully!"
+    );
   } catch (error) {
-    console.error("Change password error:", error);
-
     if (error instanceof z.ZodError) {
-      const errors: Record<string, string> = {};
-      error.issues.forEach((err: any) => {
-        if (err.path[0]) {
-          errors[err.path[0] as string] = err.message;
-        }
-      });
-      return {
-        success: false,
-        message: "Please check the form for errors",
-        errors,
-      };
+      return createValidationErrorResponse(error, locale);
     }
 
-    return {
-      success: false,
-      message: "Failed to change password. Please try again.",
-    };
+    logActionError('changeUserPassword', error);
+    return await createErrorResponseI18n(
+      "errors.failedToChangePassword",
+      locale,
+      "Failed to change password. Please try again."
+    );
   }
 }
 
@@ -449,7 +422,7 @@ export async function migrateUserAccountMetadata(
     });
 
     if (!user) {
-      return { success: false, message: "User not found" };
+      return createGenericErrorResponse('notFound', 'User not found');
     }
 
     const hasGoogleAccount = user.accounts.some(
@@ -495,16 +468,18 @@ export async function migrateUserAccountMetadata(
       primaryAuthMethod,
     });
 
-    return {
-      success: true,
-      message: "Account metadata updated successfully",
-    };
+    return await createSuccessResponseI18n(
+      "success.accountMetadataUpdated",
+      'en',
+      "Account metadata updated successfully"
+    );
   } catch (error) {
-    console.error("Migration error:", error);
-    return {
-      success: false,
-      message: "Failed to migrate account metadata",
-    };
+    logActionError('migrateUserAccountMetadata', error);
+    return await createErrorResponseI18n(
+      "errors.failedToMigrateAccountMetadata",
+      'en',
+      "Failed to migrate account metadata"
+    );
   }
 }
 

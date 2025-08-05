@@ -7,6 +7,8 @@ import { AlertCircle, ArrowLeft, Mail, Key, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CenteredContentLayout } from '@/components/layouts'
+import { useSafeLocale } from '@/hooks/use-safe-locale'
 
 export default function AuthErrorPage() {
   const searchParams = useSearchParams()
@@ -63,23 +65,26 @@ export default function AuthErrorPage() {
 
   const errorInfo = getErrorInfo(error)
 
+  // Use safe locale extraction
+  const locale = useSafeLocale()
+
   const handleSignInWithEmail = () => {
     // Redirect to home page where sign-in options are available
-    router.push('/en')
+    router.push(`/${locale}`)
   }
 
   const handleTryDifferentAccount = () => {
     // Clear any cached OAuth state and redirect to home page
-    router.push('/en')
+    router.push(`/${locale}`)
   }
 
   const handleGoBack = () => {
-    router.push('/en')
+    router.push(`/${locale}`)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <CenteredContentLayout maxWidth="md" className="bg-gray-50 py-12">
+      <div className="space-y-8">
         <div className="text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
             {errorInfo.icon}
@@ -183,12 +188,12 @@ export default function AuthErrorPage() {
         <div className="text-center">
           <p className="text-sm text-gray-600">
             {t('error.needHelp')}{' '}
-            <Link href="/support" className="font-medium text-indigo-600 hover:text-indigo-500">
+            <Link href={`/${locale}/support` as any} className="font-medium text-indigo-600 hover:text-indigo-500">
               {t('error.contactSupport')}
             </Link>
           </p>
         </div>
       </div>
-    </div>
+    </CenteredContentLayout>
   )
 }

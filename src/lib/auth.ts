@@ -1,315 +1,35 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { authOptions } from "./auth-config";
 
-export const authOptions = {
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
-    }),
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: {
-          label: "Email",
-          type: "email",
-          placeholder: "email@example.com",
-        },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        let result = null;
+// Server-only validation
+if (typeof window === 'undefined') {
+  // Validate required environment variables
+  const requiredEnvVars = {
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    AUTH_SECRET: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  };
 
-        if (credentials?.email && credentials?.password) {
-          const user = await prisma.user.findUnique({
-            where: {
-              email: credentials.email as string,
-            },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              image: true,
-              password: true,
-              twoFactorEnabled: true,
-            },
-          });
+  // Log configuration status (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔧 NextAuth Configuration Check:');
+    Object.entries(requiredEnvVars).forEach(([key, value]) => {
+      console.log(`  ${key}: ${value ? '✅ Set' : '❌ Missing'}`);
+    });
+  }
 
-          if (user && user.password) {
-            const passwordMatch = await bcrypt.compare(
-              credentials.password as string,
-              user.password
-            );
+  // Log warning if critical env vars are missing
+  if (!requiredEnvVars.GOOGLE_CLIENT_ID || !requiredEnvVars.GOOGLE_CLIENT_SECRET) {
+    console.error('⚠️ Missing required Google OAuth environment variables:', {
+      GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+    });
+    console.error('Please check your .env.local file and restart the server.');
+  }
+}
 
-            if (passwordMatch) {
-              // Basic authentication successful
-              result = {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                image: user.image,
-              };
-            }
-          }
-        }
+// Export authOptions from auth-config.ts
+export { authOptions };
 
-        return result;
-      },
-    }),
-  ],
-  callbacks: {
-    async signIn({
-      user,
-      account,
-      profile,
-    }: {
-      user: any;
-      account?: any;
-      profile?: any;
-    }) {
-      let result = true; // Default to allow sign-in
-
-      // Handle account linking for OAuth providers
-      if (account && account.provider !== 'credentials') {
-        try {
-          // Check if there's an existing user with the same email (different provider)
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email },
-            include: { accounts: true, accountLinkRequests: true }
-          })
-
-          if (existingUser && !existingUser.accounts.some(acc => acc.provider === account.provider)) {
-            // Check if there's a pending account link request
-            const pendingLinkRequest = existingUser.accountLinkRequests.find(
-              req => req.requestType === `link_${account.provider}` && 
-                     !req.completed && 
-                     req.expires > new Date()
-            )
-
-            if (pendingLinkRequest) {
-              // Complete the account linking
-              try {
-                const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/link-account/complete`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    linkToken: pendingLinkRequest.token,
-                    oauthData: {
-                      provider: account.provider,
-                      providerAccountId: account.providerAccountId,
-                      access_token: account.access_token,
-                      refresh_token: account.refresh_token,
-                      expires_at: account.expires_at,
-                      token_type: account.token_type,
-                      scope: account.scope,
-                      id_token: account.id_token,
-                      profile
-                    }
-                  })
-                })
-
-                if (response.ok) {
-                  console.log('✅ Account linked successfully during OAuth callback')
-                  // Update the user object to reflect the linked account
-                  user.id = existingUser.id
-                  result = true;
-                } else {
-                  console.error('❌ Failed to complete account linking:', await response.text())
-                  result = false;
-                }
-              } catch (linkError) {
-                console.error('❌ Error completing account linking:', linkError)
-                result = false;
-              }
-            } else {
-              // No pending link request - show the normal OAuth error
-              console.log('🚫 OAuth account not linked and no pending link request')
-              result = false;
-            }
-          }
-        } catch (error) {
-          console.error('Error in OAuth account linking check:', error)
-          result = false;
-        }
-      }
-
-      // Normal sign-in flow for existing users or credentials - only process if result is still true
-      if (result && user.id && account) {
-        try {
-          const existingUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            include: { accounts: true },
-          });
-
-          if (existingUser) {
-            const hasGoogleAccount = existingUser.accounts.some(
-              (acc) => acc.provider === "google"
-            );
-            const hasPassword = !!existingUser.password;
-
-            // Update user login metadata
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                hasGoogleAccount: hasGoogleAccount,
-                hasEmailAccount: hasPassword,
-                primaryAuthMethod:
-                  existingUser.primaryAuthMethod ||
-                  (account.provider === "google" ? "google" : "email"),
-                lastLoginAt: new Date(),
-                // Set password timestamps for existing password users
-                passwordSetAt:
-                  existingUser.password && !existingUser.passwordSetAt
-                    ? existingUser.createdAt
-                    : existingUser.passwordSetAt,
-                lastPasswordChange:
-                  existingUser.password && !existingUser.lastPasswordChange
-                    ? existingUser.createdAt
-                    : existingUser.lastPasswordChange,
-              },
-            });
-
-            console.log("Updated user login metadata:", {
-              userId: user.id,
-              provider: account.provider,
-              hasGoogleAccount,
-              hasPassword,
-              twoFactorEnabled: existingUser.twoFactorEnabled,
-            });
-          }
-        } catch (error) {
-          console.error("Error updating user metadata on sign-in:", error);
-          // Don't block sign-in if metadata update fails - keep result as true
-        }
-      }
-      
-      return result;
-    },
-    async jwt({ token, user }: { token: any; user: any }) {
-      if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.image = user.image;
-      }
-      return token;
-    },
-    async session({
-      session,
-      token,
-      user,
-    }: {
-      session: any;
-      token: any;
-      user: any;
-    }) {
-      if (token && session.user && token.id) {
-        session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.name = token.name as string;
-        session.user.image = token.image as string;
-      } else if (user && session.user && user.id) {
-        session.user.id = user.id;
-      }
-      return session;
-    },
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      // Handle language-aware redirects
-      console.log("Auth redirect called with:", { url, baseUrl });
-
-      const supportedLocales = ["en", "es", "fr", "it", "de"];
-      let redirectUrl = `${baseUrl}/en/dashboard`; // Default fallback
-
-      // If it's a relative URL, handle it
-      if (url.startsWith("/")) {
-        const segments = url.split("/").filter(Boolean);
-        const possibleLocale = segments[0];
-
-        if (supportedLocales.includes(possibleLocale)) {
-          // URL already has locale, ensure it goes to dashboard
-          if (segments[1] === "dashboard") {
-            redirectUrl = `${baseUrl}${url}`;
-          } else if (segments[1] === "auth" && segments[2] === "2fa") {
-            // Allow 2FA page redirects
-            redirectUrl = `${baseUrl}${url}`;
-          } else {
-            redirectUrl = `${baseUrl}/${possibleLocale}/dashboard`;
-          }
-        } else {
-          // No locale in URL, default to English and dashboard
-          redirectUrl = `${baseUrl}/en/dashboard`;
-        }
-      }
-      // Handle authentication errors - redirect all error URLs to our error page
-      else if (url.includes('error=')) {
-        const urlObj = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`)
-        const errorType = urlObj.searchParams.get('error')
-        
-        if (errorType) {
-          console.log('🚨 Auth error redirect:', errorType)
-          redirectUrl = `${baseUrl}/en/auth/error?error=${errorType}`;
-        }
-      }
-      // Handle signin errors specifically (NextAuth redirects to /auth/signin?error=...)
-      else if (url.includes('/auth/signin') && url.includes('error=')) {
-        const urlObj = new URL(url.startsWith('http') ? url : `${baseUrl}${url}`)
-        const errorType = urlObj.searchParams.get('error')
-        
-        if (errorType) {
-          console.log('🚨 SignIn error redirect:', errorType)
-          redirectUrl = `${baseUrl}/en/auth/error?error=${errorType}`;
-        }
-      }
-      // If it's a callback URL on the same origin
-      else {
-        try {
-          const urlObj = new URL(url);
-          if (urlObj.origin === baseUrl) {
-            const segments = urlObj.pathname.split("/").filter(Boolean);
-            const possibleLocale = segments[0];
-
-            if (supportedLocales.includes(possibleLocale)) {
-              redirectUrl = `${baseUrl}/${possibleLocale}/dashboard`;
-            } else {
-              redirectUrl = `${baseUrl}/en/dashboard`;
-            }
-          }
-        } catch (e) {
-          // If URL parsing fails, use default redirect
-          console.log("URL parsing failed, using default redirect");
-        }
-      }
-
-      return redirectUrl;
-    },
-  },
-  pages: {
-    signIn: "/en/auth/signin",
-    error: "/en/auth/error",
-  },
-  session: {
-    strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
-  },
-  debug: process.env.NODE_ENV === "development",
-};
-
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth(authOptions);
+// Export NextAuth handler
+export const { auth, signIn, signOut, handlers } = NextAuth(authOptions);
