@@ -1,7 +1,8 @@
 import { verifyEmailToken } from '@/lib/actions/advanced-auth'
 import { redirect } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
+import { FormPageLayout } from '@/components/layouts'
 
 interface Props {
   params: Promise<{ 
@@ -12,14 +13,14 @@ interface Props {
 
 export default async function VerifyEmailPage({ params }: Props) {
   const { locale, token } = await params
+  const t = await getTranslations('EmailVerification')
   
-  // Verify the email token
-  const result = await verifyEmailToken(token)
+  // Verify the email token with locale
+  const result = await verifyEmailToken(token, locale)
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 text-center">
+    <FormPageLayout>
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 p-8 text-center">
           {result.success ? (
             <>
               {/* Success State */}
@@ -30,11 +31,11 @@ export default async function VerifyEmailPage({ params }: Props) {
               </div>
               
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Email Verified Successfully! ✅
+                {t('successTitle')}
               </h1>
               
               <p className="text-gray-600 mb-8">
-                Your email address has been verified. You can now access all features of your account.
+                {t('successMessage')}
               </p>
               
               <div className="space-y-4">
@@ -42,14 +43,14 @@ export default async function VerifyEmailPage({ params }: Props) {
                   href={`/${locale}/dashboard`}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
-                  Go to Dashboard
+                  {t('goToDashboard')}
                 </Link>
                 
                 <Link
                   href={`/${locale}/account`}
                   className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
-                  Manage Account
+                  {t('manageAccount')}
                 </Link>
               </div>
             </>
@@ -63,15 +64,15 @@ export default async function VerifyEmailPage({ params }: Props) {
               </div>
               
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Verification Failed ❌
+                {t('failureTitle')}
               </h1>
               
               <p className="text-gray-600 mb-2">
-                {result.message || 'The verification link is invalid or has expired.'}
+                {result.message || t('defaultFailureMessage')}
               </p>
               
               <p className="text-sm text-gray-500 mb-8">
-                Please request a new verification email from your account settings.
+                {t('requestNewVerification')}
               </p>
               
               <div className="space-y-4">
@@ -79,14 +80,14 @@ export default async function VerifyEmailPage({ params }: Props) {
                   href={`/${locale}/account`}
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
-                  Go to Account Settings
+                  {t('goToAccountSettings')}
                 </Link>
                 
                 <Link
                   href={`/${locale}`}
                   className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
-                  Back to Home
+                  {t('backToHome')}
                 </Link>
               </div>
             </>
@@ -95,20 +96,20 @@ export default async function VerifyEmailPage({ params }: Props) {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <p className="text-xs text-gray-500">
-              Need help? Contact our support team.
+              {t('needHelp')}
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </FormPageLayout>
   )
 }
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'EmailVerification' })
   
   return {
-    title: 'Email Verification - Auth App',
-    description: 'Verify your email address to complete your account setup.'
+    title: t('metaTitle'),
+    description: t('metaDescription')
   }
 }

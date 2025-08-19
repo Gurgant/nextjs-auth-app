@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { notFound } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
+import { getMessages, getTranslations } from 'next-intl/server'
 import { locales } from '@/i18n'
+import { type Locale } from '@/config/i18n'
 import { AuthSessionProvider } from '@/components/auth/session-provider'
 import { LanguageSelector } from '@/components/language-selector'
 import Link from 'next/link'
@@ -11,9 +12,19 @@ import '../globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata: Metadata = {
-  title: 'Next.js Auth App',
-  description: 'Simple authentication with Next.js and Google OAuth',
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'Layout' })
+  const tHome = await getTranslations({ locale, namespace: 'Home' })
+  
+  return {
+    title: t('appTitle'),
+    description: tHome('subtitle'),
+  }
 }
 
 export function generateStaticParams() {
@@ -27,13 +38,16 @@ export default async function LocaleLayout({
   children: React.ReactNode
   params: Promise<{ locale: string }>
 }) {
-  const { locale } = await params
+  const { locale: localeParam } = await params
   
-  if (!locales.includes(locale as any)) {
+  if (!locales.includes(localeParam as any)) {
     notFound()
   }
+  
+  const locale = localeParam as Locale
 
   const messages = await getMessages()
+  const t = await getTranslations('Layout')
 
   return (
     <html lang={locale}>
@@ -51,7 +65,7 @@ export default async function LocaleLayout({
                         </svg>
                       </div>
                       <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        Auth App
+                        {t('appTitle')}
                       </h1>
                     </Link>
                     <div className="flex items-center gap-4">

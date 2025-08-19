@@ -4,12 +4,11 @@ import { useTranslations } from 'next-intl'
 import { SignInButton } from '@/components/auth/sign-in-button'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { useSafeLocale } from '@/hooks/use-safe-locale'
 
 export function DashboardContent({ user }: { user: any }) {
   const t = useTranslations('Dashboard')
-  const pathname = usePathname()
-  const currentLocale = pathname.split('/')[1] || 'en'
+  const currentLocale = useSafeLocale()
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">

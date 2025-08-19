@@ -3,55 +3,98 @@
 import { useState, useEffect, useRef } from 'react'
 import { setupTwoFactorAuth, enableTwoFactorAuth, type ActionResult } from '@/lib/actions/advanced-auth'
 import Image from 'next/image'
+import { GradientButton } from '@/components/ui/gradient-button'
+import { AlertMessage } from '@/components/ui/alert-message'
+import { useLocalizedAction } from '@/hooks/use-localized-action'
+import { useFormReset } from '@/hooks/use-form-reset'
+import { useTranslations } from 'next-intl'
 
 interface TwoFactorSetupProps {
   user: {
     id?: string
     email?: string | null
   }
+  locale: string
   onSetupComplete?: () => void
   onCancel?: () => void
 }
 
-export function TwoFactorSetup({ user, onSetupComplete, onCancel }: TwoFactorSetupProps) {
+export function TwoFactorSetup({ user, locale, onSetupComplete, onCancel }: TwoFactorSetupProps) {
+  const t = useTranslations('TwoFactorSetup')
+  const tCommon = useTranslations('Common')
+  const tComponentErrors = useTranslations('ComponentErrors')
+  const tLoadingStates = useTranslations('LoadingStates')
+  
   const [step, setStep] = useState<'setup' | 'verify' | 'complete'>('setup')
-  const [isLoading, setIsLoading] = useState(false)
   const [setupData, setSetupData] = useState<{
     qrCodeUrl: string
     backupCodes: string[]
     secret: string // This is the encrypted secret from the backend
     manualEntrySecret: string // This is the plain secret for manual entry/QR code
   } | null>(null)
-  const [result, setResult] = useState<ActionResult | null>(null)
   const [verificationCode, setVerificationCode] = useState('')
   const [showBackupCodes, setShowBackupCodes] = useState(false)
   const [backupCodesDownloaded, setBackupCodesDownloaded] = useState(false)
   
-  const formRef = useRef<HTMLFormElement>(null)
+  // State for setupTwoFactorAuth (non-FormData action)
+  const [isSettingUp, setIsSettingUp] = useState(false)
+  const [setupResult, setSetupResult] = useState<ActionResult | null>(null)
+  
+  // Hook for enableTwoFactorAuth (FormData action)
+  const {
+    execute: executeEnableTwoFactor,
+    isLoading: isEnabling,
+    result: enableResult
+  } = useLocalizedAction(
+    async (formData: FormData) => enableTwoFactorAuth(formData, user.id!),
+    locale,
+    {
+      onSuccess: (data) => {
+        if (data?.backupCodes) {
+          setSetupData(prev => prev ? {
+            ...prev,
+            backupCodes: data.backupCodes
+          } : null)
+        }
+        setStep('complete')
+      }
+    }
+  )
+  
+  // Form ref with reset functionality
+  const { formRef, resetForm } = useFormReset({
+    formName: 'TwoFactorVerifyForm',
+    onReset: () => setVerificationCode('')
+  })
+  
+  // Combine loading states
+  const isLoading = isSettingUp || isEnabling
+  // Combine results for display
+  const result = setupResult || enableResult
 
-  // Initialize 2FA setup
+  // Initialize 2FA setup (non-FormData action)
   const handleSetup = async () => {
     if (!user.id) return
     
-    setIsLoading(true)
-    setResult(null)
+    setIsSettingUp(true)
+    setSetupResult(null)
     
     try {
-      const setupResult = await setupTwoFactorAuth(user.id)
+      const result = await setupTwoFactorAuth(user.id)
       
-      if (setupResult.success && setupResult.data) {
-        setSetupData(setupResult.data)
+      if (result.success && result.data) {
+        setSetupData(result.data)
         setStep('verify')
       } else {
-        setResult(setupResult)
+        setSetupResult(result)
       }
     } catch (error) {
-      setResult({
+      setSetupResult({
         success: false,
-        message: 'Failed to setup 2FA. Please try again.'
+        message: tComponentErrors('failedToSetupTwoFactor')
       })
     } finally {
-      setIsLoading(false)
+      setIsSettingUp(false)
     }
   }
 
@@ -60,46 +103,11 @@ export function TwoFactorSetup({ user, onSetupComplete, onCancel }: TwoFactorSet
     e.preventDefault()
     if (!user.id || !setupData) return
     
-    setIsLoading(true)
-    setResult(null)
-    
-    // CRITICAL DEBUG: Trace the encrypted secret before sending
-    console.log('🚀 Frontend Debug - Setup data exists:', !!setupData)
-    console.log('🚀 Frontend Debug - Encrypted secret length:', setupData.secret?.length)
-    console.log('🚀 Frontend Debug - Encrypted secret (first 50 chars):', setupData.secret?.substring(0, 50) + '...')
-    console.log('🚀 Frontend Debug - Manual entry secret length:', setupData.manualEntrySecret?.length)
-    console.log('🚀 Frontend Debug - Verification code:', verificationCode)
-    
-    const formData = new FormData()
-    formData.append('encryptedSecret', setupData.secret) // Use correct property name
+    const formData = new FormData(e.currentTarget as HTMLFormElement)
+    formData.append('encryptedSecret', setupData.secret)
     formData.append('verificationCode', verificationCode)
     
-    // Verify FormData contains the secret
-    const formDataEncryptedSecret = formData.get('encryptedSecret')
-    console.log('🚀 Frontend Debug - FormData encrypted secret type:', typeof formDataEncryptedSecret)
-    console.log('🚀 Frontend Debug - FormData encrypted secret length:', formDataEncryptedSecret?.toString().length)
-    console.log('🚀 Frontend Debug - FormData encrypted secret (first 50 chars):', formDataEncryptedSecret?.toString().substring(0, 50) + '...')
-    
-    try {
-      const enableResult = await enableTwoFactorAuth(formData, user.id)
-      
-      if (enableResult.success) {
-        setSetupData(prev => prev ? {
-          ...prev,
-          backupCodes: enableResult.data?.backupCodes || []
-        } : null)
-        setStep('complete')
-      }
-      
-      setResult(enableResult)
-    } catch (error) {
-      setResult({
-        success: false,
-        message: 'Failed to verify 2FA code. Please try again.'
-      })
-    } finally {
-      setIsLoading(false)
-    }
+    await executeEnableTwoFactor(formData)
   }
 
   // Test current secret with diagnostic endpoint
@@ -119,7 +127,7 @@ export function TwoFactorSetup({ user, onSetupComplete, onCancel }: TwoFactorSet
       const diagnostic = await response.json()
       console.log('🔬 TOTP Diagnostic Result:', diagnostic)
       
-      setResult({
+      setSetupResult({
         success: diagnostic.isValid,
         message: diagnostic.isValid 
           ? `✅ Code is valid! Expected: ${diagnostic.expectedCode}, Got: ${diagnostic.userCode}` 
@@ -127,9 +135,9 @@ export function TwoFactorSetup({ user, onSetupComplete, onCancel }: TwoFactorSet
       })
     } catch (error) {
       console.error('Diagnostic test failed:', error)
-      setResult({
+      setSetupResult({
         success: false,
-        message: 'Failed to test code. Please try the verification directly.'
+        message: tComponentErrors('failedToTestCode')
       })
     }
   }
@@ -180,31 +188,31 @@ Instructions:
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Setup Two-Factor Authentication</h2>
-          <p className="text-gray-600">Add an extra layer of security to your account</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('title')}</h2>
+          <p className="text-gray-600">{t('subtitle')}</p>
         </div>
 
         <div className="space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">What you&apos;ll need:</h3>
+            <h3 className="text-lg font-semibold text-blue-900 mb-3">{t('requirementsTitle')}</h3>
             <ul className="space-y-2 text-blue-800">
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                An authenticator app (Google Authenticator, Authy, etc.)
+                {t('authenticatorApp')}
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Your phone or tablet to scan the QR code
+                {t('phoneOrTablet')}
               </li>
               <li className="flex items-center">
                 <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                A safe place to store backup codes
+                {t('safeStorage')}
               </li>
             </ul>
           </div>
@@ -221,30 +229,22 @@ Instructions:
           )}
 
           <div className="flex space-x-4">
-            <button
+            <GradientButton
               onClick={handleSetup}
-              disabled={isLoading}
-              className="flex-1 flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              variant="blue-purple"
+              className="flex-1"
+              loading={isLoading}
+              loadingText={tLoadingStates('settingUp')}
             >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Setting up...
-                </>
-              ) : (
-                'Start Setup'
-              )}
-            </button>
+              {t('startSetup')}
+            </GradientButton>
             
             {onCancel && (
               <button
                 onClick={onCancel}
                 className="flex-1 flex justify-center py-3 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
               >
-                Cancel
+                {t('cancel')}
               </button>
             )}
           </div>
@@ -262,8 +262,8 @@ Instructions:
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Scan QR Code</h2>
-          <p className="text-gray-600">Use your authenticator app to scan this QR code</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('qrCodeTitle')}</h2>
+          <p className="text-gray-600">{t('qrCodeSubtitle')}</p>
         </div>
 
         <div className="space-y-8">
@@ -272,7 +272,7 @@ Instructions:
             <div className="bg-white p-4 rounded-xl border-2 border-gray-200">
               <Image
                 src={setupData.qrCodeUrl}
-                alt="2FA QR Code"
+                alt={t('qrCodeAlt')}
                 width={256}
                 height={256}
                 className="rounded-lg"
@@ -282,7 +282,7 @@ Instructions:
 
           {/* Manual Entry */}
           <div className="bg-gray-50 rounded-xl p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Can&apos;t scan? Enter this code manually:</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">{t('manualEntry')}</p>
             <div className="bg-white border rounded-lg p-3">
               <code className="text-sm text-gray-800 break-all font-mono tracking-widest">{setupData.manualEntrySecret}</code>
             </div>
@@ -298,14 +298,14 @@ Instructions:
           <form ref={formRef} onSubmit={handleVerify} className="space-y-6">
             <div>
               <label htmlFor="verificationCode" className="block text-sm font-semibold text-gray-700 mb-2">
-                Enter verification code from your app:
+                {t('verificationLabel')}
               </label>
               <input
                 id="verificationCode"
                 type="text"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="123456"
+                placeholder={t('verificationPlaceholder')}
                 className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-center text-2xl font-mono tracking-widest"
                 maxLength={6}
                 required
@@ -318,29 +318,11 @@ Instructions:
               </div>
             </div>
 
-            {result && (
-              <div className={`rounded-xl p-4 ${
-                result.success 
-                  ? 'bg-green-50 border border-green-200' 
-                  : 'bg-red-50 border border-red-200'
-              }`}>
-                <div className="flex items-center">
-                  {result.success ? (
-                    <svg className="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  )}
-                  <p className={`text-sm font-medium ${
-                    result.success ? 'text-green-700' : 'text-red-700'
-                  }`}>
-                    {result.message}
-                  </p>
-                </div>
-              </div>
+            {result?.message && (
+              <AlertMessage
+                type={result.success ? 'success' : 'error'}
+                message={result.message}
+              />
             )}
 
             <div className="space-y-3">
@@ -351,34 +333,27 @@ Instructions:
                 disabled={verificationCode.length !== 6}
                 className="w-full flex justify-center items-center py-2 px-4 border border-blue-300 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                🔍 Test Code First
+                {t('testCode')}
               </button>
               
               <div className="flex space-x-4">
-              <button
+              <GradientButton
                 type="submit"
-                disabled={isLoading || verificationCode.length !== 6}
-                className="flex-1 flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                variant="blue-purple"
+                className="flex-1"
+                disabled={verificationCode.length !== 6}
+                loading={isLoading}
+                loadingText={tLoadingStates('verifying')}
               >
-                {isLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify & Enable'
-                )}
-              </button>
+                {t('verifyAndEnable')}
+              </GradientButton>
               
               <button
                 type="button"
                 onClick={() => setStep('setup')}
                 className="flex-1 flex justify-center py-3 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
               >
-                Back
+                {t('back')}
               </button>
               </div>
             </div>
@@ -397,25 +372,25 @@ Instructions:
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">2FA Enabled Successfully!</h2>
-          <p className="text-gray-600">Your account is now protected with two-factor authentication</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('enabledSuccessfully')}</h2>
+          <p className="text-gray-600">{t('accountProtected')}</p>
         </div>
 
         <div className="space-y-6">
           {/* Backup Codes */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-yellow-900">🔑 Backup Codes</h3>
+              <h3 className="text-lg font-semibold text-yellow-900">{t('backupCodes')}</h3>
               <button
                 onClick={() => setShowBackupCodes(!showBackupCodes)}
                 className="text-sm text-yellow-700 hover:text-yellow-800 font-medium"
               >
-                {showBackupCodes ? 'Hide' : 'Show'} Codes
+                {showBackupCodes ? t('hideCodes') : t('showCodes')}
               </button>
             </div>
             
             <p className="text-yellow-800 mb-4 text-sm">
-              Save these backup codes in a safe place. You can use them to access your account if you lose your authenticator device.
+              {t('backupCodesDescription')}
             </p>
 
             {showBackupCodes && (
@@ -437,24 +412,25 @@ Instructions:
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Download Backup Codes
+              {t('downloadBackupCodes')}
             </button>
           </div>
 
           {/* Completion */}
           <div className="flex space-x-4">
-            <button
+            <GradientButton
               onClick={handleComplete}
+              variant="green-emerald"
+              className="flex-1"
               disabled={!backupCodesDownloaded}
-              className="flex-1 flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {backupCodesDownloaded ? 'Complete Setup' : 'Download Codes First'}
-            </button>
+              {backupCodesDownloaded ? t('completeSetup') : t('downloadCodesFirst')}
+            </GradientButton>
           </div>
 
           {!backupCodesDownloaded && (
             <p className="text-sm text-center text-gray-500">
-              Please download your backup codes before completing the setup
+              {t('downloadCodesBeforeCompleting')}
             </p>
           )}
         </div>

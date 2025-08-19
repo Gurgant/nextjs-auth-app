@@ -4,52 +4,64 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { isValidLocale, type Locale } from "@/config/i18n";
 
-export function LanguageSelector({ locale }: { locale: string }) {
+export function LanguageSelector({ locale }: { locale: Locale }) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("Common");
+  const tLanguages = useTranslations("Languages");
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Enterprise-grade language configuration
+  // Enterprise-grade language configuration with translations
   const languages = {
     en: {
       code: "EN",
-      name: "English",
-      nativeName: "English",
-      region: "Global",
+      name: tLanguages("en.name"),
+      nativeName: tLanguages("en.nativeName"),
+      region: tLanguages("en.region"),
     },
     es: {
       code: "ES",
-      name: "Spanish",
-      nativeName: "Español",
-      region: "España",
+      name: tLanguages("es.name"),
+      nativeName: tLanguages("es.nativeName"),
+      region: tLanguages("es.region"),
     },
     fr: {
       code: "FR",
-      name: "French",
-      nativeName: "Français",
-      region: "France",
+      name: tLanguages("fr.name"),
+      nativeName: tLanguages("fr.nativeName"),
+      region: tLanguages("fr.region"),
     },
     it: {
       code: "IT",
-      name: "Italian",
-      nativeName: "Italiano",
-      region: "Italia",
+      name: tLanguages("it.name"),
+      nativeName: tLanguages("it.nativeName"),
+      region: tLanguages("it.region"),
     },
     de: {
       code: "DE",
-      name: "German",
-      nativeName: "Deutsch",
-      region: "Deutschland",
+      name: tLanguages("de.name"),
+      nativeName: tLanguages("de.nativeName"),
+      region: tLanguages("de.region"),
     },
   };
 
   const handleLanguageChange = (newLocale: string) => {
+    // Validate the new locale before using it
+    if (!isValidLocale(newLocale)) {
+      console.error('[Security] Invalid locale selected:', newLocale);
+      return;
+    }
+    
+    // Extract the path after the locale
     const segments = pathname.split("/");
-    segments[1] = newLocale;
-    router.push(segments.join("/") as any);
+    const pathAfterLocale = segments.slice(2).join("/");
+    
+    // Construct the new path with validated locale
+    const newPath = `/${newLocale}${pathAfterLocale ? `/${pathAfterLocale}` : ''}`;
+    router.push(newPath as any);
     setIsOpen(false);
   };
 

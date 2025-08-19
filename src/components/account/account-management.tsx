@@ -13,6 +13,10 @@ import {
   getUserAccountInfo,
   type ActionResult,
 } from "@/lib/actions/auth";
+// appendLocaleToFormData is now handled by useLocalizedAction hook
+import { GradientButton } from "@/components/ui/gradient-button";
+import { AlertMessage } from "@/components/ui/alert-message";
+import { isErrorResponse, getFieldError, getAllFieldErrors, type ActionResponse } from "@/lib/utils/form-responses";
 import {
   getEnhancedUserAccountInfo,
   sendEmailVerification,
@@ -23,6 +27,8 @@ import {
 } from "@/lib/actions/advanced-auth";
 import { TwoFactorSetup } from "@/components/security/two-factor-setup";
 import { OAuthAccountLinking } from "@/components/account/oauth-account-linking";
+import { useLocalizedAction } from "@/hooks/use-localized-action";
+import { useFormReset } from "@/hooks/use-form-reset";
 
 interface AccountManagementProps {
   user: {
@@ -37,56 +43,114 @@ interface AccountManagementProps {
 export function AccountManagement({ user, locale }: AccountManagementProps) {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
+  const tErrors = useTranslations("ComponentErrors");
+  const tConsole = useTranslations("ConsoleMessages");
+  const tLoading = useTranslations("LoadingStates");
   const router = useRouter();
 
-  // Existing state
-  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  // UI state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [profileResult, setProfileResult] = useState<ActionResult | null>(null);
-  const [deleteResult, setDeleteResult] = useState<ActionResult | null>(null);
   const [emailConfirmation, setEmailConfirmation] = useState("");
 
   // Enhanced account management state
   const [accountInfo, setAccountInfo] = useState<any>(null);
   const [isLoadingAccountInfo, setIsLoadingAccountInfo] = useState(true);
-  const [isAddingPassword, setIsAddingPassword] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordResult, setPasswordResult] = useState<ActionResult | null>(
-    null
-  );
-  const [changePasswordResult, setChangePasswordResult] =
-    useState<ActionResult | null>(null);
 
   // Advanced authentication state
   const [showTwoFactorSetup, setShowTwoFactorSetup] = useState(false);
-  const [isLinkingAccount, setIsLinkingAccount] = useState(false);
-  const [isSendingVerification, setIsSendingVerification] = useState(false);
-  const [linkingResult, setLinkingResult] = useState<ActionResult | null>(null);
-  const [verificationResult, setVerificationResult] =
-    useState<ActionResult | null>(null);
 
-  // Form refs for reliable form management
-  const addPasswordFormRef = useRef<HTMLFormElement>(null);
-  const changePasswordFormRef = useRef<HTMLFormElement>(null);
-  const profileFormRef = useRef<HTMLFormElement>(null);
-
-  // Utility function for safe form reset with enhanced error handling
-  const safeFormReset = useCallback(
-    (formRef: React.RefObject<HTMLFormElement | null>, formName: string) => {
-      try {
-        if (formRef.current && typeof formRef.current.reset === "function") {
-          formRef.current.reset();
-          console.log(`✅ Successfully reset ${formName} form`);
-        } else {
-          console.warn(`⚠️ Form reference not available for ${formName}`);
-        }
-      } catch (error) {
-        console.error(`❌ Failed to reset ${formName} form:`, error);
+  // Hook-based action management
+  const {
+    execute: executeProfileUpdate,
+    isLoading: isUpdatingProfile,
+    result: profileResult
+  } = useLocalizedAction(
+    async (formData: FormData) => updateUserProfile(formData, user.id!),
+    locale,
+    {
+      onSuccess: () => {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       }
-    },
-    []
+    }
   );
+
+  const {
+    execute: executeAccountDeletion,
+    isLoading: isDeletingAccount,
+    result: deleteResult
+  } = useLocalizedAction(
+    async (formData: FormData) => deleteUserAccount(formData, user.email!),
+    locale,
+    {
+      onSuccess: () => {
+        setTimeout(async () => {
+          await signOut({ callbackUrl: `/${locale}?deleted=true` });
+        }, 2000);
+      }
+    }
+  );
+
+  const {
+    execute: executeAddPassword,
+    isLoading: isAddingPassword,
+    result: passwordResult
+  } = useLocalizedAction(
+    async (formData: FormData) => addPasswordToGoogleUser(formData, user.id!),
+    locale,
+    {
+      onSuccess: async () => {
+        // Refresh account info to show updated password status
+        setTimeout(async () => {
+          try {
+            const info = await getUserAccountInfo(user.id!);
+            setAccountInfo(info);
+            // Clear form using ref-based utility
+            resetAddPasswordForm();
+          } catch (error) {
+            handleFormError(error, tConsole("accountInfoRefresh"));
+          }
+        }, 1500);
+      }
+    }
+  );
+
+  const {
+    execute: executeChangePassword,
+    isLoading: isChangingPassword,
+    result: changePasswordResult
+  } = useLocalizedAction(
+    async (formData: FormData) => changeUserPassword(formData, user.id!),
+    locale,
+    {
+      onSuccess: () => {
+        // Clear form on success using ref-based utility
+        setTimeout(() => {
+          resetChangePasswordForm();
+        }, 1500);
+      }
+    }
+  );
+
+  // State for non-FormData actions (email verification, account linking)
+  const [isSendingVerification, setIsSendingVerification] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<ActionResponse | null>(null);
+  const [isLinkingAccount, setIsLinkingAccount] = useState(false);
+  const [linkingResult, setLinkingResult] = useState<ActionResponse | null>(null);
+
+  // Form reset hooks
+  const { formRef: addPasswordFormRef, resetForm: resetAddPasswordForm } = useFormReset({
+    formName: 'AddPasswordForm'
+  });
+
+  const { formRef: changePasswordFormRef, resetForm: resetChangePasswordForm } = useFormReset({
+    formName: 'ChangePasswordForm'
+  });
+
+  const { formRef: profileFormRef, resetForm: resetProfileForm } = useFormReset({
+    formName: 'ProfileUpdateForm'
+  });
 
   // Enhanced error handler for consistent error management
   const handleFormError = useCallback((error: unknown, action: string) => {
@@ -98,20 +162,21 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
   useEffect(() => {
     const loadAccountInfo = async () => {
       if (!user.id) {
-        console.warn("⚠️ User ID not available for account info loading");
+        console.warn(`⚠️ ${tConsole("userIdNotAvailable")}`);
         return;
       }
 
       setIsLoadingAccountInfo(true);
       try {
         const result = await getEnhancedUserAccountInfo(user.id);
+        
         if (result.success) {
           setAccountInfo(result.data);
-          console.log("✅ Enhanced account info loaded successfully");
+          console.log(`✅ ${tConsole("accountInfoLoaded")}`);
         } else {
           handleFormError(
-            new Error(result.message || "Failed to load account info"),
-            "account info loading"
+            new Error(result.message || tErrors("failedToLoadAccountInfo")),
+            tConsole("accountInfoLoading")
           );
           // Set fallback account info to prevent UI breaks
           setAccountInfo({
@@ -123,7 +188,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
           });
         }
       } catch (error) {
-        handleFormError(error, "account info loading");
+        handleFormError(error, tConsole("accountInfoLoading"));
         // Set fallback account info to prevent UI breaks
         setAccountInfo({
           hasGoogleAccount: false,
@@ -138,130 +203,46 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     };
 
     loadAccountInfo();
-  }, [user.id, handleFormError]);
+  }, [user.id, handleFormError, tConsole, tErrors]);
 
   const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsUpdatingProfile(true);
-    setProfileResult(null);
-
-    try {
-      const formData = new FormData(e.currentTarget);
-      const actionResult = await updateUserProfile(formData, user.id!);
-
-      setProfileResult(actionResult);
-
-      if (actionResult.success) {
-        // Refresh the page to show updated profile
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      }
-    } catch (error) {
-      handleFormError(error, "profile update");
-      setProfileResult({
-        success: false,
-        message: "An unexpected error occurred. Please try again.",
-      });
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+    const formData = new FormData(e.currentTarget);
+    await executeProfileUpdate(formData);
   };
 
   const handleAccountDeletion = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsDeletingAccount(true);
-    setDeleteResult(null);
-
     const formData = new FormData(e.currentTarget);
-    const actionResult = await deleteUserAccount(formData, user.email!);
-
-    setDeleteResult(actionResult);
-    setIsDeletingAccount(false);
-
-    if (actionResult.success) {
-      // Sign out and redirect after successful deletion
-      setTimeout(async () => {
-        await signOut({ callbackUrl: `/${locale}?deleted=true` });
-      }, 2000);
-    }
+    await executeAccountDeletion(formData);
   };
 
   // Add password for Google users
   const handleAddPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsAddingPassword(true);
-    setPasswordResult(null);
-
-    try {
-      const formData = new FormData(e.currentTarget);
-      const actionResult = await addPasswordToGoogleUser(formData, user.id!);
-
-      setPasswordResult(actionResult);
-
-      if (actionResult.success) {
-        // Refresh account info to show updated password status
-        setTimeout(async () => {
-          try {
-            const info = await getUserAccountInfo(user.id!);
-            setAccountInfo(info);
-            // Clear form using ref-based utility
-            safeFormReset(addPasswordFormRef, "add password");
-          } catch (error) {
-            handleFormError(error, "account info refresh");
-          }
-        }, 1500);
-      }
-    } catch (error) {
-      handleFormError(error, "password addition");
-      setPasswordResult({
-        success: false,
-        message: "An unexpected error occurred. Please try again.",
-      });
-    } finally {
-      setIsAddingPassword(false);
-    }
+    const formData = new FormData(e.currentTarget);
+    await executeAddPassword(formData);
   };
 
   // Change existing password
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsChangingPassword(true);
-    setChangePasswordResult(null);
-
-    try {
-      const formData = new FormData(e.currentTarget);
-      const actionResult = await changeUserPassword(formData, user.id!);
-
-      setChangePasswordResult(actionResult);
-
-      if (actionResult.success) {
-        // Clear form on success using ref-based utility
-        setTimeout(() => {
-          safeFormReset(changePasswordFormRef, "change password");
-        }, 1500);
-      }
-    } catch (error) {
-      handleFormError(error, "password change");
-      setChangePasswordResult({
-        success: false,
-        message: "An unexpected error occurred. Please try again.",
-      });
-    } finally {
-      setIsChangingPassword(false);
-    }
+    const formData = new FormData(e.currentTarget);
+    await executeChangePassword(formData);
   };
 
-  // Send email verification
+  // Send email verification - Note: This doesn't use FormData, so we handle it directly
   const handleSendEmailVerification = async () => {
     if (!user.email) return;
 
+    // Using executeSendVerification would require FormData, but this action doesn't need it
+    // So we'll keep the direct implementation for semantic correctness
     setIsSendingVerification(true);
     setVerificationResult(null);
 
     try {
       const result = await sendEmailVerification(user.email, locale);
-      setVerificationResult(result);
+      setVerificationResult(result as ActionResponse);
 
       if (result.success) {
         // Refresh account info after sending verification
@@ -273,10 +254,10 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         }, 1000);
       }
     } catch (error) {
-      handleFormError(error, "email verification sending");
+      handleFormError(error, tConsole("emailVerificationSending"));
       setVerificationResult({
         success: false,
-        message: "Failed to send verification email. Please try again.",
+        message: tErrors("failedToSendVerificationEmail"),
       });
     } finally {
       setIsSendingVerification(false);
@@ -292,7 +273,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
 
     try {
       const result = await initiateAccountLinking(user.id, linkType, locale);
-      setLinkingResult(result);
+      setLinkingResult(result as ActionResponse);
 
       if (result.success) {
         // Show success message and refresh account info after delay
@@ -304,10 +285,10 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         }, 2000);
       }
     } catch (error) {
-      handleFormError(error, "account linking");
+      handleFormError(error, tConsole("accountLinking"));
       setLinkingResult({
         success: false,
-        message: "Failed to initiate account linking. Please try again.",
+        message: tErrors("failedToInitiateAccountLinking"),
       });
     } finally {
       setIsLinkingAccount(false);
@@ -330,7 +311,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     if (!user.id) return;
 
     const confirmed = window.confirm(
-      "Are you sure you want to disable two-factor authentication? This will make your account less secure."
+      t("disableTwoFactorConfirm")
     );
     if (!confirmed) return;
 
@@ -544,7 +525,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Account Linking
+            {t("accountLinking")}
           </h2>
         </div>
 
@@ -647,97 +628,32 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                 defaultValue={user.name || ""}
                 required
                 className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                placeholder="Your full name"
+                placeholder={t("yourFullNamePlaceholder")}
               />
-              {profileResult?.errors?.name && (
+              {profileResult && isErrorResponse(profileResult) && getFieldError(profileResult, 'name') && (
                 <p className="mt-1 text-sm text-red-600">
-                  {profileResult.errors.name}
+                  {getFieldError(profileResult, 'name')}
                 </p>
               )}
             </div>
 
             {/* Success/Error Messages */}
             {profileResult?.message && (
-              <div
-                className={`rounded-xl p-4 ${
-                  profileResult.success
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  {profileResult.success ? (
-                    <svg
-                      className="h-5 w-5 text-green-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                  <p
-                    className={`text-sm font-medium ${
-                      profileResult.success ? "text-green-700" : "text-red-700"
-                    }`}
-                  >
-                    {profileResult.message}
-                  </p>
-                </div>
-              </div>
+              <AlertMessage
+                type={profileResult.success ? 'success' : 'error'}
+                message={profileResult.message}
+              />
             )}
 
-            <button
+            <GradientButton
               type="submit"
-              disabled={isUpdatingProfile}
-              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+              variant="blue"
+              fullWidth
+              loading={isUpdatingProfile}
+              loadingText={tLoading("updating")}
             >
-              {isUpdatingProfile ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Updating...
-                </>
-              ) : (
-                t("updateProfile")
-              )}
-            </button>
+              {t("updateProfile")}
+            </GradientButton>
           </form>
         </div>
 
@@ -798,7 +714,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         type="password"
                         required
                         className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="Enter your new password"
+                        placeholder={t("enterNewPasswordPlaceholder")}
                       />
                     </div>
 
@@ -815,105 +731,38 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         type="password"
                         required
                         className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="Confirm your new password"
+                        placeholder={t("confirmNewPasswordPlaceholder")}
                       />
                     </div>
 
                     {/* Success/Error Messages */}
                     {passwordResult?.message && (
-                      <div
-                        className={`rounded-xl p-4 ${
-                          passwordResult.success
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-red-50 border border-red-200"
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          {passwordResult.success ? (
-                            <svg
-                              className="h-5 w-5 text-green-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="h-5 w-5 text-red-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                          )}
-                          <p
-                            className={`text-sm font-medium ${
-                              passwordResult.success
-                                ? "text-green-700"
-                                : "text-red-700"
-                            }`}
-                          >
-                            {passwordResult.message}
-                          </p>
-                        </div>
-                        {passwordResult.errors && (
-                          <div className="mt-2">
-                            {Object.entries(passwordResult.errors).map(
-                              ([field, error]) => (
-                                <p key={field} className="text-sm text-red-600">
-                                  {error}
-                                </p>
-                              )
-                            )}
-                          </div>
+                      <AlertMessage
+                        type={passwordResult.success ? 'success' : 'error'}
+                        message={passwordResult.message}
+                      />
+                    )}
+                    {passwordResult && isErrorResponse(passwordResult) && getAllFieldErrors(passwordResult).length > 0 && (
+                      <div className="mt-2">
+                        {getAllFieldErrors(passwordResult).map(
+                          (error, index) => (
+                            <p key={index} className="text-sm text-red-600">
+                              {error}
+                            </p>
+                          )
                         )}
                       </div>
                     )}
 
-                    <button
+                    <GradientButton
                       type="submit"
-                      disabled={isAddingPassword}
-                      className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      variant="yellow-orange"
+                      fullWidth
+                      loading={isAddingPassword}
+                      loadingText={tLoading("updating")}
                     >
-                      {isAddingPassword ? (
-                        <>
-                          <svg
-                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Adding...
-                        </>
-                      ) : (
-                        t("setPassword")
-                      )}
-                    </button>
+                      {t("setPassword")}
+                    </GradientButton>
                   </form>
                 </div>
               )}
@@ -948,7 +797,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         type="password"
                         required
                         className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="Enter your current password"
+                        placeholder={t("enterCurrentPasswordPlaceholder")}
                       />
                     </div>
 
@@ -965,7 +814,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         type="password"
                         required
                         className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="Enter your new password"
+                        placeholder={t("enterNewPasswordPlaceholder")}
                       />
                     </div>
 
@@ -982,105 +831,38 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         type="password"
                         required
                         className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
-                        placeholder="Confirm your new password"
+                        placeholder={t("confirmNewPasswordPlaceholder")}
                       />
                     </div>
 
                     {/* Success/Error Messages */}
                     {changePasswordResult?.message && (
-                      <div
-                        className={`rounded-xl p-4 ${
-                          changePasswordResult.success
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-red-50 border border-red-200"
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          {changePasswordResult.success ? (
-                            <svg
-                              className="h-5 w-5 text-green-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                          ) : (
-                            <svg
-                              className="h-5 w-5 text-red-400 mr-2"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              />
-                            </svg>
-                          )}
-                          <p
-                            className={`text-sm font-medium ${
-                              changePasswordResult.success
-                                ? "text-green-700"
-                                : "text-red-700"
-                            }`}
-                          >
-                            {changePasswordResult.message}
-                          </p>
-                        </div>
-                        {changePasswordResult.errors && (
-                          <div className="mt-2">
-                            {Object.entries(changePasswordResult.errors).map(
-                              ([field, error]) => (
-                                <p key={field} className="text-sm text-red-600">
-                                  {error}
-                                </p>
-                              )
-                            )}
-                          </div>
+                      <AlertMessage
+                        type={changePasswordResult.success ? 'success' : 'error'}
+                        message={changePasswordResult.message}
+                      />
+                    )}
+                    {changePasswordResult && isErrorResponse(changePasswordResult) && getAllFieldErrors(changePasswordResult).length > 0 && (
+                      <div className="mt-2">
+                        {getAllFieldErrors(changePasswordResult).map(
+                          (error, index) => (
+                            <p key={index} className="text-sm text-red-600">
+                              {error}
+                            </p>
+                          )
                         )}
                       </div>
                     )}
 
-                    <button
+                    <GradientButton
                       type="submit"
-                      disabled={isChangingPassword}
-                      className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      variant="yellow-orange"
+                      fullWidth
+                      loading={isChangingPassword}
+                      loadingText={tLoading("updating")}
                     >
-                      {isChangingPassword ? (
-                        <>
-                          <svg
-                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Changing...
-                        </>
-                      ) : (
-                        t("changePassword")
-                      )}
-                    </button>
+                      {t("changePassword")}
+                    </GradientButton>
                   </form>
                 </div>
               )}
@@ -1104,7 +886,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                     </svg>
                   </div>
                   <p className="text-gray-600">
-                    No password management options available
+                    {t("noPasswordOptionsAvailable")}
                   </p>
                 </div>
               )}
@@ -1131,7 +913,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Email Verification
+              {t("emailVerification")}
             </h2>
           </div>
 
@@ -1153,26 +935,26 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                       {user.email}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Primary email address
+                      {t("primaryEmailAddress")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {accountInfo?.emailVerified ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Verified
+                      {t("verified")}
                     </span>
                   ) : (
                     <>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Unverified
+                        {t("unverified")}
                       </span>
                       <button
                         onClick={handleSendEmailVerification}
                         disabled={isSendingVerification}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                       >
-                        {isSendingVerification ? "Sending..." : "Verify"}
+                        {isSendingVerification ? t("sending") : t("verify")}
                       </button>
                     </>
                   )}
@@ -1181,60 +963,15 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             )}
 
             {/* Email verification result */}
-            {verificationResult && (
-              <div
-                className={`rounded-xl p-4 ${
-                  verificationResult.success
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  {verificationResult.success ? (
-                    <svg
-                      className="h-5 w-5 text-green-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                  <p
-                    className={`text-sm font-medium ${
-                      verificationResult.success
-                        ? "text-green-700"
-                        : "text-red-700"
-                    }`}
-                  >
-                    {verificationResult.message}
-                  </p>
-                </div>
-              </div>
+            {verificationResult?.message && (
+              <AlertMessage
+                type={verificationResult.success ? 'success' : 'error'}
+                message={verificationResult.message}
+              />
             )}
 
             <p className="text-sm text-gray-600">
-              Email verification adds an extra layer of security to your account
-              and enables important notifications.
+              {t("emailVerificationDescription")}
             </p>
           </div>
         </div>
@@ -1258,14 +995,13 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Account Linking
+              {t("accountLinking")}
             </h2>
           </div>
 
           <div className="space-y-6">
             <p className="text-gray-600">
-              Link multiple authentication methods to your account for enhanced
-              security and convenience.
+              {t("accountLinkingDescription")}
             </p>
 
             {/* Google Account Linking */}
@@ -1294,27 +1030,27 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      Google Account
+                      {t("googleAccount")}
                     </p>
-                    <p className="text-xs text-gray-500">Sign in with Google</p>
+                    <p className="text-xs text-gray-500">{t("signInWithGoogle")}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {accountInfo?.hasGoogleAccount ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Linked
+                      {t("linked")}
                     </span>
                   ) : (
                     <>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Not Linked
+                        {t("notLinked")}
                       </span>
                       <button
                         onClick={() => handleAccountLinking("google")}
                         disabled={isLinkingAccount}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                       >
-                        {isLinkingAccount ? "Linking..." : "Link Account"}
+                        {isLinkingAccount ? t("linking") : t("linkAccount")}
                       </button>
                     </>
                   )}
@@ -1343,29 +1079,29 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      Email & Password
+                      {t("emailPassword")}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Traditional login credentials
+                      {t("traditionalLoginCredentials")}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {accountInfo?.hasEmailAccount ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Linked
+                      {t("linked")}
                     </span>
                   ) : (
                     <>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Not Linked
+                        {t("notLinked")}
                       </span>
                       <button
                         onClick={() => handleAccountLinking("email")}
                         disabled={isLinkingAccount}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
                       >
-                        {isLinkingAccount ? "Linking..." : "Link Account"}
+                        {isLinkingAccount ? t("linking") : t("linkAccount")}
                       </button>
                     </>
                   )}
@@ -1374,53 +1110,11 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             </div>
 
             {/* Account linking result */}
-            {linkingResult && (
-              <div
-                className={`rounded-xl p-4 ${
-                  linkingResult.success
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  {linkingResult.success ? (
-                    <svg
-                      className="h-5 w-5 text-green-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                  <p
-                    className={`text-sm font-medium ${
-                      linkingResult.success ? "text-green-700" : "text-red-700"
-                    }`}
-                  >
-                    {linkingResult.message}
-                  </p>
-                </div>
-              </div>
+            {linkingResult?.message && (
+              <AlertMessage
+                type={linkingResult.success ? 'success' : 'error'}
+                message={linkingResult.message}
+              />
             )}
           </div>
         </div>
@@ -1444,7 +1138,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
               </svg>
             </div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Two-Factor Authentication
+              {t("twoFactorAuthentication")}
             </h2>
           </div>
 
@@ -1452,15 +1146,15 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  Authenticator App
+                  {t("authenticatorApp")}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Add an extra layer of security with time-based codes
+                  {t("addExtraSecurityDescription")}
                 </p>
                 {accountInfo?.twoFactorEnabled &&
                   accountInfo?.backupCodesCount !== undefined && (
                     <p className="text-xs text-green-600 mt-1">
-                      {accountInfo.backupCodesCount} backup codes available
+                      {t("backupCodesAvailable", {count: accountInfo.backupCodesCount})}
                     </p>
                   )}
               </div>
@@ -1468,25 +1162,25 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                 {accountInfo?.twoFactorEnabled ? (
                   <>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      Enabled
+                      {t("enabled")}
                     </span>
                     <button
                       onClick={handleDisableTwoFactor}
                       className="text-sm text-red-600 hover:text-red-700 font-medium"
                     >
-                      Disable 2FA
+                      {t("disableTwoFactor")}
                     </button>
                   </>
                 ) : (
                   <>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      Disabled
+                      {t("disabled")}
                     </span>
                     <button
                       onClick={() => setShowTwoFactorSetup(true)}
                       className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      Enable 2FA
+                      {t("enableTwoFactor")}
                     </button>
                   </>
                 )}
@@ -1510,12 +1204,10 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                 </svg>
                 <div>
                   <h4 className="text-sm font-medium text-blue-800 mb-1">
-                    Enhanced Security
+                    {t("enhancedSecurity")}
                   </h4>
                   <p className="text-sm text-blue-700">
-                    Two-factor authentication significantly increases your
-                    account security by requiring a second verification step
-                    during login.
+                    {t("twoFactorSecurityDescription")}
                   </p>
                 </div>
               </div>
@@ -1578,31 +1270,10 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
               </button>
             ) : (
               <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="flex items-start">
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2 mt-0.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <div>
-                      <h4 className="text-sm font-medium text-red-800 mb-1">
-                        {t("confirmDeletion")}
-                      </h4>
-                      <p className="text-sm text-red-700">
-                        {t("confirmDeletionText")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <AlertMessage
+                  type="error"
+                  message={t("dangerZoneWarning")}
+                />
 
                 <form onSubmit={handleAccountDeletion} className="space-y-4">
                   <div>
@@ -1626,54 +1297,10 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
 
                   {/* Success/Error Messages */}
                   {deleteResult?.message && (
-                    <div
-                      className={`rounded-xl p-4 ${
-                        deleteResult.success
-                          ? "bg-green-50 border border-green-200"
-                          : "bg-red-50 border border-red-200"
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        {deleteResult.success ? (
-                          <svg
-                            className="h-5 w-5 text-green-400 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            className="h-5 w-5 text-red-400 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        )}
-                        <p
-                          className={`text-sm font-medium ${
-                            deleteResult.success
-                              ? "text-green-700"
-                              : "text-red-700"
-                          }`}
-                        >
-                          {deleteResult.message}
-                        </p>
-                      </div>
-                    </div>
+                    <AlertMessage
+                      type={deleteResult.success ? 'success' : 'error'}
+                      message={deleteResult.message}
+                    />
                   )}
 
                   <div className="flex space-x-3">
@@ -1682,46 +1309,21 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                       onClick={() => {
                         setShowDeleteConfirm(false);
                         setEmailConfirmation("");
-                        setDeleteResult(null);
                       }}
                       className="flex-1 py-3 px-4 border border-gray-200 rounded-xl shadow-sm text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
                     >
                       {tCommon("cancel")}
                     </button>
-                    <button
+                    <GradientButton
                       type="submit"
-                      disabled={
-                        isDeletingAccount || emailConfirmation !== user.email
-                      }
-                      className="flex-1 flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                      variant="red"
+                      className="flex-1"
+                      disabled={emailConfirmation !== user.email}
+                      loading={isDeletingAccount}
+                      loadingText={tLoading("deleting")}
                     >
-                      {isDeletingAccount ? (
-                        <>
-                          <svg
-                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Deleting...
-                        </>
-                      ) : (
-                        t("deleteAccount")
-                      )}
-                    </button>
+                      {t("deleteAccount")}
+                    </GradientButton>
                   </div>
                 </form>
               </div>
@@ -1736,6 +1338,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
           <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <TwoFactorSetup
               user={user}
+              locale={locale}
               onSetupComplete={handleTwoFactorSetupComplete}
               onCancel={() => setShowTwoFactorSetup(false)}
             />

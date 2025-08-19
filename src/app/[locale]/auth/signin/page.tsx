@@ -2,10 +2,17 @@
 
 import { useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { LoadingLayout } from '@/components/layouts'
+import { useSafeLocale } from '@/hooks/use-safe-locale'
 
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const t = useTranslations('LoadingStates')
+  
+  // Use safe locale extraction
+  const locale = useSafeLocale()
   
   useEffect(() => {
     const error = searchParams.get('error')
@@ -13,21 +20,14 @@ export default function SignInPage() {
     if (error) {
       // If there's an error parameter, redirect to our error page
       console.log('🚨 SignIn page: Redirecting error to error page:', error)
-      router.replace(`/en/auth/error?error=${error}`)
+      router.replace(`/${locale}/auth/error?error=${error}`)
       return
     }
     
     // If no error, redirect to the main sign-in page (home)
-    router.replace('/en')
-  }, [searchParams, router])
+    router.replace(`/${locale}`)
+  }, [searchParams, router, locale])
 
   // Show loading while redirecting
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-2 text-gray-600">Redirecting...</p>
-      </div>
-    </div>
-  )
+  return <LoadingLayout message={t('redirecting')} fullScreen />
 }

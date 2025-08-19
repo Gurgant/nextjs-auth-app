@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -20,16 +14,15 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
@@ -39,59 +32,46 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique  // Required for all users
-  emailVerified DateTime?
-  password      String?   // For credentials auth
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Password Management
-  passwordSetAt     DateTime? // When password was last set/changed
-  requiresPasswordChange Boolean @default(false) // Force password change
-  
-  // Account Linking
-  hasGoogleAccount  Boolean @default(false) // Has linked Google account
-  hasEmailAccount   Boolean @default(false) // Has email/password auth
-  primaryAuthMethod String? // 'google' or 'email'
-  
-  // Security Audit
-  lastPasswordChange DateTime?
-  loginAttempts      Int      @default(0)
-  lockedUntil       DateTime?
-  lastLoginAt       DateTime?
-  lastLoginIp       String?
-  
-  // Two-Factor Authentication
-  twoFactorEnabled   Boolean  @default(false)
-  twoFactorSecret    String?  // Encrypted TOTP secret
-  backupCodes        String[] // Encrypted backup codes
-  twoFactorEnabledAt DateTime?
-  
-  // Enhanced Email Verification
-  emailVerificationRequired Boolean @default(true)
-  
-  accounts           Account[]
-  sessions           Session[]
-  passwordResetTokens PasswordResetToken[]
-  emailVerificationTokens EmailVerificationToken[]
-  accountLinkRequests AccountLinkRequest[]
-  securityEvents     SecurityEvent[]
-  
+  id                        String                   @id @default(cuid())
+  name                      String?
+  email                     String                   @unique
+  emailVerified             DateTime?
+  image                     String?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  password                  String?
+  hasEmailAccount           Boolean                  @default(false)
+  hasGoogleAccount          Boolean                  @default(false)
+  lastLoginAt               DateTime?
+  lastLoginIp               String?
+  lastPasswordChange        DateTime?
+  lockedUntil               DateTime?
+  loginAttempts             Int                      @default(0)
+  passwordSetAt             DateTime?
+  primaryAuthMethod         String?
+  requiresPasswordChange    Boolean                  @default(false)
+  backupCodes               String[]
+  emailVerificationRequired Boolean                  @default(true)
+  twoFactorEnabled          Boolean                  @default(false)
+  twoFactorEnabledAt        DateTime?
+  twoFactorSecret           String?
+  accounts                  Account[]
+  accountLinkRequests       AccountLinkRequest[]
+  emailVerificationTokens   EmailVerificationToken[]
+  passwordResetTokens       PasswordResetToken[]
+  securityEvents            SecurityEvent[]
+  sessions                  Session[]
+
   @@index([email])
   @@index([lastLoginAt])
 }
 
-// Password Reset Tokens
 model PasswordResetToken {
   id        String   @id @default(cuid())
   token     String   @unique
@@ -99,44 +79,39 @@ model PasswordResetToken {
   expires   DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([token])
   @@index([expires])
   @@index([userId])
 }
 
-// Email Verification Tokens
 model EmailVerificationToken {
   id        String   @id @default(cuid())
   token     String   @unique
   userId    String
-  email     String   // Email to verify
+  email     String
   expires   DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([token])
   @@index([expires])
   @@index([userId])
 }
 
-// Account Linking Requests
 model AccountLinkRequest {
   id          String   @id @default(cuid())
   userId      String
-  requestType String   // 'link_google' or 'link_email'
+  requestType String
   token       String   @unique
   expires     DateTime
   completed   Boolean  @default(false)
-  metadata    Json?    // Store additional data like Google account info
+  metadata    Json?
   createdAt   DateTime @default(now())
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([token])
   @@index([expires])
   @@index([userId])
@@ -146,25 +121,23 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
-  
+
   @@unique([identifier, token])
   @@index([expires])
 }
 
-// Security Event Logging for Audit Trail
 model SecurityEvent {
   id        String   @id @default(cuid())
   userId    String
-  eventType String   // 'login', 'failed_login', '2fa_enabled', 'account_linked', 'password_changed', etc.
-  details   String?  // Human-readable event description
-  metadata  Json?    // Additional event data (IP, user agent, etc.)
+  eventType String
+  details   String?
+  metadata  Json?
   ipAddress String?
   userAgent String?
   success   Boolean  @default(true)
   createdAt DateTime @default(now())
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([eventType])
   @@index([createdAt])

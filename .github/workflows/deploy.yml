@@ -1,0 +1,236 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10.12.1'
+
+jobs:
+  # ========== Pre-deployment Checks ==========
+  pre-deploy-checks:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for deployment blockers
+        id: check
+        run: |
+          # Check for DO NOT DEPLOY tag in recent commits
+          if git log --oneline -10 | grep -i "DO NOT DEPLOY"; then
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Found DO NOT DEPLOY tag in recent commits"
+            exit 1
+          fi
+          
+          # Check for WIP commits
+          if git log --oneline -10 | grep -i "WIP"; then
+            echo "⚠️ Warning: Found WIP commits"
+          fi
+          
+          echo "should-deploy=true" >> $GITHUB_OUTPUT
+          echo "✅ Pre-deployment checks passed"
+
+  # ========== Build & Test ==========
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    needs: pre-deploy-checks
+    if: needs.pre-deploy-checks.outputs.should-deploy == 'true'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5432/test_db
+        run: |
+          pnpm prisma:generate
+          pnpm test:unit
+          pnpm lint
+          pnpm typecheck
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            .next/
+            public/
+            package.json
+            pnpm-lock.yaml
+            prisma/
+
+  # ========== Deploy to Staging ==========
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event.inputs.environment != 'production'
+    environment:
+      name: staging
+      url: https://staging.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging environment"
+          # Add actual deployment commands here
+          # Examples:
+          # - Deploy to Vercel: vercel --prod
+          # - Deploy to AWS: aws s3 sync .next/ s3://bucket/
+          # - Deploy to Docker: docker push image:tag
+
+      - name: Run smoke tests
+        run: |
+          echo "🧪 Running smoke tests on staging"
+          # Add smoke test commands
+
+      - name: Notify deployment
+        run: |
+          echo "✅ Deployment to staging completed"
+
+  # ========== Deploy to Production ==========
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Database migrations
+        run: |
+          echo "📊 Running database migrations"
+          # pnpm prisma:deploy
+
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production environment"
+          # Add actual deployment commands here
+          # Examples:
+          # - Deploy to Vercel: vercel --prod
+          # - Deploy to AWS: aws s3 sync .next/ s3://bucket/
+          # - Deploy to Railway: railway up
+          # - Deploy to Render: render deploy
+
+      - name: Verify deployment
+        run: |
+          echo "🔍 Verifying production deployment"
+          # Add health check commands
+          # curl -f https://example.com/api/health || exit 1
+
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            ## Changes in this release
+            - Automated deployment from commit ${{ github.sha }}
+            - View [commit history](https://github.com/${{ github.repository }}/commits/${{ github.sha }})
+          draft: false
+          prerelease: false
+
+  # ========== Post-deployment ==========
+  post-deployment:
+    name: Post-deployment Tasks
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    
+    steps:
+      - name: Clear CDN cache
+        run: |
+          echo "🗑️ Clearing CDN cache"
+          # Add CDN cache clearing commands
+
+      - name: Warm up application
+        run: |
+          echo "🔥 Warming up application"
+          # Add warm-up requests
+
+      - name: Monitor deployment
+        run: |
+          echo "📊 Setting up monitoring alerts"
+          # Add monitoring setup
+
+      - name: Notify team
+        run: |
+          echo "📧 Notifying team of deployment"
+          # Add notification commands (Slack, Discord, email, etc.)
+
+      - name: Update documentation
+        run: |
+          echo "📚 Updating deployment documentation"
+          # Add documentation update commands
