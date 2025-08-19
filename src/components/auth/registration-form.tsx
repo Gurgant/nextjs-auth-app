@@ -167,7 +167,7 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
             type="submit"
             variant="green"
             fullWidth
-            disabled={!agreed}
+            disabled={!agreed || isLoading}
             loading={isLoading}
             loadingText={t('creating')}
           >

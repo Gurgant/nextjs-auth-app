@@ -3,6 +3,8 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { repositories } from "@/lib/repositories";
+import { commandBus, RegisterUserCommand, ChangePasswordCommand } from "@/lib/commands";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
 import { 
@@ -67,69 +69,22 @@ const changePasswordSchema = z
 export type ActionResult = ActionResponse;
 
 export async function registerUser(formData: FormData): Promise<ActionResult> {
-  try {
-    const locale = formData.get("locale") as string || "en";
-    const data = {
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      password: formData.get("password") as string,
-      confirmPassword: formData.get("confirmPassword") as string,
-    };
-
-    // Validate input
-    const validatedData = registerSchema.parse(data);
-
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validatedData.email },
-    });
-
-    if (existingUser) {
-      return await createFieldErrorResponseI18n(
-        "errors.accountAlreadyExists",
-        "email",
-        locale,
-        "An account with this email already exists"
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
-
-    // Create user with proper metadata
-    const user = await prisma.user.create({
-      data: {
-        name: validatedData.name,
-        email: validatedData.email,
-        password: hashedPassword,
-        hasEmailAccount: true,
-        hasGoogleAccount: false,
-        primaryAuthMethod: "email",
-        passwordSetAt: new Date(),
-        lastPasswordChange: new Date(),
-      },
-    });
-
-    console.log("User created successfully:", {
-      id: user.id,
-      email: user.email,
-    });
-
-    return await createSuccessResponseI18n(
-      "success.accountCreated",
-      locale,
-      "Account created successfully!"
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const locale = await resolveFormLocale(formData);
-      return createValidationErrorResponse(error, locale);
-    }
-
-    const locale = await resolveFormLocale(formData);
-    logActionError('registerUser', error);
-    return createGenericErrorResponse('unknown', undefined, locale);
-  }
+  const locale = formData.get("locale") as string || "en";
+  
+  // Use command pattern for registration
+  const result = await commandBus.execute(RegisterUserCommand, {
+    name: formData.get("name") as string,
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+    confirmPassword: formData.get("confirmPassword") as string,
+    locale
+  }, {
+    locale,
+    ipAddress: formData.get("ipAddress") as string | undefined,
+    userAgent: formData.get("userAgent") as string | undefined
+  });
+  
+  return result;
 }
 
 export async function deleteUserAccount(
@@ -148,18 +103,15 @@ export async function deleteUserAccount(
     const validatedData = deleteAccountSchema.parse(data);
 
     // Find and delete user
-    const user = await prisma.user.findUnique({
-      where: { email: validatedData.email },
-    });
+    const userRepo = repositories.getUserRepository();
+    const user = await userRepo.findByEmail(validatedData.email);
 
     if (!user) {
       return createGenericErrorResponse('notFound', 'User not found', locale);
     }
 
     // Delete user account
-    await prisma.user.delete({
-      where: { email: validatedData.email },
-    });
+    await userRepo.delete(user.id);
 
     console.log("User account deleted:", { email: validatedData.email });
 
@@ -201,10 +153,8 @@ export async function updateUserProfile(
     }
 
     // Update user profile
-    await prisma.user.update({
-      where: { id: userId },
-      data: { name: name.trim() },
-    });
+    const userRepo = repositories.getUserRepository();
+    await userRepo.update(userId, { name: name.trim() });
 
     console.log("User profile updated:", { userId, name });
 
@@ -241,17 +191,16 @@ export async function addPasswordToGoogleUser(
     const validatedData = addPasswordSchema.parse(data);
 
     // Check if user exists and is a Google user
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { accounts: true },
-    });
+    const userRepo = repositories.getUserRepository();
+    const user = await userRepo.findById(userId);
+    const userWithAccounts = user ? await userRepo.findByEmailWithAccounts(user.email) : null;
 
-    if (!user) {
+    if (!userWithAccounts) {
       return createGenericErrorResponse('notFound', 'User not found', locale);
     }
 
     // Check if user already has a password
-    if (user.password) {
+    if (userWithAccounts.password) {
       return await createErrorResponseI18n(
         "errors.userAlreadyHasPassword",
         locale,
@@ -260,9 +209,9 @@ export async function addPasswordToGoogleUser(
     }
 
     // Check if user has Google account
-    const hasGoogleAccount = user.accounts.some(
+    const hasGoogleAccount = userWithAccounts.accounts?.some(
       (account) => account.provider === "google"
-    );
+    ) || false;
     if (!hasGoogleAccount) {
       return await createErrorResponseI18n(
         "errors.onlyGoogleUsers",
@@ -275,17 +224,14 @@ export async function addPasswordToGoogleUser(
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
     // Update user with password and metadata
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        password: hashedPassword,
-        passwordSetAt: new Date(),
-        lastPasswordChange: new Date(),
-        hasEmailAccount: true,
-        hasGoogleAccount: true, // Ensure Google account flag is set
-        primaryAuthMethod: user.primaryAuthMethod || "google",
-      },
-    });
+    await userRepo.updatePassword(userId, hashedPassword);
+    await userRepo.update(userId, {
+      passwordSetAt: new Date(),
+      lastPasswordChange: new Date(),
+      hasEmailAccount: true,
+      hasGoogleAccount: true, // Ensure Google account flag is set
+      primaryAuthMethod: userWithAccounts.primaryAuthMethod || "google",
+    } as any);
 
     console.log("Password added for Google user:", { userId });
 
@@ -315,93 +261,21 @@ export async function changeUserPassword(
 ): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
   
-  try {
-    const data = {
-      currentPassword: formData.get("currentPassword") as string,
-      newPassword: formData.get("newPassword") as string,
-      confirmPassword: formData.get("confirmPassword") as string,
-    };
-
-    // Validate input
-    const validatedData = changePasswordSchema.parse(data);
-
-    // Check if user exists and has a password
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale);
-    }
-
-    if (!user.password) {
-      return await createErrorResponseI18n(
-        "errors.userDoesNotHavePassword",
-        locale,
-        "User does not have a password set"
-      );
-    }
-
-    // Verify current password
-    const currentPasswordMatch = await bcrypt.compare(
-      validatedData.currentPassword,
-      user.password
-    );
-    if (!currentPasswordMatch) {
-      return await createFieldErrorResponseI18n(
-        "errors.currentPasswordIncorrect",
-        "currentPassword",
-        locale,
-        "Current password is incorrect"
-      );
-    }
-
-    // Check if new password is different from current
-    const samePassword = await bcrypt.compare(
-      validatedData.newPassword,
-      user.password
-    );
-    if (samePassword) {
-      return await createFieldErrorResponseI18n(
-        "errors.passwordMustBeDifferent",
-        "newPassword",
-        locale,
-        "New password must be different from current password"
-      );
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(validatedData.newPassword, 12);
-
-    // Update user with new password
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        password: hashedPassword,
-        lastPasswordChange: new Date(),
-        requiresPasswordChange: false,
-      },
-    });
-
-    console.log("Password changed for user:", { userId });
-
-    return await createSuccessResponseI18n(
-      "success.passwordChanged",
-      locale,
-      "Password changed successfully!"
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return createValidationErrorResponse(error, locale);
-    }
-
-    logActionError('changeUserPassword', error);
-    return await createErrorResponseI18n(
-      "errors.failedToChangePassword",
-      locale,
-      "Failed to change password. Please try again."
-    );
-  }
+  // Use command pattern for password change
+  const result = await commandBus.execute(ChangePasswordCommand, {
+    userId,
+    currentPassword: formData.get("currentPassword") as string,
+    newPassword: formData.get("newPassword") as string,
+    confirmPassword: formData.get("confirmPassword") as string,
+    locale
+  }, {
+    userId,
+    locale,
+    ipAddress: formData.get("ipAddress") as string | undefined,
+    userAgent: formData.get("userAgent") as string | undefined
+  });
+  
+  return result;
 }
 
 // Migrate user account metadata (run once for existing users)
@@ -409,33 +283,25 @@ export async function migrateUserAccountMetadata(
   userId: string
 ): Promise<ActionResult> {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        accounts: {
-          select: {
-            provider: true,
-            type: true,
-          },
-        },
-      },
-    });
+    const userRepo = repositories.getUserRepository();
+    const user = await userRepo.findById(userId);
+    const userWithAccounts = user ? await userRepo.findByEmailWithAccounts(user.email) : null;
 
-    if (!user) {
+    if (!userWithAccounts) {
       return createGenericErrorResponse('notFound', 'User not found');
     }
 
-    const hasGoogleAccount = user.accounts.some(
+    const hasGoogleAccount = userWithAccounts.accounts?.some(
       (account) => account.provider === "google"
-    );
-    const hasPassword = !!user.password;
+    ) || false;
+    const hasPassword = !!userWithAccounts.password;
     const hasEmailAccount = hasPassword;
 
     // Determine primary auth method
     let primaryAuthMethod = null;
     if (hasGoogleAccount && hasPassword) {
       // If both, keep existing or default to google
-      primaryAuthMethod = user.primaryAuthMethod || "google";
+      primaryAuthMethod = userWithAccounts?.primaryAuthMethod || "google";
     } else if (hasGoogleAccount) {
       primaryAuthMethod = "google";
     } else if (hasPassword) {
@@ -443,23 +309,20 @@ export async function migrateUserAccountMetadata(
     }
 
     // Update user with metadata
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        hasGoogleAccount,
-        hasEmailAccount,
-        primaryAuthMethod,
-        passwordSetAt:
-          user.password && !user.passwordSetAt
-            ? user.createdAt
-            : user.passwordSetAt,
-        lastPasswordChange:
-          user.password && !user.lastPasswordChange
-            ? user.createdAt
-            : user.lastPasswordChange,
-        lastLoginAt: user.lastLoginAt || new Date(),
-      },
-    });
+    await userRepo.update(userId, {
+      hasGoogleAccount,
+      hasEmailAccount,
+      primaryAuthMethod,
+      passwordSetAt:
+        userWithAccounts.password && !userWithAccounts.passwordSetAt
+          ? userWithAccounts.createdAt
+          : userWithAccounts.passwordSetAt,
+      lastPasswordChange:
+        userWithAccounts.password && !userWithAccounts.lastPasswordChange
+          ? userWithAccounts.createdAt
+          : userWithAccounts.lastPasswordChange,
+      lastLoginAt: userWithAccounts.lastLoginAt || new Date(),
+    } as any);
 
     console.log("User metadata migrated:", {
       userId,
@@ -486,80 +349,68 @@ export async function migrateUserAccountMetadata(
 // Get user account information
 export async function getUserAccountInfo(userId: string) {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        accounts: {
-          select: {
-            provider: true,
-            type: true,
-          },
-        },
-      },
-    });
+    const userRepo = repositories.getUserRepository();
+    const user = await userRepo.findById(userId);
 
     if (!user) {
       return null;
     }
+    
+    const userWithAccounts = await userRepo.findByEmailWithAccounts(user.email);
+    
+    if (!userWithAccounts) {
+      return null;
+    }
 
-    const hasGoogleAccount = user.accounts.some(
+    const hasGoogleAccount = userWithAccounts.accounts?.some(
       (account) => account.provider === "google"
-    );
-    const hasPassword = !!user.password;
+    ) || false;
+    const hasPassword = !!userWithAccounts.password;
 
     // Auto-migrate if metadata is missing
-    if (user.hasGoogleAccount === null || user.hasEmailAccount === null) {
+    if (userWithAccounts.hasGoogleAccount === null || userWithAccounts.hasEmailAccount === null) {
       console.log("Auto-migrating user metadata for:", userId);
       await migrateUserAccountMetadata(userId);
 
       // Re-fetch updated user data
-      const updatedUser = await prisma.user.findUnique({
-        where: { id: userId },
-        include: {
-          accounts: {
-            select: {
-              provider: true,
-              type: true,
-            },
-          },
-        },
-      });
+      const updatedUser = await userRepo.findById(userId);
+      const updatedUserWithAccounts = updatedUser ? await userRepo.findByEmailWithAccounts(updatedUser.email) : null;
 
-      if (updatedUser) {
+      if (updatedUserWithAccounts) {
         return {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          name: updatedUser.name,
-          hasGoogleAccount: updatedUser.hasGoogleAccount,
-          hasPassword: !!updatedUser.password,
-          hasEmailAccount: updatedUser.hasEmailAccount,
-          primaryAuthMethod: updatedUser.primaryAuthMethod,
-          passwordSetAt: updatedUser.passwordSetAt,
-          lastPasswordChange: updatedUser.lastPasswordChange,
-          lastLoginAt: updatedUser.lastLoginAt,
-          accounts: updatedUser.accounts || [],
-          createdAt: updatedUser.createdAt,
+          id: updatedUserWithAccounts.id,
+          email: updatedUserWithAccounts.email,
+          name: updatedUserWithAccounts.name,
+          hasGoogleAccount: updatedUserWithAccounts.hasGoogleAccount,
+          hasPassword: !!updatedUserWithAccounts.password,
+          hasEmailAccount: updatedUserWithAccounts.hasEmailAccount,
+          primaryAuthMethod: updatedUserWithAccounts.primaryAuthMethod,
+          passwordSetAt: updatedUserWithAccounts.passwordSetAt,
+          lastPasswordChange: updatedUserWithAccounts.lastPasswordChange,
+          lastLoginAt: updatedUserWithAccounts.lastLoginAt,
+          accounts: updatedUserWithAccounts.accounts || [],
+          createdAt: updatedUserWithAccounts.createdAt,
         };
       }
     }
 
     return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
+      id: userWithAccounts.id,
+      email: userWithAccounts.email,
+      name: userWithAccounts.name,
       hasGoogleAccount:
-        user.hasGoogleAccount !== null
-          ? user.hasGoogleAccount
+        userWithAccounts.hasGoogleAccount !== null
+          ? userWithAccounts.hasGoogleAccount
           : hasGoogleAccount,
       hasPassword,
       hasEmailAccount:
-        user.hasEmailAccount !== null ? user.hasEmailAccount : hasPassword,
-      primaryAuthMethod: user.primaryAuthMethod,
-      passwordSetAt: user.passwordSetAt,
-      lastPasswordChange: user.lastPasswordChange,
-      lastLoginAt: user.lastLoginAt,
-      accounts: user.accounts || [],
-      createdAt: user.createdAt,
+        userWithAccounts.hasEmailAccount !== null ? userWithAccounts.hasEmailAccount : hasPassword,
+      primaryAuthMethod: userWithAccounts.primaryAuthMethod,
+      passwordSetAt: userWithAccounts.passwordSetAt,
+      lastPasswordChange: userWithAccounts.lastPasswordChange,
+      lastLoginAt: userWithAccounts.lastLoginAt,
+      accounts: userWithAccounts.accounts || [],
+      createdAt: userWithAccounts.createdAt,
     };
   } catch (error) {
     console.error("Get user account info error:", error);

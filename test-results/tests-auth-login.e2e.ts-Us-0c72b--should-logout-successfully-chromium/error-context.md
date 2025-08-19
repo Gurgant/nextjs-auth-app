@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- navigation:
+  - link "Auth App":
+    - /url: /en
+    - img
+    - heading "Auth App" [level=1]
+  - 'button "Current language: English. Click to change language."':
+    - text: EN English
+    - img
+- main:
+  - img
+  - heading "Dashboard" [level=1]
+  - paragraph: You are logged in! This is a protected page.
+  - img
+  - img
+  - heading "Welcome, Test User!" [level=2]
+  - paragraph:
+    - img
+    - text: test@example.com
+  - text: Active session
+  - img
+  - heading "Session Status" [level=3]
+  - paragraph: Active
+  - paragraph: Authenticated successfully
+  - img
+  - heading "Security" [level=3]
+  - paragraph: Protected with NextAuth.js
+  - img
+  - heading "Multi-language" [level=3]
+  - paragraph: 5 languages supported
+  - img
+  - heading "Performance" [level=3]
+  - paragraph: Built with Next.js 15
+  - heading "Session Management" [level=3]
+  - paragraph: Ready to sign out? Your session will be securely terminated.
+  - link "Account Settings":
+    - /url: /en/account
+    - img
+    - text: Account Settings
+  - button "Sign out":
+    - img
+    - text: Sign out
+- alert
+```

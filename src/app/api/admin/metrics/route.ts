@@ -19,19 +19,28 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // For now, allow any authenticated user to view metrics
-    // In production, you might want to check for admin role
-    // const user = await prisma.user.findUnique({
-    //   where: { email: session.user.email },
-    //   select: { role: true }
-    // })
+    // TODO: Implement role-based access control
+    // Currently, any authenticated user can view metrics (development mode)
     // 
-    // if (user?.role !== 'ADMIN') {
-    //   return NextResponse.json(
-    //     { error: 'Admin privileges required' },
-    //     { status: 403 }
-    //   )
-    // }
+    // Future implementation steps:
+    // 1. Add 'role' field to User model in schema.prisma:
+    //    role String @default("USER")
+    // 2. Run migration: pnpm prisma migrate dev
+    // 3. Update user creation to assign roles
+    // 4. Uncomment the following code:
+    /*
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { role: true }
+    })
+    
+    if (user?.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Admin privileges required' },
+        { status: 403 }
+      )
+    }
+    */
 
     const startTime = Date.now()
 

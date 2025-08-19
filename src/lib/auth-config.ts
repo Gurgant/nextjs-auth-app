@@ -3,6 +3,7 @@ import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
+import { repositories } from "@/lib/repositories";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { LRUCache } from "lru-cache";
@@ -72,33 +73,14 @@ export const authOptions = {
             return result;
           }
 
-          // Find user in database
-          const user = await prisma.user.findUnique({
-            where: { email },
-            include: {
-              accounts: true,
-            },
-          });
+          // Find user in database using repository
+          const userRepo = repositories.getUserRepository();
+          const user = await userRepo.findByCredentials(email, password);
 
           if (!user) {
             // Increment rate limit counter on failed attempt
             authRateLimiter.set(email, attempts + 1);
-            console.log("User not found:", email);
-            return result;
-          }
-
-          // Check if user has a password (some users might only use OAuth)
-          if (!user.password) {
-            console.log("User has no password (OAuth only account):", email);
-            return result;
-          }
-
-          // Verify password
-          const isValidPassword = await bcrypt.compare(password, user.password);
-          if (!isValidPassword) {
-            // Increment rate limit counter on failed attempt
-            authRateLimiter.set(email, attempts + 1);
-            console.log("Invalid password for user:", email);
+            console.log("Invalid credentials for:", email);
             return result;
           }
 
@@ -112,10 +94,7 @@ export const authOptions = {
           }
 
           // Update last login timestamp
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          });
+          await userRepo.updateLastLogin(user.id);
 
           console.log("Successful login for user:", email);
 
@@ -186,12 +165,8 @@ export const authOptions = {
       // OAuth sign-in logic
       if (account?.provider === "google") {
         try {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email || '' },
-            include: {
-              accounts: true,
-            },
-          });
+          const userRepo = repositories.getUserRepository();
+          const existingUser = await userRepo.findByEmailWithAccounts(user.email || '');
 
           if (existingUser) {
             const hasGoogleAccount = (existingUser as any).accounts?.some(
@@ -200,26 +175,23 @@ export const authOptions = {
             const hasPassword = !!existingUser.password;
 
             // Update user login metadata
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                hasGoogleAccount: hasGoogleAccount,
-                hasEmailAccount: hasPassword,
-                primaryAuthMethod:
-                  existingUser.primaryAuthMethod ||
-                  (account.provider === "google" ? "google" : "email"),
-                lastLoginAt: new Date(),
-                // Set password timestamps for existing password users
-                passwordSetAt:
-                  existingUser.password && !existingUser.passwordSetAt
-                    ? existingUser.createdAt
-                    : existingUser.passwordSetAt,
-                lastPasswordChange:
-                  existingUser.password && !existingUser.lastPasswordChange
-                    ? existingUser.createdAt
-                    : existingUser.lastPasswordChange,
-              },
-            });
+            await userRepo.update(existingUser.id, {
+              hasGoogleAccount: hasGoogleAccount,
+              hasEmailAccount: hasPassword,
+              primaryAuthMethod:
+                existingUser.primaryAuthMethod ||
+                (account.provider === "google" ? "google" : "email"),
+              lastLoginAt: new Date(),
+              // Set password timestamps for existing password users
+              passwordSetAt:
+                existingUser.password && !existingUser.passwordSetAt
+                  ? existingUser.createdAt
+                  : existingUser.passwordSetAt,
+              lastPasswordChange:
+                existingUser.password && !existingUser.lastPasswordChange
+                  ? existingUser.createdAt
+                  : existingUser.lastPasswordChange,
+            } as any);
 
             console.log("Updated user login metadata:", {
               userId: user.id,

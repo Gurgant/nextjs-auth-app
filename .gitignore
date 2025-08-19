@@ -9,3 +9,5 @@ dist/
 postgres_data/
 src/generated/
 /generated/prisma
+.env.development
+.env.test

@@ -1,6 +1,19 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
+// Polyfill for setImmediate (not available in jsdom environment)
+if (typeof setImmediate === 'undefined') {
+  global.setImmediate = (callback, ...args) => {
+    return setTimeout(callback, 0, ...args)
+  }
+}
+
+if (typeof clearImmediate === 'undefined') {
+  global.clearImmediate = (id) => {
+    return clearTimeout(id)
+  }
+}
+
 // Mock next/server for middleware tests
 jest.mock('next/server', () => {
   
