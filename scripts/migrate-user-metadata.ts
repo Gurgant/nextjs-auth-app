@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { PrismaClient } from '../src/generated/prisma'
+import { PrismaClient } from '../src/lib/types/prisma'
 
 const prisma = new PrismaClient()
 

@@ -48,6 +48,9 @@ export default function HomePage() {
               <Link
                 href={`/${currentLocale}/dashboard`}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                prefetch={false}
+                scroll={false}
+                data-testid="go-to-dashboard-button"
               >
                 <svg
                   className="w-5 h-5"

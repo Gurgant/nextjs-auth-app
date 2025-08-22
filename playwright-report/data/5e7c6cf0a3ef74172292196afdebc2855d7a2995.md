@@ -1,0 +1,72 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "Auth App" [ref=e6] [cursor=pointer]:
+          - /url: /en
+          - img [ref=e8] [cursor=pointer]
+          - heading "Auth App" [level=1] [ref=e10] [cursor=pointer]
+        - 'button "Current language: English. Click to change language." [ref=e13] [cursor=pointer]':
+          - generic [ref=e14] [cursor=pointer]: EN
+          - generic [ref=e15] [cursor=pointer]: English
+          - img [ref=e16] [cursor=pointer]
+    - main [ref=e18]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - heading "User Dashboard" [level=1] [ref=e23]
+            - generic [ref=e24]: User
+          - paragraph [ref=e25]: Welcome back, Test User!
+        - generic [ref=e26]:
+          - heading "Account Information" [level=2] [ref=e27]
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e30]: Email
+              - generic [ref=e31]: test@example.com
+            - generic [ref=e32]:
+              - generic [ref=e33]: Name
+              - generic [ref=e34]: Test User
+            - generic [ref=e35]:
+              - generic [ref=e36]: Role
+              - generic [ref=e37]: User
+            - generic [ref=e38]:
+              - generic [ref=e39]: Email Verified
+              - generic [ref=e41]: ✓ Verified
+        - generic [ref=e42]:
+          - heading "Available Features" [level=2] [ref=e43]
+          - list [ref=e44]:
+            - listitem [ref=e45]:
+              - img [ref=e46]
+              - generic [ref=e48]: Basic dashboard
+            - listitem [ref=e49]:
+              - img [ref=e50]
+              - generic [ref=e52]: Profile management
+            - listitem [ref=e53]:
+              - img [ref=e54]
+              - generic [ref=e56]: Email notifications
+        - generic [ref=e57]:
+          - heading "Quick Actions" [level=2] [ref=e58]
+          - generic [ref=e59]:
+            - link "Edit Profile Update your personal information" [ref=e60] [cursor=pointer]:
+              - /url: /en/settings
+              - heading "Edit Profile" [level=3] [ref=e61] [cursor=pointer]
+              - paragraph [ref=e62] [cursor=pointer]: Update your personal information
+            - link "Security Settings Manage your password and 2FA" [ref=e63] [cursor=pointer]:
+              - /url: /en/settings/security
+              - heading "Security Settings" [level=3] [ref=e64] [cursor=pointer]
+              - paragraph [ref=e65] [cursor=pointer]: Manage your password and 2FA
+            - link "Upgrade to Pro Unlock advanced features" [ref=e66] [cursor=pointer]:
+              - /url: /en/upgrade
+              - heading "Upgrade to Pro" [level=3] [ref=e67] [cursor=pointer]
+              - paragraph [ref=e68] [cursor=pointer]: Unlock advanced features
+            - link "Help & Support Get assistance when you need it" [ref=e69] [cursor=pointer]:
+              - /url: /en/help
+              - heading "Help & Support" [level=3] [ref=e70] [cursor=pointer]
+              - paragraph [ref=e71] [cursor=pointer]: Get assistance when you need it
+  - button "Open Next.js Dev Tools" [ref=e77] [cursor=pointer]:
+    - img [ref=e78] [cursor=pointer]
+  - alert [ref=e81]
+```

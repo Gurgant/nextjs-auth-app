@@ -1,5 +1,5 @@
 import { FullConfig } from '@playwright/test'
-import { PrismaClient } from '@/generated/prisma'
+import { PrismaClient } from '@/lib/types/prisma'
 import bcrypt from 'bcryptjs'
 
 /**
@@ -7,10 +7,12 @@ import bcrypt from 'bcryptjs'
  * Runs once before all tests
  */
 async function globalSetup(config: FullConfig) {
-  console.log('<� Starting Playwright global setup...')
+  console.log('🚀 Starting Playwright global setup...')
   
   // Set environment variables for tests
-  Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', writable: true })
+  if (!process.env.NODE_ENV) {
+    (process.env as any).NODE_ENV = 'test'
+  }
   process.env.NEXTAUTH_URL = config.projects[0].use?.baseURL || 'http://localhost:3000'
   process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'test-secret-for-e2e'
   
@@ -73,18 +75,24 @@ async function seedTestData(prisma: PrismaClient) {
       name: 'Test User',
       password: await bcrypt.hash('Test123!', 10),
       emailVerified: new Date(),
+      role: 'USER' as const,
+      twoFactorEnabled: false, // Explicitly disable 2FA for regular test user
     },
     {
       email: 'admin@example.com',
       name: 'Admin User',
       password: await bcrypt.hash('Admin123!', 10),
       emailVerified: new Date(),
+      role: 'ADMIN' as const,
+      twoFactorEnabled: false, // Explicitly disable 2FA for admin test user
     },
     {
       email: 'unverified@example.com',
       name: 'Unverified User',
       password: await bcrypt.hash('Unverified123!', 10),
       emailVerified: null,
+      role: 'USER' as const,
+      twoFactorEnabled: false, // Explicitly disable 2FA for unverified test user
     },
     {
       email: '2fa@example.com',
@@ -93,6 +101,7 @@ async function seedTestData(prisma: PrismaClient) {
       emailVerified: new Date(),
       twoFactorEnabled: true,
       twoFactorSecret: 'JBSWY3DPEHPK3PXP', // Test secret
+      role: 'PRO_USER' as const,
     },
   ]
   
@@ -118,7 +127,8 @@ async function seedTestData(prisma: PrismaClient) {
       email: 'oauth@example.com',
       name: 'OAuth User',
       emailVerified: new Date(),
-      image: 'https://example.com/avatar.jpg'
+      image: 'https://example.com/avatar.jpg',
+      role: 'USER' as const
     }
   })
   

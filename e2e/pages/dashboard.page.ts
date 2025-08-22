@@ -38,11 +38,33 @@ export class DashboardPage extends BasePage {
   }
   
   /**
-   * Navigate to dashboard
+   * Navigate to dashboard (generic - will redirect based on role)
    */
   async goto() {
     await super.goto('/en/dashboard')
     await this.waitForPageLoad()
+  }
+
+  /**
+   * Navigate to specific role-based dashboard
+   */
+  async gotoRoleSpecific(role: 'user' | 'pro' | 'admin') {
+    const paths = {
+      user: '/en/dashboard/user',
+      pro: '/en/dashboard/pro', 
+      admin: '/en/admin'
+    }
+    
+    await super.goto(paths[role])
+    await this.waitForPageLoad()
+    
+    // Wait for role-specific content to load
+    await Promise.race([
+      this.page.waitForSelector('h1, h2, main', { timeout: 8000 }),
+      this.page.waitForLoadState('networkidle', { timeout: 8000 })
+    ]).catch(() => {
+      console.log(`Warning: Timeout waiting for ${role} dashboard content`)
+    })
   }
   
   /**

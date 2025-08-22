@@ -372,7 +372,7 @@ export const authScenarios = {
     })
     const token = testAuth.createSessionToken({
       sub: session.user?.id,
-      role: 'admin' // Mock role for testing - not enforced in production
+      role: 'ADMIN' // Mock role for testing - not enforced in production
     })
 
     return {

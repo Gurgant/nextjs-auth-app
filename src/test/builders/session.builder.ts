@@ -155,8 +155,8 @@ export class NextAuthSessionBuilder extends ChainableBuilder<NextAuthSession, Ne
    * Set user data
    */
   withUser(user: Partial<NextAuthSession['user']>): this {
-    const currentUser = this.data.user || {}
-    return this.with('user', { ...currentUser, ...user })
+    const currentUser = this.data.user || { id: generate.uuid() }
+    return this.with('user', { ...currentUser, ...user } as NextAuthSession['user'])
   }
 
   /**

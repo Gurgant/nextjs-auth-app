@@ -45,6 +45,10 @@ export function CredentialsForm() {
     }
   }
 
+  // Form validation: disable submit when fields are empty
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0
+  const isSubmitDisabled = !isFormValid || loading
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5 w-full">
       <div className="space-y-4">
@@ -86,6 +90,7 @@ export function CredentialsForm() {
         variant="blue"
         fullWidth
         loading={loading}
+        disabled={isSubmitDisabled}
         loadingText={t('signingIn')}
       >
         {t('signInButton')}

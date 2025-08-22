@@ -34,7 +34,8 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       backupCodes: [],
       loginAttempts: 0,
       lockedUntil: null,
-      emailVerificationRequired: true
+      emailVerificationRequired: true,
+      role: 'USER' as const
     }
   }
 
@@ -206,12 +207,20 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
   }
 
   /**
+   * Set user role
+   */
+  withRole(role: 'USER' | 'PRO_USER' | 'ADMIN'): this {
+    return this.with('role', role)
+  }
+
+  /**
    * Create admin user
    */
   admin(): this {
     return this
       .withName('Admin User')
       .withEmail('admin@example.com')
+      .withRole('ADMIN')
       .verified()
       .active()
   }

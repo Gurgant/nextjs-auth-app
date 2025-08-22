@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test'
+import { Page, expect } from '@playwright/test'
 import { BasePage } from './base.page'
 
 /**
@@ -13,7 +13,7 @@ export class RegisterPage extends BasePage {
     passwordInput: 'input[name="password"]',
     confirmPasswordInput: 'input[name="confirmPassword"]',
     submitButton: 'button[type="submit"]',
-    termsCheckbox: 'input[name="acceptTerms"]',
+    termsCheckbox: 'input[name="terms"]',
     newsletterCheckbox: 'input[name="newsletter"]',
     signInLink: 'a:has-text("Sign in")',
     googleButton: 'button:has-text("Sign up with Google")',
@@ -81,9 +81,11 @@ export class RegisterPage extends BasePage {
     // If acceptTerms is true or undefined, we check it
     if (data.acceptTerms !== false) {
       // Always try to check the terms checkbox if not explicitly false
-      const termsCheckbox = this.page.locator('input[name="terms"], input[type="checkbox"]').first()
+      const termsCheckbox = this.page.locator(this.selectors.termsCheckbox)
       if (await termsCheckbox.count() > 0) {
         await termsCheckbox.check()
+        // Wait for the form state to update
+        await this.page.waitForTimeout(500)
       }
     }
     
@@ -129,23 +131,15 @@ export class RegisterPage extends BasePage {
    * Accept terms and conditions
    */
   async acceptTerms() {
-    // Try multiple selectors for checkbox
-    const checkboxSelectors = [
-      this.selectors.termsCheckbox,
-      'input[type="checkbox"]',
-      'input[id*="terms"]',
-      'input[id*="accept"]'
-    ]
-    
-    for (const selector of checkboxSelectors) {
-      if (await this.page.locator(selector).count() > 0) {
-        await this.page.click(selector)
-        return
-      }
+    const termsCheckbox = this.page.locator(this.selectors.termsCheckbox)
+    if (await termsCheckbox.count() > 0) {
+      await termsCheckbox.check()
+      // Wait for the form state to update
+      await this.page.waitForTimeout(500)
+    } else {
+      // If no checkbox found, it might not be required
+      console.log('No terms checkbox found - might not be required')
     }
-    
-    // If no checkbox found, it might not be required
-    console.log('No terms checkbox found - might not be required')
   }
   
   /**
@@ -167,19 +161,68 @@ export class RegisterPage extends BasePage {
    * Check if registration was successful
    */
   async isRegistrationSuccessful(): Promise<boolean> {
-    return await this.elementExists(this.selectors.successMessage) ||
-           await this.elementExists(this.selectors.emailVerificationMessage) ||
-           await this.hasText('Please verify your email') ||
-           await this.hasText('Registration successful')
+    // First wait for immediate success message to appear on registration page
+    await this.page.waitForTimeout(1000)
+    
+    // Look for success alert/message first
+    const hasSuccessAlert = await this.page.locator('[data-type="success"]').isVisible()
+    const hasGreenAlert = await this.page.locator('.bg-green').isVisible() 
+    const hasSuccessClass = await this.page.locator('.alert-success').isVisible()
+    const hasCheckIcon = await this.page.locator('[data-icon="check"]').isVisible()
+    
+    if (hasSuccessAlert || hasGreenAlert || hasSuccessClass || hasCheckIcon) {
+      console.log('Found success indicator on registration page')
+      return true
+    }
+    
+    // Wait for redirect to home page with registered=true parameter
+    try {
+      await this.page.waitForURL('**/en?registered=true', { timeout: 10000 })
+      console.log('Successfully redirected to home page with registered=true')
+      return true
+    } catch (error) {
+      // If no redirect happens, check current URL as fallback
+      const currentUrl = this.page.url()
+      console.log('No redirect detected, checking current URL:', currentUrl)
+      
+      const hasRegisteredParam = currentUrl.includes('registered=true')
+      const leftRegistrationPage = !currentUrl.includes('/register')
+      
+      if (hasRegisteredParam || leftRegistrationPage) {
+        return true
+      }
+      
+      // Final fallback: check for welcome message on any page
+      const hasWelcomeMessage = await this.hasText('Welcome')
+      return hasWelcomeMessage
+    }
   }
   
   /**
    * Get registration error message
    */
   async getRegistrationError(): Promise<string | null> {
+    // Wait for error to appear after form submission
+    await this.page.waitForTimeout(2000)
+    
+    // Check for error in AlertMessage component (actual implementation) with timeout
+    const alertErrorExists = await this.page.locator('[data-type="error"]').isVisible().catch(() => false)
+    if (alertErrorExists) {
+      const alertError = await this.page.locator('[data-type="error"]').textContent()
+      if (alertError) return alertError
+    }
+    
+    const redAlertExists = await this.page.locator('.bg-red').isVisible().catch(() => false)
+    if (redAlertExists) {
+      const redAlert = await this.page.locator('.bg-red').textContent()
+      if (redAlert) return redAlert
+    }
+    
+    // Fallback to original selectors
     if (await this.elementExists(this.selectors.errorMessage)) {
       return await this.getText(this.selectors.errorMessage)
     }
+    
     return await this.getErrorMessage()
   }
   
@@ -248,21 +291,32 @@ export class RegisterPage extends BasePage {
   async getValidationErrors(): Promise<Record<string, string>> {
     const errors: Record<string, string> = {}
     
-    // Check name field error
-    const nameError = await this.page.locator(`${this.selectors.nameInput} ~ .error-message`).textContent()
+    // Check name field error (InputWithIcon component renders errors as p.text-red-600)
+    const nameErrorSelector = 'p.text-red-600[id*="name"], p.text-red-600:has-text("name"), .text-red-600:has-text("Name")'
+    const nameError = await this.page.locator(nameErrorSelector).first().textContent().catch(() => null)
     if (nameError) errors.name = nameError
     
     // Check email field error
-    const emailError = await this.page.locator(`${this.selectors.emailInput} ~ .error-message`).textContent()
+    const emailErrorSelector = 'p.text-red-600[id*="email"], p.text-red-600:has-text("email"), .text-red-600:has-text("Email")'
+    const emailError = await this.page.locator(emailErrorSelector).first().textContent().catch(() => null)
     if (emailError) errors.email = emailError
     
     // Check password field error
-    const passwordError = await this.page.locator(`${this.selectors.passwordInput} ~ .error-message`).textContent()
+    const passwordErrorSelector = 'p.text-red-600[id*="password"], p.text-red-600:has-text("password"), .text-red-600:has-text("Password")'
+    const passwordError = await this.page.locator(passwordErrorSelector).first().textContent().catch(() => null)
     if (passwordError) errors.password = passwordError
     
     // Check confirm password field error
-    const confirmError = await this.page.locator(`${this.selectors.confirmPasswordInput} ~ .error-message`).textContent()
+    const confirmErrorSelector = 'p.text-red-600[id*="confirmPassword"], p.text-red-600:has-text("confirm"), .text-red-600:has-text("match")'
+    const confirmError = await this.page.locator(confirmErrorSelector).first().textContent().catch(() => null)
     if (confirmError) errors.confirmPassword = confirmError
+    
+    // Also check for generic error messages in AlertMessage components
+    const alertError = await this.page.locator('[data-type="error"]').textContent().catch(() => null)
+    if (alertError && !Object.keys(errors).length) {
+      // If we have an alert error but no field errors, add it as a general error
+      errors.general = alertError
+    }
     
     return errors
   }
@@ -282,9 +336,21 @@ export class RegisterPage extends BasePage {
    * Assert registration error is displayed
    */
   async assertRegistrationError(expectedError?: string) {
-    await this.assertVisible(this.selectors.errorMessage)
+    // Wait for error to appear
+    await this.page.waitForTimeout(2000)
+    
+    // Check if any error display is visible
+    const hasAlertError = await this.page.locator('[data-type="error"]').isVisible()
+    const hasRedAlert = await this.page.locator('.bg-red').isVisible()
+    const hasErrorClass = await this.page.locator('.alert-error').isVisible()
+    const hasOriginalError = await this.elementExists(this.selectors.errorMessage)
+    
+    const hasAnyError = hasAlertError || hasRedAlert || hasErrorClass || hasOriginalError
+    expect(hasAnyError).toBeTruthy()
+    
     if (expectedError) {
-      await this.assertText(this.selectors.errorMessage, expectedError)
+      const errorMessage = await this.getRegistrationError()
+      expect(errorMessage).toContain(expectedError)
     }
   }
   

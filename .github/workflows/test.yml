@@ -60,9 +60,22 @@ jobs:
       - name: Run unit tests
         run: pnpm test:unit
 
+      - name: Setup test database for integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/test_db
+        run: |
+          docker run -d --name postgres-test \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres123 \
+            -e POSTGRES_DB=nextjs_auth_db \
+            -p 5433:5432 \
+            postgres:15
+          sleep 5
+          pnpm prisma db push --skip-generate
+
       - name: Run integration tests
         env:
-          DATABASE_URL: postgresql://postgres:postgres123@localhost:5432/test_db
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
           TEST_MODE: real
         run: pnpm test:integration
 
@@ -243,6 +256,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma generate
 
       - name: Run linter
         run: pnpm lint

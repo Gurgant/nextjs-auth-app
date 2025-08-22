@@ -31,6 +31,7 @@ const credentialsSchema = z.object({
 
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
+  trustHost: true, // Required for E2E tests and development
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -106,6 +107,7 @@ export const authOptions = {
             image: user.image,
             emailVerified: user.emailVerified,
             twoFactorEnabled: user.twoFactorEnabled,
+            role: user.role,
           };
         } catch (error) {
           console.error("Authorize error:", error);
@@ -127,6 +129,17 @@ export const authOptions = {
   callbacks: {
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       console.log("🔄 NextAuth redirect callback:", { url, baseUrl });
+      
+      // For signout, redirect to home page
+      if (url.includes('/signout') || url.includes('/auth/signin')) {
+        return `${baseUrl}/en`;
+      }
+      
+      // Check if this is a post-login redirect - redirect to home page to show success message
+      if (url === baseUrl || url === `${baseUrl}/` || url.includes('/en')) {
+        // After successful login, redirect to home page to show login success page
+        return `${baseUrl}/en`;
+      }
       
       // Default redirect URL
       let redirectUrl = baseUrl;
@@ -217,6 +230,7 @@ export const authOptions = {
         token.image = user.image;
         token.emailVerified = user.emailVerified;
         token.twoFactorEnabled = user.twoFactorEnabled;
+        token.role = user.role || 'USER';
       }
       return token;
     },
@@ -225,6 +239,7 @@ export const authOptions = {
         session.user.id = token.id;
         session.user.emailVerified = token.emailVerified;
         session.user.twoFactorEnabled = token.twoFactorEnabled;
+        session.user.role = token.role || 'USER';
       }
       return session;
     },

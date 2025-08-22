@@ -76,6 +76,7 @@ export class UserFactory extends Factory<User> {
       lastLoginIp: null,
       emailVerificationRequired: true,
       twoFactorEnabledAt: null,
+      role: 'USER' as const,
       ...this.defaults,
       ...overrides
     }

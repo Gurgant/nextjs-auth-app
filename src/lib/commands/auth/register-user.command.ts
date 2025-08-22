@@ -49,25 +49,7 @@ export class RegisterUserCommand extends BaseCommand<RegisterUserInput, ActionRe
     return true // Registration can be undone (delete the user)
   }
   
-  async validate(input: RegisterUserInput): Promise<boolean> {
-    try {
-      registerSchema.parse(input)
-      
-      // Check if user already exists
-      const userRepo = repositories.getUserRepository()
-      const existingUser = await userRepo.findByEmail(input.email)
-      
-      if (existingUser) {
-        console.log(`[${this.name}] User already exists: ${input.email}`)
-        return false
-      }
-      
-      return true
-    } catch (error) {
-      console.error(`[${this.name}] Validation failed:`, error)
-      return false
-    }
-  }
+  // Validation is handled in execute() method for better error messaging
   
   async execute(
     input: RegisterUserInput, 
