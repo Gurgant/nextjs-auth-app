@@ -70,7 +70,7 @@ export default defineConfig({
     command:
       'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm run dev',
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true, // Always reuse to prevent port conflicts
     timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
     stdout: "pipe",
     stderr: "pipe",

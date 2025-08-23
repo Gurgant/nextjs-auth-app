@@ -26,16 +26,16 @@
 - Command: `rg "type.*email.*svg" --type tsx`
 - Command: `rg "Mail.*className.*input" --type tsx`
 
-1.2. Search for all password input patterns with icons
+  1.2. Search for all password input patterns with icons
 
 - Command: `rg "type.*password.*svg" --type tsx`
 - Command: `rg "Lock.*className.*input" --type tsx`
 
-1.3. Search for user/name input patterns
+  1.3. Search for user/name input patterns
 
 - Command: `rg "User.*className.*input" --type tsx`
 
-1.4. Document all unique patterns found
+  1.4. Document all unique patterns found
 
 - Create a list of all variations
 - Note any special cases (error states, disabled states)
@@ -67,7 +67,7 @@ interface InputWithIconProps {
 - Map icon names to Lucide icons
 - Consider icon sizes and colors
 
-2.3. Plan error state handling
+  2.3. Plan error state handling
 
 - Red border on error
 - Error message below input
@@ -91,12 +91,12 @@ touch docs/migration-guides/input-with-icon.md
 - Error state handling
 - Accessibility attributes
 
-3.3. Add all icon variants
+  3.3. Add all icon variants
 
 - Mail, Lock, User, Key, Shield icons
 - Consistent sizing and positioning
 
-3.4. Implement show/hide password toggle
+  3.4. Implement show/hide password toggle
 
 - Add Eye/EyeOff icons for password fields
 - Toggle state management
@@ -128,15 +128,15 @@ touch docs/migration-guides/input-with-icon.md
 - `registration-form.tsx`
 - `two-factor-verification.tsx`
 
-6.2. Replace in account management
+  6.2. Replace in account management
 
 - `account-management.tsx` (multiple sections)
 
-6.3. Replace in security components
+  6.3. Replace in security components
 
 - `two-factor-setup.tsx`
 
-6.4. Test each replacement individually
+  6.4. Test each replacement individually
 
 ##### Step 7: Verify and Finalize
 

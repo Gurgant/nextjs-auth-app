@@ -28,13 +28,13 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Add proper wait conditions
 - Verify URL patterns
 
-1.2. Fix registration duplicate email test
+  1.2. Fix registration duplicate email test
 
 - Ensure test database is properly seeded
 - Check error message selectors
 - Add retry logic if needed
 
-1.3. Stabilize timing issues
+  1.3. Stabilize timing issues
 
 - Add explicit waits where needed
 - Use proper Playwright wait strategies
@@ -49,13 +49,13 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Optimize wait conditions
 - Remove unnecessary delays
 
-2.2. Improve test isolation
+  2.2. Improve test isolation
 
 - Clear cookies between tests
 - Reset database state when needed
 - Use unique test data
 
-2.3. Configure test parallelization
+  2.3. Configure test parallelization
 
 - Set optimal worker count
 - Group related tests
@@ -73,14 +73,14 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Main content areas
 - Action buttons
 
-1.2. Implement dashboard methods
+  1.2. Implement dashboard methods
 
 - Navigation helpers
 - Content verification
 - User actions
 - Data assertions
 
-1.3. Write dashboard tests
+  1.3. Write dashboard tests
 
 - Navigation tests
 - Permission tests
@@ -97,14 +97,14 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Save/cancel buttons
 - Success/error messages
 
-2.2. Implement settings methods
+  2.2. Implement settings methods
 
 - Update profile
 - Change password
 - Toggle 2FA
 - Manage sessions
 
-2.3. Write settings tests
+  2.3. Write settings tests
 
 - Profile update tests
 - Password change tests
@@ -123,14 +123,14 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Success/error messages
 - Back to login link
 
-1.2. Define reset confirmation selectors
+  1.2. Define reset confirmation selectors
 
 - Token input field
 - New password fields
 - Submit button
 - Validation messages
 
-1.3. Implement reset methods
+  1.3. Implement reset methods
 
 - Request reset
 - Enter token
@@ -147,14 +147,14 @@ Comprehensive plan for completing E2E testing framework and moving forward with 
 - Set new password
 - Login with new password
 
-2.2. Error handling tests
+  2.2. Error handling tests
 
 - Invalid email
 - Expired token
 - Weak password
 - Network errors
 
-2.3. Security tests
+  2.3. Security tests
 
 - Rate limiting
 - Token validation
