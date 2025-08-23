@@ -1,0 +1,40 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - generic [ref=e5]:
+        - link "Auth App" [ref=e6] [cursor=pointer]:
+          - /url: /en
+          - img [ref=e8] [cursor=pointer]
+          - heading "Auth App" [level=1] [ref=e10] [cursor=pointer]
+        - 'button "Current language: English. Click to change language." [ref=e13] [cursor=pointer]':
+          - generic [ref=e14] [cursor=pointer]: EN
+          - generic [ref=e15] [cursor=pointer]: English
+          - img [ref=e16] [cursor=pointer]
+    - main [ref=e18]:
+      - generic [ref=e21]:
+        - generic [ref=e23]:
+          - img [ref=e25]
+          - generic [ref=e27]:
+            - heading "Welcome to Our App" [level=1] [ref=e28]
+            - paragraph [ref=e29]: Simple authentication with Google OAuth
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - heading "Welcome back" [level=3] [ref=e33]
+            - paragraph [ref=e34]: Choose your preferred sign-in method
+          - button "Sign in with Google" [ref=e35]:
+            - img [ref=e36]
+            - text: Sign in with Google
+          - generic [ref=e45]: Or
+          - button "Sign in with Email" [ref=e46]
+        - paragraph [ref=e48]:
+          - text: Don't have an account?
+          - link "Register here" [ref=e49] [cursor=pointer]:
+            - /url: /en/register
+        - paragraph [ref=e51]: Secure authentication with industry-standard encryption
+  - button "Open Next.js Dev Tools" [ref=e57] [cursor=pointer]:
+    - img [ref=e58] [cursor=pointer]
+  - alert [ref=e61]
+```

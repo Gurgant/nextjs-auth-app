@@ -63,17 +63,22 @@ export default defineConfig({
     },
   ],
   
-  // Web server for development
-  webServer: process.env.CI ? undefined : {
+  // Web server for development and CI
+  webServer: {
     command: 'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
     stdout: 'pipe',
     stderr: 'pipe',
     env: {
       DATABASE_URL: 'postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db',
       NODE_ENV: 'test',
+      // CI-specific optimizations
+      ...(process.env.CI && {
+        NEXTAUTH_SECRET: 'ci-test-secret-key-for-testing-only',
+        NEXTAUTH_URL: 'http://localhost:3000',
+      }),
     },
   },
   
