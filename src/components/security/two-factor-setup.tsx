@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { setupTwoFactorAuth, enableTwoFactorAuth, type ActionResult } from '@/lib/actions/advanced-auth'
 import Image from 'next/image'
 import { GradientButton } from '@/components/ui/gradient-button'
@@ -62,10 +62,11 @@ export function TwoFactorSetup({ user, locale, onSetupComplete, onCancel }: TwoF
   )
   
   // Form ref with reset functionality
-  const { formRef, resetForm } = useFormReset({
+  const { formRef, resetForm: _resetForm } = useFormReset({
     formName: 'TwoFactorVerifyForm',
     onReset: () => setVerificationCode('')
   })
+  // TODO: Implement form reset functionality for error recovery
   
   // Combine loading states
   const isLoading = isSettingUp || isEnabling
@@ -88,7 +89,7 @@ export function TwoFactorSetup({ user, locale, onSetupComplete, onCancel }: TwoF
       } else {
         setSetupResult(result)
       }
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       setSetupResult({
         success: false,
         message: tComponentErrors('failedToSetupTwoFactor')

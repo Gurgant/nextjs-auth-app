@@ -156,28 +156,24 @@ export class LoginPage extends BasePage {
       await this.page.waitForTimeout(2000)
     }
   }
-  
+
   /**
-   * Fill login form (with multi-language support and post-logout recovery)
+   * Ensure email form is visible by clicking toggle if needed
    */
-  async fillLoginForm(email: string, password: string) {
-    console.log(`🔐 Attempting to fill login form for: ${email}`)
-    
-    // Extended stabilization wait for post-logout scenarios
-    await this.page.waitForTimeout(3000)
-    
+  async ensureEmailFormVisible() {
     // Check if email input is already visible
-    let emailInputVisible = await this.elementExists(this.selectors.emailInput)
+    const emailInputVisible = await this.elementExists(this.selectors.emailInput)
     
     if (!emailInputVisible) {
       console.log('📧 Email input not visible, searching for toggle button...')
       
       // Enhanced multi-language button search
       const multiLangEmailButton = this.page.locator([
-        'button:has-text("Sign in with Email")',      // English
+        'button[data-testid="sign-in-with-email-toggle"]', // Primary - reliable data-testid
+        'button:has-text("Sign in with Email")',       // English
         'button:has-text("Iniciar sesión con Email")', // Spanish
         'button:has-text("Se connecter avec Email")',  // French
-        'button:has-text("Mit Email anmelden")',       // German  
+        'button:has-text("Mit E-Mail anmelden")',      // German (exact)  
         'button:has-text("Accedi con Email")',         // Italian
         'button:has-text("Email")',                    // Fallback
         'button[data-testid*="email"]',                // Data attribute fallback
@@ -199,6 +195,27 @@ export class LoginPage extends BasePage {
         })
         console.log('✅ Email form appeared after button click')
       } else {
+        console.log('⚠️ No toggle button found, form might already be visible')
+      }
+    }
+  }
+  
+  /**
+   * Fill login form (with multi-language support and post-logout recovery)
+   */
+  async fillLoginForm(email: string, password: string) {
+    console.log(`🔐 Attempting to fill login form for: ${email}`)
+    
+    // Extended stabilization wait for post-logout scenarios
+    await this.page.waitForTimeout(3000)
+    
+    // Ensure email form is visible using centralized method
+    await this.ensureEmailFormVisible()
+    
+    // Now we know the form should be visible, continue with alternative logic if needed
+    let emailInputVisible = await this.elementExists(this.selectors.emailInput)
+    
+    if (!emailInputVisible) {
         console.log('⚠️ No toggle button found, trying alternative approaches...')
         
         // Alternative approach: wait longer and try page refresh if needed
@@ -232,7 +249,6 @@ export class LoginPage extends BasePage {
             await this.page.waitForTimeout(2000)
           }
         }
-      }
     } else {
       console.log('✅ Email input already visible')
     }
@@ -268,10 +284,15 @@ export class LoginPage extends BasePage {
     
     await this.submitLogin()
     
+    // Wait for session loading to complete first (if any)
+    await this.page.waitForSelector('[data-testid="session-loading"]', { timeout: 2000 }).catch(() => null)
+    await this.page.waitForSelector('[data-testid="session-loading"]', { state: 'detached', timeout: 15000 }).catch(() => null)
+    
     // Wait for either success or error with stable selectors
     await Promise.race([
       this.page.waitForSelector('[role="alert"]', { timeout: 10000 }).catch(() => null),
-      this.page.waitForSelector('[data-testid="go-to-dashboard-button"]', { timeout: 10000 }).catch(() => null),
+      this.page.waitForSelector('[data-testid="go-to-dashboard-button"]', { timeout: 15000 }).catch(() => null),
+      this.page.waitForSelector('[data-testid="authenticated-home"]', { timeout: 15000 }).catch(() => null),
       this.page.waitForSelector('text=Welcome', { timeout: 10000 }).catch(() => null),
       this.page.waitForSelector(this.selectors.twoFactorInput, { timeout: 10000 }).catch(() => null),
       this.page.waitForURL(/dashboard\//, { timeout: 10000 }).catch(() => null),

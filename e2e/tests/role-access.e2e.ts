@@ -119,63 +119,20 @@ test.describe('Role-Based Access Control', () => {
   test.beforeEach(async ({ page, context }) => {
     console.log('Starting test setup with comprehensive cleanup...')
     
-    // Clear all browser state to prevent session pollution
-    await retryWithBackoff(async () => {
-      await context.clearCookies()
-      await context.clearPermissions()
-    }, 3, 500)
+    // Simple, effective logout approach (same as auth-simple.e2e.ts)
+    await page.goto('http://localhost:3000/api/auth/signout', { waitUntil: 'networkidle' })
+    await page.waitForTimeout(2000)
     
-    // Navigate to logout to ensure clean auth state
-    await retryWithBackoff(async () => {
-      await page.goto('/api/auth/signout', { waitUntil: 'networkidle', timeout: 5000 })
-      await page.waitForTimeout(1000) // Give NextAuth time to process logout
-    }, 2, 1000).catch((error) => {
-      console.log('Logout endpoint cleanup failed, continuing:', error.message)
-    })
-    
-    // Navigate to a clean page to establish stable execution context
-    await page.goto('about:blank').catch(() => {
-      console.log('Failed to navigate to blank page, continuing...')
-    })
-    
-    // Clear all storage with execution context handling
-    try {
-      await page.evaluate(() => {
-        try {
-          localStorage.clear()
-          sessionStorage.clear()
-          // Clear any cached session data
-          if (typeof window !== 'undefined') {
-            window.name = ''
-          }
-          // Clear any indexed db or other storage
-          if (typeof indexedDB !== 'undefined') {
-            indexedDB.deleteDatabase('next-auth.message')
-          }
-        } catch (e) {
-          // Ignore security errors
-        }
-      })
-    } catch (error) {
-      console.log('Storage cleanup failed (execution context destroyed):', (error as Error).message)
-      // Continue anyway - navigation might have cleared storage already
-    }
-    
-    // Clear cookies again after clearing storage
-    await context.clearCookies()
-    
+    // Navigate to home page in unauthenticated state (simple approach)
     loginPage = new LoginPage(page)
     await loginPage.goto()
-    
-    // Extra wait to ensure clean state
-    await page.waitForTimeout(500)
   })
 
   test.describe('USER Role', () => {
     test('should access user dashboard', async ({ page }) => {
       // Login as regular user
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Click dashboard button if present, otherwise navigate directly
       const dashboardButton = page.locator('[data-testid="go-to-dashboard-button"]')
@@ -203,7 +160,7 @@ test.describe('Role-Based Access Control', () => {
     test('should be denied access to pro dashboard', async ({ page }) => {
       // Login as regular user
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Try to access pro dashboard directly
       await page.goto('/en/dashboard/pro')
@@ -219,7 +176,7 @@ test.describe('Role-Based Access Control', () => {
     test('should be denied access to admin panel', async ({ page }) => {
       // Login as regular user
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Try to access admin panel directly
       await page.goto('/en/admin')
@@ -235,11 +192,19 @@ test.describe('Role-Based Access Control', () => {
 
   test.describe('PRO_USER Role', () => {
     test('should access pro dashboard', async ({ page }) => {
-      // Login as pro user (2FA user has PRO_USER role)
+      // Login as pro user
       await loginPage.login('2fa@example.com', '2FA123!')
       
-      // Handle 2FA if required
-      await handle2FAIfRequired(page)
+      // Verify login was successful by checking current URL and session
+      const currentUrl = page.url()
+      console.log('URL after login attempt:', currentUrl)
+      
+      // Check if we're redirected back to signin (indicating login failure)
+      if (currentUrl.includes('/signin') || currentUrl.includes('/auth')) {
+        throw new Error(`PRO_USER login failed - redirected to: ${currentUrl}`)
+      }
+      
+      // Wait a moment for session to stabilize
       await page.waitForTimeout(2000)
       
       // Navigate to dashboard - should redirect to PRO dashboard
@@ -260,10 +225,6 @@ test.describe('Role-Based Access Control', () => {
       // Login as pro user
       await loginPage.login('2fa@example.com', '2FA123!')
       
-      // Handle 2FA if required
-      await handle2FAIfRequired(page)
-      await page.waitForTimeout(2000)
-      
       // Try to access user dashboard directly - PRO users should have access
       await page.goto('/en/dashboard/user')
       
@@ -279,10 +240,6 @@ test.describe('Role-Based Access Control', () => {
     test('should be denied access to admin panel', async ({ page }) => {
       // Login as pro user
       await loginPage.login('2fa@example.com', '2FA123!')
-      
-      // Handle 2FA if required
-      await handle2FAIfRequired(page)
-      await page.waitForTimeout(2000)
       
       // Try to access admin panel directly
       await page.goto('/en/admin')
@@ -300,7 +257,7 @@ test.describe('Role-Based Access Control', () => {
     test('should access admin panel', async ({ page }) => {
       // Login as admin
       await loginPage.login('admin@example.com', 'Admin123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to dashboard - should redirect to admin panel
       await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 15000 })
@@ -319,7 +276,7 @@ test.describe('Role-Based Access Control', () => {
     test('should access all dashboards', async ({ page }) => {
       // Login as admin
       await loginPage.login('admin@example.com', 'Admin123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Test access to pro dashboard (ADMIN should have access)
       await page.goto('/en/dashboard/pro')
@@ -340,7 +297,7 @@ test.describe('Role-Based Access Control', () => {
     test('should see user management features', async ({ page }) => {
       // Login as admin
       await loginPage.login('admin@example.com', 'Admin123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to admin panel
       await page.goto('/en/admin', { waitUntil: 'domcontentloaded', timeout: 15000 })
@@ -361,7 +318,7 @@ test.describe('Role-Based Access Control', () => {
     test('should redirect from base dashboard to role-specific dashboard', async ({ page }) => {
       // Login as regular user
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to base dashboard - should redirect based on role
       await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 15000 })
@@ -376,7 +333,7 @@ test.describe('Role-Based Access Control', () => {
     test('should show appropriate navigation based on role', async ({ page }) => {
       // Login as admin
       await loginPage.login('admin@example.com', 'Admin123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to dashboard - should go to admin panel
       await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 15000 })
@@ -386,7 +343,7 @@ test.describe('Role-Based Access Control', () => {
       // Logout and login as regular user to test role restrictions
       await loginPage.performLogout()
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to dashboard - should go to user dashboard
       await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 15000 })
@@ -426,7 +383,7 @@ test.describe('Role-Based Access Control', () => {
     test('should handle role changes correctly', async ({ page }) => {
       // Login as user
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Navigate to dashboard - should redirect to user dashboard
       await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 15000 })

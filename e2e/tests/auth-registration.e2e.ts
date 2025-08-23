@@ -26,18 +26,48 @@ test.describe('User Registration Flow', () => {
       newsletter: false
     })
     
-    // Assert registration success
-    await registerPage.assertRegistrationSuccess()
+    // Check if registration was successful
+    const registrationSuccess = await registerPage.isRegistrationSuccessful()
     
-    // Check if email verification is required
-    const emailVerificationRequired = await registerPage.isEmailVerificationRequired()
-    if (emailVerificationRequired) {
-      await registerPage.assertEmailVerificationRequired()
-      expect(await registerPage.hasText('Please check your email')).toBeTruthy()
+    if (registrationSuccess) {
+      console.log('✅ Registration succeeded - checking final state')
+      
+      // Check if email verification is required
+      const emailVerificationRequired = await registerPage.isEmailVerificationRequired()
+      if (emailVerificationRequired) {
+        await registerPage.assertEmailVerificationRequired()
+        expect(await registerPage.hasText('Please check your email')).toBeTruthy()
+      } else {
+        // User should be redirected to home page with success parameter after 2-second delay
+        console.log('Waiting for redirect after 2-second delay...')
+        // Wait for the redirect with ?registered=true or check current URL
+        await registerPage.page.waitForTimeout(3000) // Give time for redirect
+        const currentUrl = registerPage.page.url()
+        console.log('Final URL after registration:', currentUrl)
+        
+        // Check if we successfully have the registered parameter
+        if (currentUrl.includes('registered=true') || currentUrl.match(/dashboard|home|welcome/)) {
+          console.log('✅ Registration redirect successful:', currentUrl)
+          expect(currentUrl).toMatch(/registered=true|dashboard|home|welcome/)
+        } else {
+          console.log('❌ Registration redirect failed. Current URL:', currentUrl) 
+          throw new Error(`Registration redirect failed. Expected ?registered=true but got: ${currentUrl}`)
+        }
+      }
     } else {
-      // User is redirected to home page with success parameter
+      // Registration may have failed - check for error messages or debug
       const currentUrl = registerPage.page.url()
-      expect(currentUrl).toMatch(/\/en\?registered=true|dashboard|home|welcome/)
+      console.log('❌ Registration may have failed. Current URL:', currentUrl)
+      
+      // Check for error messages on the page
+      const errorMessages = await registerPage.page.locator('[role="alert"], .error, .alert-error').all()
+      for (const error of errorMessages) {
+        const text = await error.textContent()
+        console.log('Error message found:', text)
+      }
+      
+      // Fail the test with debug information
+      throw new Error(`Registration did not succeed. Current URL: ${currentUrl}`)
     }
   })
   

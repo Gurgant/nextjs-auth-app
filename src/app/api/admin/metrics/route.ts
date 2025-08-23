@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
           details: event.details
         }))
       }
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       databaseStats = { error: 'Failed to fetch database statistics' }
     }
 
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         rate: totalEvents > 0 ? Math.round((errorEvents / totalEvents) * 100) : 0,
         period: '1 hour'
       }
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       errorRate = { error: 'Failed to calculate error rate' }
     }
 

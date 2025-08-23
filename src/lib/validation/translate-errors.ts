@@ -24,7 +24,7 @@ export async function translateValidationErrors(
       try {
         // Translate the message key
         translatedErrors[field] = t(messageKey);
-      } catch (error) {
+      } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
         // Fallback to the key itself if translation not found
         console.warn(`Translation not found for key: ${messageKey}`);
         translatedErrors[field] = issue.message;
@@ -48,7 +48,7 @@ export async function getValidationMessage(
   try {
     const t = await getTranslations({ locale, namespace: "validation" });
     return t(key);
-  } catch (error) {
+  } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
     console.warn(`Translation not found for key: ${key}`);
     return key;
   }

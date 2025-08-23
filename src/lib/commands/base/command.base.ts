@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
-import { ICommand, CommandMetadata, CommandResult } from './command.interface'
-import { createErrorResponse, createSuccessResponse, ActionResponse } from '@/lib/utils/form-responses'
+import { ICommand, CommandMetadata } from './command.interface'
+import { ActionResponse } from '@/lib/utils/form-responses'
 
 export abstract class BaseCommand<TInput = any, TOutput = ActionResponse> 
   implements ICommand<TInput, TOutput> {
@@ -19,7 +19,7 @@ export abstract class BaseCommand<TInput = any, TOutput = ActionResponse>
   
   abstract execute(input: TInput, metadata?: CommandMetadata): Promise<TOutput>
   
-  async validate(input: TInput): Promise<boolean> {
+  async validate(_input: TInput): Promise<boolean> {
     return true // Override in subclasses for validation
   }
   

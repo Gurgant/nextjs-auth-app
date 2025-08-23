@@ -16,11 +16,8 @@ test.describe('User Login/Logout Flow', () => {
   })
   
   test('should login with valid credentials', async () => {
-    // Use seeded test user
+    // Use seeded test user - login method handles session synchronization
     await loginPage.login('test@example.com', 'Test123!')
-    
-    // Wait for login to process and session to be established
-    await loginPage.page.waitForTimeout(3000)
     
     // Verify successful login by checking we're redirected to authenticated area
     const currentUrl = loginPage.page.url()
@@ -31,11 +28,15 @@ test.describe('User Login/Logout Flow', () => {
       // Already on dashboard - login successful!
       console.log('✅ Login successful: Already on dashboard')
     } else {
-      // On home page - check for dashboard button and click it
-      const dashboardButton = loginPage.page.locator('[data-testid="go-to-dashboard-button"]')
-      await expect(dashboardButton).toBeVisible({ timeout: 10000 })
+      // On home page - wait for authenticated state to be established
+      // The login() method already waited for session loading, now ensure authenticated home is ready
+      await loginPage.page.waitForSelector('[data-testid="authenticated-home"]', { timeout: 15000 })
       
-      // Now navigate to dashboard by clicking the button
+      // Now check for dashboard button 
+      const dashboardButton = loginPage.page.locator('[data-testid="go-to-dashboard-button"]')
+      await expect(dashboardButton).toBeVisible({ timeout: 5000 })
+      
+      // Navigate to dashboard by clicking the button
       await dashboardButton.click()
     }
     
@@ -93,16 +94,8 @@ test.describe('User Login/Logout Flow', () => {
   })
   
   test('should validate required fields', async () => {
-    // Try to access email form first
-    const emailInputVisible = await loginPage.page.locator('input[id="email"]').isVisible().catch(() => false)
-    if (!emailInputVisible) {
-      // Click the toggle to show email form
-      const emailToggle = loginPage.page.locator('button:has-text("Sign in with Email")')
-      if (await emailToggle.isVisible()) {
-        await emailToggle.click()
-        await loginPage.page.waitForTimeout(1000)
-      }
-    }
+    // Use the centralized email form access method (handles toggle automatically)
+    await loginPage.ensureEmailFormVisible()
     
     // Verify submit button is disabled when fields are empty
     const submitButton = loginPage.page.locator('button[type="submit"]')

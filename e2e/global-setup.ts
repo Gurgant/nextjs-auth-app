@@ -1,5 +1,5 @@
 import { FullConfig } from '@playwright/test'
-import { PrismaClient } from '@/lib/types/prisma'
+import { PrismaClient } from '../src/generated/prisma'
 import bcrypt from 'bcryptjs'
 
 /**
@@ -85,6 +85,14 @@ async function seedTestData(prisma: PrismaClient) {
       emailVerified: new Date(),
       role: 'ADMIN' as const,
       twoFactorEnabled: false, // Explicitly disable 2FA for admin test user
+    },
+    {
+      email: 'prouser@example.com',
+      name: 'Pro User',
+      password: await bcrypt.hash('Pro123!', 10),
+      emailVerified: new Date(),
+      role: 'PRO_USER' as const,
+      twoFactorEnabled: false, // Explicitly disable 2FA for pro test user
     },
     {
       email: 'unverified@example.com',

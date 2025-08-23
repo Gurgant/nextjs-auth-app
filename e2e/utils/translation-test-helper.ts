@@ -168,11 +168,21 @@ export async function testWelcomePageInAllLanguages(page: Page) {
     // Navigate to locale-specific page
     await page.goto(`/${locale}`)
     
-    // Test welcome message using translation-aware approach
+    // CRITICAL: Wait for session loading (same fix as other tests)
+    await page.waitForTimeout(3000)
+    
+    // Check if still in loading state
+    const isLoading = await page.locator('[data-testid="session-loading"]').isVisible().catch(() => false)
+    if (isLoading) {
+      console.log(`⚠️ ${locale.toUpperCase()} page still loading, waiting longer...`)
+      await page.waitForTimeout(5000)
+    }
+    
+    // Test welcome message using h1-specific selector (same as working tests)
     await translationTestHelper.expectTranslatedText(
       page,
-      ':has-text("Welcome"), :has-text("Bienvenido"), :has-text("Bienvenue")',
-      'common.welcome',
+      'h1:has-text("Welcome"), h1:has-text("Bienvenido"), h1:has-text("Bienvenue"), h1:has-text("Willkommen"), h1:has-text("Benvenuto")',
+      'common.welcome', 
       locale
     )
   })

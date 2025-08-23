@@ -11,18 +11,22 @@ test.describe('Dashboard Functionality', () => {
     loginPage = new LoginPage(page)
     dashboardPage = new DashboardPage(page)
     
-    // Login before each test
+    // Login before each test - login() method handles session synchronization
     await loginPage.goto()
     await loginPage.login('test@example.com', 'Test123!')
     
-    // Wait for welcome page
-    await page.waitForTimeout(2000)
-    
-    // Click "Go to Dashboard" button if present
-    const dashboardButton = page.locator('button:has-text("Go to Dashboard")')
-    if (await dashboardButton.count() > 0) {
-      await dashboardButton.click()
-      await page.waitForURL(/dashboard/, { timeout: 10000 })
+    // Check for dashboard button and navigate if needed
+    const currentUrl = page.url()
+    if (!currentUrl.includes('/dashboard')) {
+      // Wait for authenticated state to be established
+      await page.waitForSelector('[data-testid="authenticated-home"]', { timeout: 15000 })
+      
+      // Click "Go to Dashboard" button if present
+      const dashboardButton = page.locator('[data-testid="go-to-dashboard-button"]')
+      if (await dashboardButton.count() > 0) {
+        await dashboardButton.click()
+        await page.waitForURL(/dashboard/, { timeout: 10000 })
+      }
     }
   })
   
@@ -40,8 +44,7 @@ test.describe('Dashboard Functionality', () => {
   })
   
   test('should show user information', async ({ page }) => {
-    // Wait a bit longer for login to complete
-    await page.waitForTimeout(3000)
+    // Login completed in beforeEach - no additional timeout needed
     
     // Check if login succeeded by looking for sign out button or dashboard
     const isLoggedIn = 
@@ -70,8 +73,7 @@ test.describe('Dashboard Functionality', () => {
     console.log('Direct navigation to dashboard for logout test')
     await page.goto('/en/dashboard', { waitUntil: 'domcontentloaded', timeout: 30000 })
     
-    // Wait for role-based redirect to complete
-    await page.waitForTimeout(3000)
+    // Role-based redirect handled by dashboard navigation
     
     // Find and click logout using comprehensive selectors
     const logoutSelectors = [
@@ -111,8 +113,7 @@ test.describe('Dashboard Functionality', () => {
       logoutFound = true
     }
     
-    // Wait for logout to complete
-    await page.waitForTimeout(3000)
+    // Logout redirect handled automatically
     
     // Verify logout was successful by checking we're back at home/login page
     const currentUrl = page.url()
@@ -159,8 +160,7 @@ test.describe('Dashboard Functionality', () => {
       timeout: 30000 
     })
     
-    // Wait for auth redirect to complete
-    await page.waitForTimeout(3000)
+    // Auth redirect handled automatically
     
     // Check final URL - should be redirected away from dashboard
     const currentUrl = page.url()
@@ -286,7 +286,7 @@ test.describe('Dashboard Permissions', () => {
     // Try admin login - if it fails, that's OK (no admin user)
     try {
       await loginPage.login('admin@example.com', 'Admin123!')
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization
       
       // Check if login succeeded
       const isLoggedIn = 

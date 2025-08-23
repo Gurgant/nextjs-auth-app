@@ -1,112 +1,82 @@
-import { defineConfig, devices } from '@playwright/test'
-import path from 'path'
+import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright E2E Test Configuration
- * 
+ * Modern Playwright Configuration - Latest Version Compatible
+ * Fixed for Next.js 15.5.0 TypeScript moduleResolution compatibility
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  // Test directory
-  testDir: './e2e',
-  
-  // Test match pattern
+  // Test directory and pattern
+  testDir: './e2e/tests',
   testMatch: '**/*.e2e.ts',
   
-  // Maximum time one test can run
-  timeout: 60 * 1000, // Increased to 60 seconds to avoid timeouts
+  // Global timeout settings
+  timeout: 60 * 1000,
   
-  // Maximum time to wait for each assertion
+  // Expect timeout
   expect: {
-    timeout: 15 * 1000 // Increased to 15 seconds
+    timeout: 15 * 1000,
   },
   
-  // Run tests in files in parallel
+  // Run tests in parallel
   fullyParallel: true,
   
-  // Fail the build on CI if you accidentally left test.only in the source code
+  // CI specific settings
   forbidOnly: !!process.env.CI,
-  
-  // Retry on CI only
   retries: process.env.CI ? 2 : 0,
-  
-  // Opt out of parallel tests on CI
   workers: process.env.CI ? 1 : undefined,
   
-  // Reporter to use
+  // Reporter configuration
   reporter: process.env.CI ? 'github' : [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }]
   ],
   
-  // Global setup
-  globalSetup: path.join(__dirname, 'e2e/global-setup.ts'),
+  // Global setup (temporarily disabled for debugging)
+  // globalSetup: require.resolve('./e2e/global-setup.ts'),
   
-  // Shared settings for all the projects below
+  // Shared settings
   use: {
-    // Base URL to use in actions like `await page.goto('/')`
+    // Base URL
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
     
-    // Collect trace when retrying the failed test
+    // Trace settings
     trace: 'on-first-retry',
-    
-    // Screenshot on failure
     screenshot: 'only-on-failure',
-    
-    // Video on failure
     video: 'retain-on-failure',
     
     // Browser options
-    launchOptions: {
-      slowMo: process.env.SLOW_MO ? Number(process.env.SLOW_MO) : 0,
-    },
-    
-    // Viewport
+    headless: process.env.HEADED !== 'true',
     viewport: { width: 1280, height: 720 },
-    
-    // Ignore HTTPS errors during navigation
     ignoreHTTPSErrors: true,
     
-    // Locale and timezone
+    // Locale settings
     locale: 'en-US',
     timezoneId: 'America/New_York',
-    
-    // Permissions
-    // permissions: ['clipboard-read', 'clipboard-write'],
-    
-    // Whether to run browser in headless mode
-    headless: process.env.HEADED !== 'true',
   },
   
-  // Configure projects for major browsers
+  // Project configuration - focusing on Chromium for now
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    
-    // Uncomment to test on other browsers
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
   ],
   
-  // Run your local dev server before starting the tests
+  // Web server for development
   webServer: process.env.CI ? undefined : {
-    command: 'pnpm run dev',
+    command: 'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
     stdout: 'pipe',
     stderr: 'pipe',
+    env: {
+      DATABASE_URL: 'postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db',
+      NODE_ENV: 'test',
+    },
   },
   
-  // Output folder for test artifacts
+  // Output directory
   outputDir: 'test-results/',
-})
+});

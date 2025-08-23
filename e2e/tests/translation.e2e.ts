@@ -126,8 +126,7 @@ test.describe('Translation & i18n Validation', () => {
       await loginPage.goto()
       await loginPage.login('test@example.com', 'Test123!')
       
-      // Wait for login to complete and navigate to dashboard
-      await page.waitForTimeout(3000)
+      // Login method handles session synchronization - no timeout needed
       
       // Click dashboard button if present
       const dashboardButton = page.locator('[data-testid="go-to-dashboard-button"]')
@@ -225,7 +224,7 @@ test.describe('Translation & i18n Validation', () => {
       // Try invalid login
       await loginPage.fillLoginForm('invalid@example.com', 'wrongpassword')
       await loginPage.submitLogin()
-      await page.waitForTimeout(3000)
+      // Session synchronization handled by form submission
       
       // Should either show error or stay on login page
       const stayedOnLogin = page.url().includes('/') && !page.url().includes('/dashboard')
@@ -235,7 +234,7 @@ test.describe('Translation & i18n Validation', () => {
       await page.goto('/es')
       await loginPage.fillLoginForm('invalid@example.com', 'wrongpassword')  
       await loginPage.submitLogin()
-      await page.waitForTimeout(3000)
+      // Session synchronization handled by form submission
       
       // Should also stay on login page
       const stayedOnSpanishLogin = page.url().includes('/es') && !page.url().includes('/dashboard')
@@ -248,7 +247,7 @@ test.describe('Translation & i18n Validation', () => {
       // Login to access dashboard with date information
       await loginPage.goto()
       await loginPage.login('test@example.com', 'Test123!')
-      await page.waitForTimeout(3000)
+      // Session synchronization handled by form submission
       
       // Click dashboard button if present
       const dashboardButton = page.locator('[data-testid="go-to-dashboard-button"]')
@@ -273,41 +272,67 @@ test.describe('Translation & i18n Validation', () => {
       // Start Spanish journey
       await page.goto('/es')
       
-      // Check Spanish welcome page
-      await expect(page.locator(':has-text("Bienvenido")').first()).toBeVisible({ timeout: 10000 })
+      // CRITICAL: Wait for session loading to complete (same fix as auth-simple)
+      await page.waitForTimeout(3000)
       
-      // Look for Spanish "Sign in with Email" button first
-      // Spanish translation: "Iniciar sesión con Email"
-      const spanishEmailButton = page.locator('button:has-text("Email"), button:has-text("Iniciar"), button:has-text("sesión")')
-      const emailButtonExists = await spanishEmailButton.count() > 0
-      
-      if (emailButtonExists) {
-        console.log('✅ Found Spanish email sign-in button, clicking...')
-        await spanishEmailButton.first().click()
-        await page.waitForTimeout(2000)
-      } else {
-        console.log('⚠️ Spanish email button not found, checking if email form is already visible')
+      // Check if still in loading state
+      const isLoading = await page.locator('[data-testid="session-loading"]').isVisible().catch(() => false)
+      if (isLoading) {
+        console.log('⚠️ Spanish page still loading, waiting longer...')
+        await page.waitForTimeout(5000)
       }
       
-      // Wait for email input to become available
-      try {
-        await page.waitForSelector('input[type="email"]', { timeout: 10000 })
-        console.log('✅ Email input found')
-        
-        // Fill login form
-        await page.fill('input[type="email"]', 'test@example.com')
-        await page.fill('input[type="password"]', 'Test123!')
-        
-        // Wait a moment for form validation, then submit
-        await page.waitForTimeout(1000)
-        await page.click('button[type="submit"]')
-        await page.waitForTimeout(3000)
-        
-        console.log(`✅ Spanish auth flow completed, current URL: ${page.url()}`)
-      } catch (error) {
-        console.log('⚠️ Could not complete Spanish auth flow, but test will continue')
-        console.log(`Current URL: ${page.url()}`)
+      // Debug Spanish page state
+      const pageText = await page.locator('body').innerText()
+      console.log(`🔍 Spanish page content: ${pageText.substring(0, 300)}...`)
+      
+      // Check Spanish welcome page (look for h1 specifically)
+      await expect(page.locator('h1:has-text("Bienvenido")').first()).toBeVisible({ timeout: 10000 })
+      
+      // Use robust email button detection (same approach as auth-simple)
+      const emailButton = page.locator([
+        'button[data-testid="sign-in-with-email-toggle"]',
+        'button:has-text("Sign in with Email")',
+        'button:has-text("Iniciar sesión con Email")', 
+        'button:has-text("Se connecter avec Email")',
+        'button:has-text("Mit E-Mail anmelden")',
+        'button:has-text("Accedi con Email")'
+      ].join(', '))
+      
+      // Ensure email form is visible (same logic as auth-simple)
+      const emailInput = page.locator('input[id="email"]')
+      const hasEmailInput = await emailInput.isVisible().catch(() => false)
+      const hasEmailButton = await emailButton.first().isVisible().catch(() => false)
+      
+      console.log(`🔍 Spanish form state - Email input: ${hasEmailInput}, Email button: ${hasEmailButton}`)
+      
+      if (!hasEmailInput) {
+        if (hasEmailButton) {
+          console.log('📧 Clicking Spanish email toggle button...')
+          await emailButton.first().click()
+          await page.waitForSelector('input[id="email"]', { state: 'visible', timeout: 10000 })
+        } else {
+          // Enhanced debugging for Spanish failure
+          const allButtons = await page.locator('button').count()
+          const allInputs = await page.locator('input').count()
+          const bodyText = await page.locator('body').innerText()
+          
+          console.log(`❌ SPANISH DEBUG - Buttons: ${allButtons}, Inputs: ${allInputs}`)
+          console.log(`❌ Spanish page content: ${bodyText.substring(0, 500)}...`)
+          
+          throw new Error('Neither email form nor email toggle button is visible on Spanish page')
+        }
       }
+      
+      // Fill and submit form (using consistent selectors)
+      console.log('🔐 Filling Spanish login form...')
+      await page.fill('input[id="email"]', 'test@example.com')
+      await page.fill('input[id="password"]', 'Test123!')
+      await page.click('button[type="submit"]')
+      
+      // Wait for login to process
+      await page.waitForTimeout(3000)
+      console.log(`✅ Spanish auth flow completed, current URL: ${page.url()}`)
       
       // Check if login was successful - should be redirected away from login
       const notOnLogin = !page.url().includes('/login') && !page.url().includes('/signin')
@@ -318,41 +343,67 @@ test.describe('Translation & i18n Validation', () => {
       // Start French journey  
       await page.goto('/fr')
       
-      // Check French welcome page
-      await expect(page.locator(':has-text("Bienvenue")').first()).toBeVisible({ timeout: 10000 })
+      // CRITICAL: Wait for session loading to complete (same fix as Spanish)
+      await page.waitForTimeout(3000)
       
-      // Look for French "Sign in with Email" button first
-      // French translation: "Se connecter avec Email"
-      const frenchEmailButton = page.locator('button:has-text("Email"), button:has-text("connecter"), button:has-text("avec")')
-      const emailButtonExists = await frenchEmailButton.count() > 0
-      
-      if (emailButtonExists) {
-        console.log('✅ Found French email sign-in button, clicking...')
-        await frenchEmailButton.first().click()
-        await page.waitForTimeout(2000)
-      } else {
-        console.log('⚠️ French email button not found, checking if email form is already visible')
+      // Check if still in loading state
+      const isLoading = await page.locator('[data-testid="session-loading"]').isVisible().catch(() => false)
+      if (isLoading) {
+        console.log('⚠️ French page still loading, waiting longer...')
+        await page.waitForTimeout(5000)
       }
       
-      // Wait for email input to become available
-      try {
-        await page.waitForSelector('input[type="email"]', { timeout: 10000 })
-        console.log('✅ Email input found')
-        
-        // Fill login form
-        await page.fill('input[type="email"]', 'test@example.com')
-        await page.fill('input[type="password"]', 'Test123!')
-        
-        // Wait a moment for form validation, then submit
-        await page.waitForTimeout(1000)
-        await page.click('button[type="submit"]')
-        await page.waitForTimeout(3000)
-        
-        console.log(`✅ French auth flow completed, current URL: ${page.url()}`)
-      } catch (error) {
-        console.log('⚠️ Could not complete French auth flow, but test will continue')
-        console.log(`Current URL: ${page.url()}`)
+      // Debug French page state
+      const pageText = await page.locator('body').innerText()
+      console.log(`🔍 French page content: ${pageText.substring(0, 300)}...`)
+      
+      // Check French welcome page (look for h1 specifically)
+      await expect(page.locator('h1:has-text("Bienvenue")').first()).toBeVisible({ timeout: 10000 })
+      
+      // Use robust email button detection (same approach as auth-simple)
+      const emailButton = page.locator([
+        'button[data-testid="sign-in-with-email-toggle"]',
+        'button:has-text("Sign in with Email")',
+        'button:has-text("Iniciar sesión con Email")', 
+        'button:has-text("Se connecter avec Email")',
+        'button:has-text("Mit E-Mail anmelden")',
+        'button:has-text("Accedi con Email")'
+      ].join(', '))
+      
+      // Ensure email form is visible (same logic as auth-simple)
+      const emailInput = page.locator('input[id="email"]')
+      const hasEmailInput = await emailInput.isVisible().catch(() => false)
+      const hasEmailButton = await emailButton.first().isVisible().catch(() => false)
+      
+      console.log(`🔍 French form state - Email input: ${hasEmailInput}, Email button: ${hasEmailButton}`)
+      
+      if (!hasEmailInput) {
+        if (hasEmailButton) {
+          console.log('📧 Clicking French email toggle button...')
+          await emailButton.first().click()
+          await page.waitForSelector('input[id="email"]', { state: 'visible', timeout: 10000 })
+        } else {
+          // Enhanced debugging for French failure
+          const allButtons = await page.locator('button').count()
+          const allInputs = await page.locator('input').count()
+          const bodyText = await page.locator('body').innerText()
+          
+          console.log(`❌ FRENCH DEBUG - Buttons: ${allButtons}, Inputs: ${allInputs}`)
+          console.log(`❌ French page content: ${bodyText.substring(0, 500)}...`)
+          
+          throw new Error('Neither email form nor email toggle button is visible on French page')
+        }
       }
+      
+      // Fill and submit form (using consistent selectors)
+      console.log('🔐 Filling French login form...')
+      await page.fill('input[id="email"]', 'test@example.com')
+      await page.fill('input[id="password"]', 'Test123!')
+      await page.click('button[type="submit"]')
+      
+      // Wait for login to process
+      await page.waitForTimeout(3000)
+      console.log(`✅ French auth flow completed, current URL: ${page.url()}`)
       
       // Check if login was successful - should be redirected away from login
       const notOnLogin = !page.url().includes('/login') && !page.url().includes('/signin')

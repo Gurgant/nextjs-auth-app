@@ -183,7 +183,7 @@ export function useLocalizedAction<T extends [FormData, ...any[]]>(
 ): UseActionStateReturn<T> {
   const enhancedAction = useCallback(async (...args: T): Promise<ActionResponse> => {
     // Ensure locale is in FormData
-    const [formData, ...rest] = args
+    const [formData, ..._rest] = args
     if (formData instanceof FormData && !formData.has('_locale')) {
       formData.append('_locale', locale)
     }

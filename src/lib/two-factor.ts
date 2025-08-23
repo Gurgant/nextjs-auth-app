@@ -15,7 +15,7 @@ const TOTP_OPTIONS = {
 try {
   Object.assign(authenticator.options, TOTP_OPTIONS);
   console.log("🔧 TOTP Config applied successfully");
-} catch (error) {
+} catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
   console.log(
     "🔧 TOTP Config: Using method-level options due to read-only options"
   );
@@ -114,8 +114,8 @@ export async function generateQRCode(
     );
 
     return qrCodeUrl;
-  } catch (error) {
-    console.error("❌ Error generating QR code:", error);
+  } catch (_error) {
+    console.error("❌ Error generating QR code:", _error);
     throw new Error("Failed to generate QR code");
   }
 }
@@ -191,8 +191,8 @@ export function validateTOTPCode(token: string, secret: string): boolean {
     }
 
     return result;
-  } catch (error) {
-    console.error("❌ Error validating TOTP code:", error);
+  } catch (_error) {
+    console.error("❌ Error validating TOTP code:", _error);
     console.error("❌ Token:", token);
     console.error("❌ Secret length:", secret?.length);
     return false;
@@ -325,7 +325,7 @@ export function isValidSecret(secret: string): boolean {
     // Try to generate a code with the secret
     authenticator.generate(secret);
     return true;
-  } catch (error) {
+  } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
     return false;
   }
 }
@@ -390,7 +390,7 @@ export function diagnoseTOTPIssue(
         secret: secret.trim().toUpperCase(),
       });
       validationResults.push(isValid);
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       windowCodes.push(`ERROR (${i})`);
       validationResults.push(false);
     }

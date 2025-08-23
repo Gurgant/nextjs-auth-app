@@ -15,15 +15,32 @@ import { translationTestHelper, testWelcomePageInAllLanguages, testAuthButtonsIn
 
 test.describe('Translation-Aware Testing Demo', () => {
   test('HYBRID: Test welcome message using both approaches', async ({ page }) => {
-    // METHOD 1: Hardcoded approach (your original method)
+    // Navigate to home page
     await page.goto('/en')
-    await expect(page.locator(':has-text("Welcome to Our App")').first()).toBeVisible({ timeout: 10000 })
-    console.log('✅ Hardcoded test passed: Found "Welcome to Our App"')
     
-    // METHOD 2: Translation-aware approach (your suggested improvement)
+    // Wait for page to fully load and session to resolve (critical fix!)
+    await page.waitForTimeout(3000)
+    
+    // Check if still in loading state (same issue as auth-simple tests)
+    const isLoading = await page.locator('[data-testid="session-loading"]').isVisible().catch(() => false)
+    if (isLoading) {
+      console.log('⚠️ Page still loading, waiting longer...')
+      await page.waitForTimeout(5000)
+    }
+    
+    // Debug: Check what text is actually on the page
+    const pageText = await page.locator('body').innerText()
+    console.log(`🔍 Page content: ${pageText.substring(0, 500)}...`)
+    
+    // METHOD 1: Hardcoded approach (looking for h1 title specifically)
+    const titleLocator = page.locator('h1:has-text("Welcome to Our App")')
+    await expect(titleLocator).toBeVisible({ timeout: 10000 })
+    console.log('✅ Hardcoded test passed: Found "Welcome to Our App" in h1')
+    
+    // METHOD 2: Translation-aware approach 
     const expectedEnglish = translationTestHelper.getExpectedText('common.welcome', 'en')
-    await expect(page.locator(`:has-text("${expectedEnglish}")`).first()).toBeVisible({ timeout: 10000 })
-    console.log(`✅ Translation-aware test passed: Found "${expectedEnglish}"`)
+    await expect(page.locator(`h1:has-text("${expectedEnglish}")`)).toBeVisible({ timeout: 10000 })
+    console.log(`✅ Translation-aware test passed: Found "${expectedEnglish}" in h1`)
     
     // METHOD 3: Comprehensive multi-language testing (BEST approach)
     await testWelcomePageInAllLanguages(page)

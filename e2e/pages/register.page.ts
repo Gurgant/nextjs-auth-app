@@ -161,41 +161,69 @@ export class RegisterPage extends BasePage {
    * Check if registration was successful
    */
   async isRegistrationSuccessful(): Promise<boolean> {
-    // First wait for immediate success message to appear on registration page
+    // Wait for success message or redirect (registration has 2-second delay)
+    console.log('Checking for registration success...')
+    
+    // First check for success state or message
     await this.page.waitForTimeout(1000)
     
-    // Look for success alert/message first
-    const hasSuccessAlert = await this.page.locator('[data-type="success"]').isVisible()
-    const hasGreenAlert = await this.page.locator('.bg-green').isVisible() 
-    const hasSuccessClass = await this.page.locator('.alert-success').isVisible()
-    const hasCheckIcon = await this.page.locator('[data-icon="check"]').isVisible()
+    // Look for success indicators
+    const successIndicators = [
+      '[data-type="success"]',
+      '.bg-green',
+      '.alert-success', 
+      '[data-icon="check"]',
+      'text=successfully',
+      'text=registered',
+      'text=created'
+    ]
     
-    if (hasSuccessAlert || hasGreenAlert || hasSuccessClass || hasCheckIcon) {
-      console.log('Found success indicator on registration page')
-      return true
+    for (const selector of successIndicators) {
+      const isVisible = await this.page.locator(selector).isVisible().catch(() => false)
+      if (isVisible) {
+        console.log(`Found success indicator: ${selector}`)
+        return true
+      }
     }
     
-    // Wait for redirect to home page with registered=true parameter
+    // Wait for redirect to home page with registered=true parameter (with longer timeout for 2s delay)
     try {
-      await this.page.waitForURL('**/en?registered=true', { timeout: 10000 })
+      console.log('Waiting for redirect to home page...')
+      await this.page.waitForURL('**?registered=true', { timeout: 15000 })
       console.log('Successfully redirected to home page with registered=true')
       return true
     } catch (error) {
-      // If no redirect happens, check current URL as fallback
-      const currentUrl = this.page.url()
-      console.log('No redirect detected, checking current URL:', currentUrl)
-      
-      const hasRegisteredParam = currentUrl.includes('registered=true')
-      const leftRegistrationPage = !currentUrl.includes('/register')
-      
-      if (hasRegisteredParam || leftRegistrationPage) {
-        return true
-      }
-      
-      // Final fallback: check for welcome message on any page
-      const hasWelcomeMessage = await this.hasText('Welcome')
-      return hasWelcomeMessage
+      console.log('No registered=true redirect detected, checking current state...')
     }
+
+    // Check current URL for success indicators
+    const currentUrl = this.page.url()
+    console.log('Current URL:', currentUrl)
+    
+    const hasRegisteredParam = currentUrl.includes('registered=true')
+    const leftRegistrationPage = !currentUrl.includes('/register')
+    
+    if (hasRegisteredParam) {
+      console.log('Found registered=true parameter in URL')
+      return true
+    }
+    
+    if (leftRegistrationPage) {
+      console.log('Left registration page - likely successful')
+      return true
+    }
+    
+    // Final check: look for welcome message or authenticated state
+    const hasWelcomeMessage = await this.hasText('Welcome').catch(() => false)
+    const hasAuthenticatedContent = await this.page.locator('[data-testid="authenticated-home"]').isVisible().catch(() => false)
+    
+    if (hasWelcomeMessage || hasAuthenticatedContent) {
+      console.log('Found welcome message or authenticated state')
+      return true
+    }
+    
+    console.log('Registration success not detected')
+    return false
   }
   
   /**

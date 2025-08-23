@@ -7,8 +7,7 @@ import {
   encrypt, 
   decrypt,
   logSecurityEvent, 
-  getClientIP,
-  type SecurityEventData 
+  getClientIP
 } from '@/lib/security'
 import { 
   sendVerificationEmail, 
@@ -28,8 +27,6 @@ import {
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import {
-  createErrorResponse,
-  createSuccessResponse,
   createValidationErrorResponse,
   createFieldErrorResponse,
   createGenericErrorResponse,
@@ -47,9 +44,10 @@ import {
 export type ActionResult = ActionResponse
 
 // Email Verification Actions
-const emailVerificationSchema = z.object({
-  email: z.string().email('Invalid email address'),
-})
+// TODO: Future feature - Email verification form validation
+// const emailVerificationSchema = z.object({
+//   email: z.string().email('Invalid email address'),
+// })
 
 export async function sendEmailVerification(userEmail: string, locale: string = 'en'): Promise<ActionResult> {
   try {
@@ -413,7 +411,8 @@ export async function setupTwoFactorAuth(userId: string, locale: string = 'en'):
     // Encrypt and store the secret temporarily (will be saved when user confirms)
     const encryptedSecret = encrypt(twoFactorSetup.secret)
     
-    const encryptedBackupCodes = encryptBackupCodes(twoFactorSetup.backupCodes)
+    // TODO: Store encrypted backup codes when implementing persistent storage
+    // const encryptedBackupCodes = encryptBackupCodes(twoFactorSetup.backupCodes)
 
     return await createSuccessResponseI18n(
       'success.twoFactorSetupInitiated',
@@ -495,7 +494,7 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
         )
       }
       
-    } catch (error: any) {
+    } catch (_error: any) { // eslint-disable-line @typescript-eslint/no-unused-vars
       return await createFieldErrorResponseI18n(
         'errors.secretDecryptionFailed',
         'verificationCode',
@@ -528,6 +527,7 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
     if (!isValidCode) {
       // Run comprehensive diagnosis
       const diagnosis = diagnoseTOTPIssue(secret, validatedData.verificationCode)
+      console.log('🔍 TOTP Diagnosis for debugging:', diagnosis) // Debug logging
       const timeCheck = checkTimeSynchronization()
       const currentCode = getCurrentTOTPCode(secret)
       

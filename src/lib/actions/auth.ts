@@ -10,16 +10,12 @@ import { signIn } from "@/lib/auth";
 import { 
   emailSchema, 
   passwordSchema, 
-  nameSchema,
   passwordMatchRefinement,
   emailMatchRefinement
 } from "@/lib/validation";
 import { resolveFormLocale } from "@/lib/utils/form-locale-enhanced";
 import {
-  createErrorResponse,
-  createSuccessResponse,
   createValidationErrorResponse,
-  createFieldErrorResponse,
   createGenericErrorResponse,
   logActionError,
   type ActionResponse
@@ -31,14 +27,15 @@ import {
 } from "@/lib/utils/form-responses-i18n";
 
 // Registration schema validation
-const registerSchema = z
-  .object({
-    name: nameSchema,
-    email: emailSchema,
-    password: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
+// TODO: Future feature - User registration form validation
+// const registerSchema = z
+//   .object({
+//     name: nameSchema,
+//     email: emailSchema,
+//     password: passwordSchema,
+//     confirmPassword: z.string(),
+//   })
+//   .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
 
 // Account deletion schema
 const deleteAccountSchema = z
@@ -57,13 +54,14 @@ const addPasswordSchema = z
   .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
 
 // Change password schema
-const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, { message: "validation.password.required" }),
-    newPassword: passwordSchema,
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, passwordMatchRefinement);
+// TODO: Future feature - Change password form validation
+// const changePasswordSchema = z
+//   .object({
+//     currentPassword: z.string().min(1, { message: "validation.password.required" }),
+//     newPassword: passwordSchema,
+//     confirmPassword: z.string(),
+//   })
+//   .refine((data) => data.newPassword === data.confirmPassword, passwordMatchRefinement);
 
 // Using ActionResponse from form-responses instead of ActionResult
 export type ActionResult = ActionResponse;

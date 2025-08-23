@@ -38,6 +38,7 @@ export function SignInButton() {
     <button
       onClick={() => signIn('google', { callbackUrl: `/${currentLocale}/dashboard` })}
       className="w-full flex justify-center items-center py-3 px-4 border border-gray-200 rounded-xl shadow-sm text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] hover:shadow-md"
+      data-testid="sign-in-with-google-button"
     >
       <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

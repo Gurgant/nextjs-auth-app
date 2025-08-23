@@ -97,7 +97,7 @@ export abstract class PrismaRepository<T, ID = string> implements IRepository<T,
         where: { id }
       })
       return true
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       return false
     }
   }

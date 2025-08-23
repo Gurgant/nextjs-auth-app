@@ -38,7 +38,7 @@ export function CredentialsForm() {
         router.push(`/${locale}/dashboard`)
         router.refresh()
       }
-    } catch (error) {
+    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
       setError(t('genericError'))
     } finally {
       setLoading(false)

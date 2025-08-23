@@ -6,7 +6,6 @@ import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
   verifyTwoFactorCode,
-  complete2FAAuthentication,
   type ActionResult,
 } from "@/lib/actions/advanced-auth";
 import { GradientButton } from "@/components/ui/gradient-button";

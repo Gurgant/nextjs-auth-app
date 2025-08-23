@@ -1,10 +1,8 @@
-import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { repositories } from "@/lib/repositories";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { LRUCache } from "lru-cache";
 import { loginEmailSchema, loginPasswordSchema } from "@/lib/validation";
@@ -21,7 +19,8 @@ const authRateLimiter = new LRUCache<string, number>({
 
 // Rate limit configuration
 const RATE_LIMIT_ATTEMPTS = parseInt(process.env.AUTH_RATE_LIMIT || "10");
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute in milliseconds
+// TODO: Implement rate limiting with time window
+// const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute in milliseconds
 
 // Input validation schema for credentials
 const credentialsSchema = z.object({
@@ -158,7 +157,7 @@ export const authOptions = {
           if (urlObj.origin === baseUrl) {
             redirectUrl = url;
           }
-        } catch (e) {
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
           // If URL parsing failed, use default redirect
           console.log("URL parsing failed, using default redirect");
         }
@@ -173,7 +172,7 @@ export const authOptions = {
         email: user?.email,
       });
 
-      let result = true;
+      const result = true;
 
       // OAuth sign-in logic
       if (account?.provider === "google") {
@@ -269,7 +268,7 @@ export const authOptions = {
         provider: message.account?.provider,
       });
     },
-    async session(message: any) {
+    async session(_message: any) {
       // This can be very verbose, so only log in development
       if (process.env.NODE_ENV === "development") {
         console.log("📱 Session accessed");

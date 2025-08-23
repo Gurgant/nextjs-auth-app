@@ -3,7 +3,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, RefreshCw, Home } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 
 interface Props {
   children: ReactNode
@@ -133,6 +132,9 @@ export class ErrorBoundary extends Component<Props, State> {
       url: typeof window !== 'undefined' ? window.location.href : 'unknown'
     }
 
+    // Log error report for development/debugging
+    console.error('Error Boundary Report:', errorReport)
+
     if (process.env.NODE_ENV === 'production') {
       // Send to monitoring service
       // Example: sendToSentry(errorReport)
@@ -161,13 +163,13 @@ export class ErrorBoundary extends Component<Props, State> {
           return <SectionErrorFallback 
             error={error} 
             reset={this.resetErrorBoundary}
-            errorCount={errorCount}
+            _errorCount={errorCount}
           />
         default:
           return <ComponentErrorFallback 
             error={error} 
             reset={this.resetErrorBoundary}
-            errorCount={errorCount}
+            _errorCount={errorCount}
             isolate={isolate}
           />
       }
@@ -246,11 +248,11 @@ function PageErrorFallback({
 function SectionErrorFallback({ 
   error, 
   reset, 
-  errorCount 
+  _errorCount 
 }: { 
   error: Error
   reset: () => void
-  errorCount: number 
+  _errorCount: number 
 }) {
   return (
     <div className="p-8 text-center space-y-4 border border-destructive/20 rounded-lg bg-destructive/5">
@@ -278,12 +280,12 @@ function SectionErrorFallback({
 function ComponentErrorFallback({ 
   error, 
   reset, 
-  errorCount,
+  _errorCount,
   isolate 
 }: { 
   error: Error
   reset: () => void
-  errorCount: number
+  _errorCount: number
   isolate?: boolean 
 }) {
   if (isolate) {
