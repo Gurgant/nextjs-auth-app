@@ -126,7 +126,7 @@ jobs:
           CI: true
         run: |
           echo "🧪 Running Jest unit tests with CI optimizations..."
-          pnpm test --ci --maxWorkers=2 --coverage=false --silent
+          pnpm test -- --ci --maxWorkers=2 --coverage=false --silent
 
       - name: 📊 Upload test coverage
         uses: actions/upload-artifact@v4
@@ -299,7 +299,7 @@ jobs:
           # Try frozen lockfile first, fallback to regular install in CI
           pnpm install --frozen-lockfile || pnpm install
 
-      - name: 🗄️ Generate Prisma client  
+      - name: 🗄️ Generate Prisma client
         run: |
           echo "Generating Prisma client for production build..."
           pnpm exec prisma generate

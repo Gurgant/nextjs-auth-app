@@ -154,7 +154,7 @@ jobs:
           NEXTAUTH_URL: http://localhost:3000
         run: |
           echo "Running critical path tests..."
-          pnpm test -- --testPathIgnorePatterns=integration --maxWorkers=2
+          pnpm test -- --testPathIgnorePatterns=integration --maxWorkers=2 --ci
 
       - name: 🎭 Install Playwright (chromium only)
         run: pnpm exec playwright install chromium --with-deps

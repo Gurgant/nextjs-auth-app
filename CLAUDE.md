@@ -84,9 +84,11 @@ Previous work completed:
 **MANDATORY RULE: Always check for zombie processes before running E2E tests!**
 
 ### Problem: E2E tests hang/fail due to zombie dev processes
+
 When Playwright E2E tests fail to start or hang indefinitely, it's usually because a previous `pnpm dev` or `next dev` process is still running and occupying port 3000.
 
 ### Solution: Always run process cleanup FIRST
+
 ```bash
 # 1. Check for processes on development ports
 netstat -tulnp 2>/dev/null | grep -E ":(3000|3001|3002|3003|3004|3005)" | head -10
@@ -99,6 +101,7 @@ pnpm exec playwright test --workers=1 -g "test name"
 ```
 
 ### Implementation Rule:
+
 - **BEFORE any E2E test execution**: ALWAYS check and kill zombie processes
 - **NEVER assume E2E tests are broken**: Check process conflicts first
 - **Add timeout protection**: Use `timeout 60` command for all E2E test runs

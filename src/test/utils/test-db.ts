@@ -329,7 +329,10 @@ export const dbAssert = {
   /**
    * Assert record exists
    */
-  async exists(model: keyof PrismaClient, where: Record<string, unknown>): Promise<void> {
+  async exists(
+    model: keyof PrismaClient,
+    where: Record<string, unknown>,
+  ): Promise<void> {
     const client = testDb.getClient() as any;
     const count = await client[model].count({ where });
     if (count === 0) {
@@ -340,7 +343,10 @@ export const dbAssert = {
   /**
    * Assert record does not exist
    */
-  async notExists(model: keyof PrismaClient, where: Record<string, unknown>): Promise<void> {
+  async notExists(
+    model: keyof PrismaClient,
+    where: Record<string, unknown>,
+  ): Promise<void> {
     const client = testDb.getClient() as any;
     const count = await client[model].count({ where });
     if (count > 0) {

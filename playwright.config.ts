@@ -35,7 +35,7 @@ export default defineConfig({
       ],
 
   // Global setup for database seeding and test environment
-  globalSetup: require.resolve('./e2e/global-setup.ts'),
+  globalSetup: require.resolve("./e2e/global-setup.ts"),
 
   // Shared settings
   use: {
