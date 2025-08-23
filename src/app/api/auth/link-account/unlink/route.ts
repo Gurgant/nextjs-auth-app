@@ -82,7 +82,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Perform the unlink operation
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Delete the account
       await tx.account.delete({
         where: { id: accountToUnlink.id },

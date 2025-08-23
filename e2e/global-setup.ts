@@ -1,5 +1,5 @@
 import { FullConfig } from "@playwright/test";
-import { PrismaClient } from "../src/generated/prisma";
+import { PrismaClient } from "../src/generated/prisma/index";
 import bcrypt from "bcryptjs";
 
 /**

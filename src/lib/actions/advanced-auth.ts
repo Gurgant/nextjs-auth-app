@@ -838,7 +838,7 @@ export async function getEnhancedUserAccountInfo(
     }
 
     const hasGoogleAccount = user.accounts.some(
-      (account) => account.provider === "google",
+      (account: any) => account.provider === "google",
     );
     const hasPassword = !!user.password;
 

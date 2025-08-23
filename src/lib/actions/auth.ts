@@ -211,7 +211,7 @@ export async function addPasswordToGoogleUser(
     }
 
     // Check if user already has a password
-    if (userWithAccounts.password) {
+    if ((userWithAccounts as any).password) {
       return await createErrorResponseI18n(
         "errors.userAlreadyHasPassword",
         locale,
@@ -242,7 +242,7 @@ export async function addPasswordToGoogleUser(
       lastPasswordChange: new Date(),
       hasEmailAccount: true,
       hasGoogleAccount: true, // Ensure Google account flag is set
-      primaryAuthMethod: userWithAccounts.primaryAuthMethod || "google",
+      primaryAuthMethod: (userWithAccounts as any).primaryAuthMethod || "google",
     } as any);
 
     console.log("Password added for Google user:", { userId });
@@ -313,7 +313,7 @@ export async function migrateUserAccountMetadata(
       userWithAccounts.accounts?.some(
         (account) => account.provider === "google",
       ) || false;
-    const hasPassword = !!userWithAccounts.password;
+    const hasPassword = !!(userWithAccounts as any).password;
     const hasEmailAccount = hasPassword;
 
     // Determine primary auth method
@@ -333,14 +333,14 @@ export async function migrateUserAccountMetadata(
       hasEmailAccount,
       primaryAuthMethod,
       passwordSetAt:
-        userWithAccounts.password && !userWithAccounts.passwordSetAt
-          ? userWithAccounts.createdAt
-          : userWithAccounts.passwordSetAt,
+        (userWithAccounts as any).password && !(userWithAccounts as any).passwordSetAt
+          ? (userWithAccounts as any).createdAt
+          : (userWithAccounts as any).passwordSetAt,
       lastPasswordChange:
-        userWithAccounts.password && !userWithAccounts.lastPasswordChange
-          ? userWithAccounts.createdAt
-          : userWithAccounts.lastPasswordChange,
-      lastLoginAt: userWithAccounts.lastLoginAt || new Date(),
+        (userWithAccounts as any).password && !(userWithAccounts as any).lastPasswordChange
+          ? (userWithAccounts as any).createdAt
+          : (userWithAccounts as any).lastPasswordChange,
+      lastLoginAt: (userWithAccounts as any).lastLoginAt || new Date(),
     } as any);
 
     console.log("User metadata migrated:", {
