@@ -45,6 +45,11 @@ jobs:
           # Try frozen lockfile first, fallback to regular install in CI
           pnpm install --frozen-lockfile || pnpm install
 
+      - name: 🗄️ Generate Prisma client
+        run: |
+          echo "Generating Prisma client for TypeScript compilation..."
+          pnpm exec prisma generate
+
       - name: 🔧 TypeScript compilation check
         run: pnpm run typecheck
 
@@ -249,6 +254,11 @@ jobs:
           # Try frozen lockfile first, fallback to regular install in CI
           pnpm install --frozen-lockfile || pnpm install
 
+      - name: 🗄️ Generate Prisma client
+        run: |
+          echo "Generating Prisma client for security audit..."
+          pnpm exec prisma generate
+
       - name: 🔒 Security audit
         run: pnpm audit --audit-level moderate
 
@@ -288,6 +298,11 @@ jobs:
         run: |
           # Try frozen lockfile first, fallback to regular install in CI
           pnpm install --frozen-lockfile || pnpm install
+
+      - name: 🗄️ Generate Prisma client  
+        run: |
+          echo "Generating Prisma client for production build..."
+          pnpm exec prisma generate
 
       - name: 🏗️ Production build
         run: pnpm run build

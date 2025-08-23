@@ -32,10 +32,10 @@ jest.mock("@/lib/repositories", () => ({
         const isValid = await bcrypt.compare(password, user.password);
         return isValid ? user : null;
       },
-      create: async (data: any) => {
+      create: async (data: { name?: string; email: string; password?: string; emailVerified?: Date | null }) => {
         return prisma.user.create({ data });
       },
-      createWithAccount: async (data: any) => {
+      createWithAccount: async (data: { name?: string; email: string; password?: string; provider: string; providerAccountId: string }) => {
         return prisma.$transaction(async (tx) => {
           const user = await tx.user.create({
             data: {
@@ -56,7 +56,7 @@ jest.mock("@/lib/repositories", () => ({
           return user;
         });
       },
-      update: async (id: string, data: any) => {
+      update: async (id: string, data: Partial<{ name?: string; password?: string; emailVerified?: Date | null }>) => {
         return prisma.user.update({ where: { id }, data });
       },
       updateLastLogin: async (id: string) => {

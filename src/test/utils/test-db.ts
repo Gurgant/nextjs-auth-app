@@ -219,11 +219,11 @@ export class TestDatabase {
   /**
    * Wait for database changes
    */
-  async waitForChange(
-    query: () => Promise<any>,
-    predicate: (result: any) => boolean,
+  async waitForChange<T>(
+    query: () => Promise<T>,
+    predicate: (result: T) => boolean,
     options: { timeout?: number; interval?: number } = {},
-  ): Promise<any> {
+  ): Promise<T> {
     const { timeout = 5000, interval = 100 } = options;
     const startTime = Date.now();
 
@@ -329,7 +329,7 @@ export const dbAssert = {
   /**
    * Assert record exists
    */
-  async exists(model: keyof PrismaClient, where: any): Promise<void> {
+  async exists(model: keyof PrismaClient, where: Record<string, unknown>): Promise<void> {
     const client = testDb.getClient() as any;
     const count = await client[model].count({ where });
     if (count === 0) {
@@ -340,7 +340,7 @@ export const dbAssert = {
   /**
    * Assert record does not exist
    */
-  async notExists(model: keyof PrismaClient, where: any): Promise<void> {
+  async notExists(model: keyof PrismaClient, where: Record<string, unknown>): Promise<void> {
     const client = testDb.getClient() as any;
     const count = await client[model].count({ where });
     if (count > 0) {
