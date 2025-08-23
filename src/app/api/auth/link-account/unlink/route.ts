@@ -60,7 +60,7 @@ export async function DELETE(request: NextRequest) {
 
     // Find the account to unlink
     const accountToUnlink = user.accounts.find(
-      (acc) => acc.provider === provider,
+      (acc: any) => acc.provider === provider,
     );
     if (!accountToUnlink) {
       return NextResponse.json(
@@ -72,7 +72,7 @@ export async function DELETE(request: NextRequest) {
     // Check if user has at least one other auth method
     const hasCredentials = !!user.password;
     const hasOtherProviders =
-      user.accounts.filter((acc) => acc.provider !== provider).length > 0;
+      user.accounts.filter((acc: any) => acc.provider !== provider).length > 0;
 
     if (!hasCredentials && !hasOtherProviders) {
       return NextResponse.json(

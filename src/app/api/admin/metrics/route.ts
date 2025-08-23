@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       databaseStats = {
         userCount,
         sessionCount,
-        recentSecurityEvents: recentSecurityEvents.map((event) => ({
+        recentSecurityEvents: recentSecurityEvents.map((event: any) => ({
           type: event.eventType,
           success: event.success,
           timestamp: event.createdAt,

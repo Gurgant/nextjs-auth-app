@@ -34,8 +34,8 @@ export default defineConfig({
         ["html", { outputFolder: "playwright-report", open: "never" }],
       ],
 
-  // Global setup (temporarily disabled for debugging)
-  // globalSetup: require.resolve('./e2e/global-setup.ts'),
+  // Global setup for database seeding and test environment
+  globalSetup: require.resolve('./e2e/global-setup.ts'),
 
   // Shared settings
   use: {

@@ -209,7 +209,7 @@ export default async function AdminDashboardPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentUsers.map((user) => (
+                  {recentUsers.map((user: any) => (
                     <tr key={user.id} className="border-b">
                       <td className="py-2 text-sm">{user.email}</td>
                       <td className="py-2">
@@ -235,7 +235,7 @@ export default async function AdminDashboardPage({
               Recent Security Events
             </h2>
             <div className="space-y-3">
-              {recentSecurityEvents.map((event) => (
+              {recentSecurityEvents.map((event: any) => (
                 <div key={event.id} className="p-3 bg-gray-50 rounded">
                   <div className="flex justify-between items-start">
                     <div>

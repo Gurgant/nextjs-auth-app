@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already has this provider linked
     const userHasProvider = user.accounts.some(
-      (acc) => acc.provider === provider,
+      (acc: any) => acc.provider === provider,
     );
     if (userHasProvider) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Begin transaction to link account
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create the account link
       const account = await tx.account.create({
         data: {

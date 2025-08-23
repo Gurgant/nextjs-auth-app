@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Check if account is already linked
     const existingAccount = user.accounts.find(
-      (acc) => acc.provider === provider,
+      (acc: any) => acc.provider === provider,
     );
     if (existingAccount) {
       return NextResponse.json(
