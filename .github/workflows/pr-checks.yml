@@ -64,6 +64,11 @@ jobs:
           # Try frozen lockfile first, fallback to regular install in CI
           pnpm install --frozen-lockfile || pnpm install
 
+      - name: 🗄️ Generate Prisma client
+        run: |
+          echo "Generating Prisma client for TypeScript validation..."
+          pnpm exec prisma generate
+
       - name: 🔧 TypeScript validation
         run: pnpm run typecheck
 
