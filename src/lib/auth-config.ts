@@ -160,8 +160,7 @@ export const authOptions = {
           if (urlObj.origin === baseUrl) {
             redirectUrl = url;
           }
-        } catch (_e) {
-          // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch {
           // If URL parsing failed, use default redirect
           console.log("URL parsing failed, using default redirect");
         }

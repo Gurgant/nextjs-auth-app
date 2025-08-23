@@ -508,8 +508,7 @@ export async function enableTwoFactorAuth(
           "Decrypted secret is empty. Please try setting up 2FA again.",
         );
       }
-    } catch (_error: any) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch {
       return await createFieldErrorResponseI18n(
         "errors.secretDecryptionFailed",
         "verificationCode",

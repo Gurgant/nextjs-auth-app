@@ -99,8 +99,7 @@ export abstract class PrismaRepository<T, ID = string>
         where: { id },
       });
       return true;
-    } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch {
       return false;
     }
   }

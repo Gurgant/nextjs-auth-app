@@ -102,8 +102,7 @@ export function TwoFactorSetup({
       } else {
         setSetupResult(result);
       }
-    } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch {
       setSetupResult({
         success: false,
         message: tComponentErrors("failedToSetupTwoFactor"),

@@ -15,8 +15,7 @@ const TOTP_OPTIONS = {
 try {
   Object.assign(authenticator.options, TOTP_OPTIONS);
   console.log("🔧 TOTP Config applied successfully");
-} catch (_error) {
-  // eslint-disable-line @typescript-eslint/no-unused-vars
+} catch {
   console.log(
     "🔧 TOTP Config: Using method-level options due to read-only options",
   );
@@ -326,8 +325,7 @@ export function isValidSecret(secret: string): boolean {
     // Try to generate a code with the secret
     authenticator.generate(secret);
     return true;
-  } catch (_error) {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
+  } catch {
     return false;
   }
 }
@@ -392,8 +390,7 @@ export function diagnoseTOTPIssue(
         secret: secret.trim().toUpperCase(),
       });
       validationResults.push(isValid);
-    } catch (_error) {
-      // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch {
       windowCodes.push(`ERROR (${i})`);
       validationResults.push(false);
     }
