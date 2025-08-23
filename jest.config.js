@@ -1,33 +1,33 @@
-const nextJest = require('next/jest')
+const nextJest = require("next/jest");
 
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
-  dir: './',
-})
+  dir: "./",
+});
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  testEnvironment: "jest-environment-jsdom",
   testPathIgnorePatterns: [
-    '/node_modules/', 
-    '/.next/',
-    '/e2e/',
-    '/test-temp/',
-    '/test-isolated/',
-    '/playwright-report/',
-    '/test-results/'
+    "/node_modules/",
+    "/.next/",
+    "/e2e/",
+    "/test-temp/",
+    "/test-isolated/",
+    "/playwright-report/",
+    "/test-results/",
   ],
-  moduleDirectories: ['node_modules', '<rootDir>/'],
+  moduleDirectories: ["node_modules", "<rootDir>/"],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+    "^@/(.*)$": "<rootDir>/src/$1",
   },
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/index.ts',
-    '!src/middleware.ts',
-    '!src/app/**',
+    "src/**/*.{js,jsx,ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/index.ts",
+    "!src/middleware.ts",
+    "!src/app/**",
   ],
   coverageThreshold: {
     global: {
@@ -37,7 +37,7 @@ const customJestConfig = {
       statements: 70,
     },
   },
-}
+};
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig)
+module.exports = createJestConfig(customJestConfig);

@@ -1,35 +1,35 @@
-import { ICommandMiddleware } from './middleware.interface'
-import { CommandMetadata } from '../base/command.interface'
-import { prisma } from '@/lib/prisma'
+import { ICommandMiddleware } from "./middleware.interface";
+import { CommandMetadata } from "../base/command.interface";
+import { prisma } from "@/lib/prisma";
 
 interface AuditLog {
-  commandName: string
-  commandId: string
-  userId?: string
-  input: any
-  output?: any
-  error?: string
-  duration?: number
-  metadata: CommandMetadata
-  timestamp: Date
+  commandName: string;
+  commandId: string;
+  userId?: string;
+  input: any;
+  output?: any;
+  error?: string;
+  duration?: number;
+  metadata: CommandMetadata;
+  timestamp: Date;
 }
 
 export class AuditMiddleware implements ICommandMiddleware {
-  name = 'AuditMiddleware'
-  
-  private auditLogs: AuditLog[] = []
-  private persistToDatabase: boolean
-  
+  name = "AuditMiddleware";
+
+  private auditLogs: AuditLog[] = [];
+  private persistToDatabase: boolean;
+
   constructor(persistToDatabase: boolean = false) {
-    this.persistToDatabase = persistToDatabase
+    this.persistToDatabase = persistToDatabase;
   }
-  
+
   async after(
     commandName: string,
     input: any,
     output: any,
     metadata: CommandMetadata,
-    duration: number
+    duration: number,
   ): Promise<void> {
     const auditLog: AuditLog = {
       commandName,
@@ -39,17 +39,17 @@ export class AuditMiddleware implements ICommandMiddleware {
       output: this.sanitizeOutput(output),
       duration,
       metadata,
-      timestamp: new Date()
-    }
-    
-    await this.saveAuditLog(auditLog)
+      timestamp: new Date(),
+    };
+
+    await this.saveAuditLog(auditLog);
   }
-  
+
   async onError(
     commandName: string,
     input: any,
     error: Error,
-    metadata: CommandMetadata
+    metadata: CommandMetadata,
   ): Promise<void> {
     const auditLog: AuditLog = {
       commandName,
@@ -58,86 +58,93 @@ export class AuditMiddleware implements ICommandMiddleware {
       input: this.sanitizeInput(input),
       error: error.message,
       metadata,
-      timestamp: new Date()
-    }
-    
-    await this.saveAuditLog(auditLog)
+      timestamp: new Date(),
+    };
+
+    await this.saveAuditLog(auditLog);
   }
-  
+
   private async saveAuditLog(log: AuditLog): Promise<void> {
     // Store in memory
-    this.auditLogs.push(log)
-    
+    this.auditLogs.push(log);
+
     // Persist to database if enabled
     if (this.persistToDatabase) {
       try {
         // You would implement actual database persistence here
         // For now, just log it
-        console.log('[AuditMiddleware] Audit log saved:', {
+        console.log("[AuditMiddleware] Audit log saved:", {
           commandName: log.commandName,
           commandId: log.commandId,
           userId: log.userId,
-          timestamp: log.timestamp
-        })
+          timestamp: log.timestamp,
+        });
       } catch (error) {
-        console.error('[AuditMiddleware] Failed to persist audit log:', error)
+        console.error("[AuditMiddleware] Failed to persist audit log:", error);
       }
     }
   }
-  
+
   /**
    * Sanitize sensitive input data
    */
   private sanitizeInput(input: any): any {
-    if (!input) return input
-    
-    const sanitized = { ...input }
-    
+    if (!input) return input;
+
+    const sanitized = { ...input };
+
     // Remove sensitive fields
-    const sensitiveFields = ['password', 'confirmPassword', 'currentPassword', 'newPassword', 'token', 'secret']
-    sensitiveFields.forEach(field => {
+    const sensitiveFields = [
+      "password",
+      "confirmPassword",
+      "currentPassword",
+      "newPassword",
+      "token",
+      "secret",
+    ];
+    sensitiveFields.forEach((field) => {
       if (sanitized[field]) {
-        sanitized[field] = '[REDACTED]'
+        sanitized[field] = "[REDACTED]";
       }
-    })
-    
-    return sanitized
+    });
+
+    return sanitized;
   }
-  
+
   /**
    * Sanitize sensitive output data
    */
   private sanitizeOutput(output: any): any {
-    if (!output) return output
-    
-    const sanitized = { ...output }
-    
+    if (!output) return output;
+
+    const sanitized = { ...output };
+
     // Remove sensitive fields from output
     if (sanitized.token) {
-      sanitized.token = '[REDACTED]'
+      sanitized.token = "[REDACTED]";
     }
-    
-    return sanitized
+
+    return sanitized;
   }
-  
+
   /**
    * Get audit logs
    */
   getAuditLogs(): AuditLog[] {
-    return this.auditLogs
+    return this.auditLogs;
   }
-  
+
   /**
    * Get audit logs by user
    */
   getAuditLogsByUser(userId: string): AuditLog[] {
-    return this.auditLogs.filter(log => log.userId === userId)
+    return this.auditLogs.filter((log) => log.userId === userId);
   }
-  
+
   /**
    * Clear audit logs
    */
   clearAuditLogs(): void {
-    this.auditLogs = []
+    this.auditLogs = [];
   }
 }

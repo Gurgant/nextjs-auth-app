@@ -5,22 +5,22 @@ config:
     - duration: 30
       arrivalRate: 1
       name: "Warm-up"
-    
+
     # Ramp-up phase
     - duration: 60
       arrivalRate: 5
       name: "Ramp-up"
-    
+
     # Sustained load phase
     - duration: 120
       arrivalRate: 10
       name: "Sustained Load"
-    
+
     # Spike test phase
     - duration: 30
       arrivalRate: 20
       name: "Spike Test"
-    
+
     # Cool-down phase
     - duration: 30
       arrivalRate: 2
@@ -60,9 +60,9 @@ scenarios:
             - selector: "meta[name='csrf-token']"
               attr: "content"
               as: "csrfToken"
-      
+
       - think: 2
-      
+
       - post:
           url: "/api/auth/callback/credentials"
           json:
@@ -74,9 +74,9 @@ scenarios:
               as: "redirectUrl"
           expect:
             - statusCode: 200
-      
+
       - think: 1
-      
+
       - get:
           url: "{{ redirectUrl }}"
           expect:
@@ -92,9 +92,9 @@ scenarios:
             - selector: "meta[name='csrf-token']"
               attr: "content"
               as: "csrfToken"
-      
+
       - think: 3
-      
+
       - post:
           url: "/api/auth/register"
           json:
@@ -119,14 +119,14 @@ scenarios:
           capture:
             - json: "$.url"
               as: "dashboardUrl"
-      
+
       - get:
           url: "/en/dashboard"
           expect:
             - statusCode:
                 - 200
                 - 302
-      
+
       - loop:
           - get:
               url: "/api/auth/session"
@@ -147,7 +147,7 @@ scenarios:
             - statusCode:
                 - 200
                 - 302
-      
+
       - get:
           url: "/en"
           expect:

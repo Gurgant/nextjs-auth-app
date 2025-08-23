@@ -1,2 +1,2 @@
-export * from './schemas';
-export * from './translate-errors';
+export * from "./schemas";
+export * from "./translate-errors";

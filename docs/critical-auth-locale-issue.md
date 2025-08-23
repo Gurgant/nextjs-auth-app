@@ -26,21 +26,25 @@ NextAuth.js doesn't support dynamic locale paths in the `pages` configuration. T
 ## Potential Solutions
 
 ### Solution 1: Remove custom pages and handle in middleware
+
 - Remove the `pages` configuration from NextAuth
 - Let NextAuth use default pages
 - Handle redirects in middleware based on locale
 
 ### Solution 2: Use middleware to intercept and redirect
+
 - Keep the current configuration
 - Add middleware logic to intercept `/en/auth/*` paths
 - Redirect to correct locale based on cookie or header
 
 ### Solution 3: Create custom auth pages that detect locale
+
 - Create pages at `/en/auth/*` that auto-detect and redirect
 - Use client-side locale detection
 - Redirect to appropriate locale
 
 ### Solution 4: Extend NextAuth with custom logic
+
 - Override NextAuth redirect behavior
 - Implement custom redirect logic in callbacks
 - More complex but most flexible
@@ -48,6 +52,7 @@ NextAuth.js doesn't support dynamic locale paths in the `pages` configuration. T
 ## Recommendation
 
 **Solution 2** seems most practical:
+
 1. Keep current NextAuth config (avoiding breaking changes)
 2. Enhance middleware to intercept auth redirects
 3. Replace `/en/` with detected locale

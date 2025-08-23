@@ -11,13 +11,10 @@ Status: **Mostly Working** - Some issues identified
    - Root path redirect: `/` → `/en` ✅
    - Path without locale: `/dashboard` → `/en/dashboard` ✅
    - Invalid locale treated as path: `/xx/dashboard` → `/en/xx/dashboard` ✅
-   
 2. **Cookie Preference** (after fixing cookie name)
    - NEXT_LOCALE cookie respected: `Cookie: NEXT_LOCALE=es` → `/es/dashboard` ✅
-   
 3. **Accept-Language Header**
    - Browser language detected: `Accept-Language: fr-CA,fr;q=0.9` → `/fr/dashboard` ✅
-   
 4. **Security**
    - Path traversal handled: `/../../../etc/passwd` → `/en/etc/passwd` ✅
    - XSS attempt encoded: `/<script>alert("xss")</script>/dashboard` → `/en/%3Cscript%3Ealert(%22xss%22)%3C/script%3E/dashboard` ✅
@@ -80,6 +77,7 @@ Status: **Mostly Working** - Some issues identified
 ## Rollback Instructions
 
 If needed, restore original middleware:
+
 ```bash
 cp backups/middleware/20250803_233057/middleware.original.ts middleware.ts
 pnpm run dev

@@ -1,11 +1,13 @@
 # AlertMessage Component Migration Guide
 
 ## Overview
+
 This guide helps you migrate from inline alert/message patterns to the reusable `AlertMessage` component.
 
 ## Import Statement
+
 ```tsx
-import { AlertMessage } from '@/components/ui/alert-message';
+import { AlertMessage } from "@/components/ui/alert-message";
 ```
 
 ## Migration Examples
@@ -13,31 +15,82 @@ import { AlertMessage } from '@/components/ui/alert-message';
 ### Example 1: Simple Success/Error Message
 
 **BEFORE:**
+
 ```tsx
-{result?.message && (
-  <div
-    className={`rounded-xl p-4 ${
-      result.success
-        ? "bg-green-50 border border-green-200"
-        : "bg-red-50 border border-red-200"
-    }`}
-  >
-    <div className="flex items-center">
-      {result.success ? (
-        <svg
-          className="h-5 w-5 text-green-400 mr-2"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+{
+  result?.message && (
+    <div
+      className={`rounded-xl p-4 ${
+        result.success
+          ? "bg-green-50 border border-green-200"
+          : "bg-red-50 border border-red-200"
+      }`}
+    >
+      <div className="flex items-center">
+        {result.success ? (
+          <svg
+            className="h-5 w-5 text-green-400 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ) : (
+          <svg
+            className="h-5 w-5 text-red-400 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        )}
+        <p
+          className={`text-sm font-medium ${
+            result.success ? "text-green-700" : "text-red-700"
+          }`}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ) : (
+          {result.message}
+        </p>
+      </div>
+    </div>
+  );
+}
+```
+
+**AFTER:**
+
+```tsx
+{
+  result?.message && (
+    <AlertMessage
+      type={result.success ? "success" : "error"}
+      message={result.message}
+    />
+  );
+}
+```
+
+### Example 2: Error Message with Field Errors
+
+**BEFORE:**
+
+```tsx
+{
+  result?.message && (
+    <div className="rounded-xl p-4 bg-red-50 border border-red-200">
+      <div className="flex items-center">
         <svg
           className="h-5 w-5 text-red-400 mr-2"
           fill="none"
@@ -51,129 +104,93 @@ import { AlertMessage } from '@/components/ui/alert-message';
             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-      )}
-      <p
-        className={`text-sm font-medium ${
-          result.success ? "text-green-700" : "text-red-700"
-        }`}
-      >
-        {result.message}
-      </p>
-    </div>
-  </div>
-)}
-```
-
-**AFTER:**
-```tsx
-{result?.message && (
-  <AlertMessage
-    type={result.success ? 'success' : 'error'}
-    message={result.message}
-  />
-)}
-```
-
-### Example 2: Error Message with Field Errors
-
-**BEFORE:**
-```tsx
-{result?.message && (
-  <div className="rounded-xl p-4 bg-red-50 border border-red-200">
-    <div className="flex items-center">
-      <svg
-        className="h-5 w-5 text-red-400 mr-2"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-      <p className="text-sm font-medium text-red-700">
-        {result.message}
-      </p>
-    </div>
-    {result.errors && (
-      <div className="mt-2">
-        {Object.entries(result.errors).map(
-          ([field, error]) => (
+        <p className="text-sm font-medium text-red-700">{result.message}</p>
+      </div>
+      {result.errors && (
+        <div className="mt-2">
+          {Object.entries(result.errors).map(([field, error]) => (
             <p key={field} className="text-sm text-red-600">
               {error}
             </p>
-          )
-        )}
-      </div>
-    )}
-  </div>
-)}
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 ```
 
 **AFTER:**
+
 ```tsx
-{result?.message && (
-  <AlertMessage
-    type="error"
-    message={result.message}
-    errors={result.errors}
-  />
-)}
+{
+  result?.message && (
+    <AlertMessage
+      type="error"
+      message={result.message}
+      errors={result.errors}
+    />
+  );
+}
 ```
 
 ### Example 3: Dismissible Alert
 
 **BEFORE:**
+
 ```tsx
-{verificationResult && (
-  <div className="rounded-xl p-4 bg-green-50 border border-green-200">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center">
-        <svg
-          className="h-5 w-5 text-green-400 mr-2"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+{
+  verificationResult && (
+    <div className="rounded-xl p-4 bg-green-50 border border-green-200">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <svg
+            className="h-5 w-5 text-green-400 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <p className="text-sm font-medium text-green-700">
+            {verificationResult.message}
+          </p>
+        </div>
+        <button
+          onClick={() => setVerificationResult(null)}
+          className="text-green-700 hover:text-green-800"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <p className="text-sm font-medium text-green-700">
-          {verificationResult.message}
-        </p>
+          <X className="h-4 w-4" />
+        </button>
       </div>
-      <button
-        onClick={() => setVerificationResult(null)}
-        className="text-green-700 hover:text-green-800"
-      >
-        <X className="h-4 w-4" />
-      </button>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 **AFTER:**
+
 ```tsx
-{verificationResult && (
-  <AlertMessage
-    type="success"
-    message={verificationResult.message}
-    onDismiss={() => setVerificationResult(null)}
-  />
-)}
+{
+  verificationResult && (
+    <AlertMessage
+      type="success"
+      message={verificationResult.message}
+      onDismiss={() => setVerificationResult(null)}
+    />
+  );
+}
 ```
 
 ### Example 4: Info/Warning Messages
 
 **BEFORE:**
+
 ```tsx
 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
   <div className="flex items-start">
@@ -203,6 +220,7 @@ import { AlertMessage } from '@/components/ui/alert-message';
 ```
 
 **AFTER:**
+
 ```tsx
 <AlertMessage
   type="info"
@@ -212,22 +230,22 @@ import { AlertMessage } from '@/components/ui/alert-message';
 
 ## Props Reference
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `type` | `'success' \| 'error' \| 'warning' \| 'info'` | Yes | Alert variant |
-| `message` | `string` | Yes | Main message to display |
-| `errors` | `Record<string, string>` | No | Field-specific errors |
-| `onDismiss` | `() => void` | No | Dismiss handler |
-| `className` | `string` | No | Additional CSS classes |
+| Prop        | Type                                          | Required | Description             |
+| ----------- | --------------------------------------------- | -------- | ----------------------- |
+| `type`      | `'success' \| 'error' \| 'warning' \| 'info'` | Yes      | Alert variant           |
+| `message`   | `string`                                      | Yes      | Main message to display |
+| `errors`    | `Record<string, string>`                      | No       | Field-specific errors   |
+| `onDismiss` | `() => void`                                  | No       | Dismiss handler         |
+| `className` | `string`                                      | No       | Additional CSS classes  |
 
 ## Type Variants
 
-| Type | Background | Border | Icon | Text |
-|------|------------|--------|------|------|
-| `success` | green-50 | green-200 | green-400 | green-700 |
-| `error` | red-50 | red-200 | red-400 | red-700 |
-| `warning` | yellow-50 | yellow-200 | yellow-400 | yellow-700 |
-| `info` | blue-50 | blue-200 | blue-400 | blue-700 |
+| Type      | Background | Border     | Icon       | Text       |
+| --------- | ---------- | ---------- | ---------- | ---------- |
+| `success` | green-50   | green-200  | green-400  | green-700  |
+| `error`   | red-50     | red-200    | red-400    | red-700    |
+| `warning` | yellow-50  | yellow-200 | yellow-400 | yellow-700 |
+| `info`    | blue-50    | blue-200   | blue-400   | blue-700   |
 
 ## Search Patterns for Migration
 
@@ -253,18 +271,21 @@ rg "className.*rounded-xl.*p-4.*bg-(green|red|blue|yellow)-50" --type tsx
 ## Common Migration Patterns
 
 ### Pattern 1: Conditional Success/Error
+
 ```tsx
 // Look for: result.success ? 'bg-green-50' : 'bg-red-50'
 // Replace with: <AlertMessage type={result.success ? 'success' : 'error'} />
 ```
 
 ### Pattern 2: Error Details Display
+
 ```tsx
 // Look for: Object.entries(errors).map
 // Replace with: <AlertMessage errors={errors} />
 ```
 
 ### Pattern 3: Dismissible Alerts
+
 ```tsx
 // Look for: onClick={() => setSomething(null)}
 // Replace with: <AlertMessage onDismiss={() => setSomething(null)} />
@@ -289,9 +310,11 @@ rg "className.*rounded-xl.*p-4.*bg-(green|red|blue|yellow)-50" --type tsx
 ## Edge Cases
 
 ### Multi-line Messages
+
 If you need multi-line messages, include line breaks in the message string:
+
 ```tsx
-<AlertMessage 
+<AlertMessage
   type="info"
   message={`Line 1 of the message.
 Line 2 with more details.`}
@@ -299,16 +322,15 @@ Line 2 with more details.`}
 ```
 
 ### Custom Styling
+
 Use the `className` prop for spacing or custom positioning:
+
 ```tsx
-<AlertMessage 
-  type="error"
-  message="Error occurred"
-  className="mt-4 mb-6"
-/>
+<AlertMessage type="error" message="Error occurred" className="mt-4 mb-6" />
 ```
 
 ### Complex Content
+
 If you need more complex content (headings, lists, etc.), consider keeping the original implementation or extending the component.
 
 ## Migration Checklist
@@ -326,6 +348,7 @@ If you need more complex content (headings, lists, etc.), consider keeping the o
 ## Questions or Issues?
 
 If you encounter patterns not covered here:
+
 1. Check if it needs a new alert type
 2. Consider if custom styling can solve it
 3. Evaluate if the pattern should remain custom

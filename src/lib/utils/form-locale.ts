@@ -9,8 +9,11 @@
  * @param locale - The current page locale
  * @returns The same FormData instance with locale added
  */
-export function appendLocaleToFormData(formData: FormData, locale: string): FormData {
-  formData.append('_locale', locale);
+export function appendLocaleToFormData(
+  formData: FormData,
+  locale: string,
+): FormData {
+  formData.append("_locale", locale);
   return formData;
 }
 
@@ -22,17 +25,17 @@ export function appendLocaleToFormData(formData: FormData, locale: string): Form
  */
 export function createLocalizedFormData(
   locale: string,
-  initialData?: Record<string, string>
+  initialData?: Record<string, string>,
 ): FormData {
   const formData = new FormData();
-  formData.append('_locale', locale);
-  
+  formData.append("_locale", locale);
+
   if (initialData) {
     Object.entries(initialData).forEach(([key, value]) => {
       formData.append(key, value);
     });
   }
-  
+
   return formData;
 }
 
@@ -44,7 +47,7 @@ export function createLocalizedFormData(
  */
 export function getLocaleFromFormData(
   formData: FormData,
-  fallback: string = 'en'
+  fallback: string = "en",
 ): string {
-  return (formData.get('_locale') as string) || fallback;
+  return (formData.get("_locale") as string) || fallback;
 }

@@ -5,19 +5,19 @@ config:
     - duration: 10
       arrivalRate: 5
       name: "Initial Load"
-    
+
     - duration: 30
       arrivalRate: 20
       name: "Ramp to High Load"
-    
+
     - duration: 60
       arrivalRate: 50
       name: "Sustained High Load"
-    
+
     - duration: 30
       arrivalRate: 100
       name: "Peak Stress"
-    
+
     - duration: 10
       arrivalRate: 10
       name: "Recovery"
@@ -28,7 +28,7 @@ config:
   ensure:
     - http.response_time.p95: 2000
     - http.response_time.p99: 5000
-    - http.codes.5xx: 0  # No server errors allowed
+    - http.codes.5xx: 0 # No server errors allowed
 
 scenarios:
   # Heavy login scenario
@@ -44,13 +44,13 @@ scenarios:
             - statusCode:
                 - 200
                 - 302
-      
+
       - loop:
           - get:
               url: "/api/auth/session"
           - think: 0.5
         count: 5
-      
+
       - post:
           url: "/api/auth/signout"
           expect:
@@ -72,4 +72,4 @@ scenarios:
             - statusCode:
                 - 200
                 - 201
-                - 409  # Conflict for duplicate emails
+                - 409 # Conflict for duplicate emails

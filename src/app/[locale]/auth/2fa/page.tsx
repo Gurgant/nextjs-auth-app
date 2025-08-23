@@ -23,7 +23,7 @@ export default async function TwoFactorPage({
 }: TwoFactorPageProps) {
   const { locale } = await params;
   const { userId, email, callbackUrl, error } = await searchParams;
-  const t = await getTranslations('TwoFactor');
+  const t = await getTranslations("TwoFactor");
 
   // Check if user is already fully authenticated
   const session = await auth();
@@ -65,10 +65,13 @@ export default async function TwoFactorPage({
           <AlertMessage
             type="error"
             message={
-              error === "2fa_failed" ? t('tooManyAttempts') :
-              error === "invalid_code" ? t('invalidCode') :
-              error === "expired" ? t('sessionExpired') :
-              t('authError')
+              error === "2fa_failed"
+                ? t("tooManyAttempts")
+                : error === "invalid_code"
+                  ? t("invalidCode")
+                  : error === "expired"
+                    ? t("sessionExpired")
+                    : t("authError")
             }
             className="shadow-lg"
           />
@@ -90,11 +93,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const t = await getTranslations('TwoFactor');
-  
+  const t = await getTranslations("TwoFactor");
+
   return {
-    title: t('metaTitle'),
-    description: t('metaDescription'),
+    title: t("metaTitle"),
+    description: t("metaDescription"),
     robots: "noindex, nofollow", // Don't index auth pages
   };
 }

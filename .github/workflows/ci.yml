@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
-  PNPM_VERSION: '8'
+  NODE_VERSION: "20"
+  PNPM_VERSION: "8"
 
 jobs:
   # ==============================================================================
@@ -22,7 +22,7 @@ jobs:
     name: 🔍 Code Quality & Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
+
     steps:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -98,7 +98,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -109,9 +109,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
         run: |
-          echo "Testing database connectivity..."
+          echo "Testing database connectivity and setting up schema..."
           pnpm exec prisma generate
-          
+          pnpm exec prisma db push --skip-generate
+
       - name: 🧪 Run Jest unit tests
         env:
           DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
@@ -166,7 +167,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -241,7 +242,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -281,7 +282,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -298,12 +299,12 @@ jobs:
             echo "❌ Build directory not found!"
             exit 1
           fi
-          
+
           if [ ! -f ".next/BUILD_ID" ]; then
             echo "❌ Build ID not found!"
             exit 1
           fi
-          
+
           echo "✅ Production build validated successfully!"
 
       - name: 📊 Build size report

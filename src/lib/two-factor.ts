@@ -15,9 +15,10 @@ const TOTP_OPTIONS = {
 try {
   Object.assign(authenticator.options, TOTP_OPTIONS);
   console.log("🔧 TOTP Config applied successfully");
-} catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+} catch (_error) {
+  // eslint-disable-line @typescript-eslint/no-unused-vars
   console.log(
-    "🔧 TOTP Config: Using method-level options due to read-only options"
+    "🔧 TOTP Config: Using method-level options due to read-only options",
   );
 }
 
@@ -53,7 +54,7 @@ export function generateTOTPSecret(): string {
   const normalizedSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, "");
   console.log(
     "🔑 Secret Generation - Normalized length:",
-    normalizedSecret.length
+    normalizedSecret.length,
   );
 
   return normalizedSecret;
@@ -63,7 +64,7 @@ export function generateTOTPSecret(): string {
 export async function generateQRCode(
   secret: string,
   userEmail: string,
-  issuer: string = "Auth App"
+  issuer: string = "Auth App",
 ): Promise<string> {
   try {
     console.log("📱 QR Generation - Email:", userEmail);
@@ -74,7 +75,7 @@ export async function generateQRCode(
     const normalizedSecret = secret.toUpperCase().replace(/[^A-Z2-7]/g, "");
     console.log(
       "📱 QR Generation - Normalized secret length:",
-      normalizedSecret.length
+      normalizedSecret.length,
     );
 
     // Generate the TOTP URL with explicit parameters
@@ -87,7 +88,7 @@ export async function generateQRCode(
     console.log("📱 QR Generation - Secret in URL:", urlSecret);
     console.log(
       "📱 QR Generation - Secret matches input:",
-      urlSecret === normalizedSecret
+      urlSecret === normalizedSecret,
     );
 
     // Validate the URL format
@@ -110,7 +111,7 @@ export async function generateQRCode(
     console.log("📱 QR Generation - QR code URL length:", qrCodeUrl.length);
     console.log(
       "📱 QR Generation - QR code starts with:",
-      qrCodeUrl.substring(0, 30) + "..."
+      qrCodeUrl.substring(0, 30) + "...",
     );
 
     return qrCodeUrl;
@@ -123,7 +124,7 @@ export async function generateQRCode(
 // Alternative validation with larger tolerance
 export function validateTOTPCodeWithLargeTolerance(
   token: string,
-  secret: string
+  secret: string,
 ): boolean {
   try {
     const normalizedToken = token.replace(/\s/g, "");
@@ -150,7 +151,7 @@ export function validateTOTPCode(token: string, secret: string): boolean {
     console.log("🔍 TOTP Validation - Secret length:", secret.length);
     console.log(
       "🔍 TOTP Validation - Secret format check:",
-      /^[A-Z2-7]+$/.test(secret)
+      /^[A-Z2-7]+$/.test(secret),
     );
 
     // Normalize token (remove spaces, ensure it's exactly 6 digits)
@@ -160,7 +161,7 @@ export function validateTOTPCode(token: string, secret: string): boolean {
     if (!/^\d{6}$/.test(normalizedToken)) {
       console.error(
         "❌ TOTP Validation - Invalid token format:",
-        normalizedToken
+        normalizedToken,
       );
       return false;
     }
@@ -184,7 +185,7 @@ export function validateTOTPCode(token: string, secret: string): boolean {
       });
       console.log(
         "🔍 TOTP Validation - Larger window result:",
-        largerWindowResult
+        largerWindowResult,
       );
 
       return largerWindowResult;
@@ -202,7 +203,7 @@ export function validateTOTPCode(token: string, secret: string): boolean {
 // Validate backup code
 export function validateBackupCode(
   code: string,
-  encryptedBackupCodes: string[]
+  encryptedBackupCodes: string[],
 ): { valid: boolean; remainingCodes: string[] } {
   try {
     const normalizedInput = code.replace(/[-\s]/g, "").toUpperCase();
@@ -243,7 +244,7 @@ export function validateBackupCode(
 
 // Setup 2FA for a user (generate secret, QR code, and backup codes)
 export async function setupTwoFactor(
-  userEmail: string
+  userEmail: string,
 ): Promise<TwoFactorSetup> {
   try {
     // Generate secret and backup codes
@@ -302,7 +303,7 @@ export function isValidBackupCodeFormat(code: string): boolean {
 export function generateTOTPUrl(
   secret: string,
   userEmail: string,
-  issuer: string = "Auth App"
+  issuer: string = "Auth App",
 ): string {
   return authenticator.keyuri(userEmail, issuer, secret);
 }
@@ -325,7 +326,8 @@ export function isValidSecret(secret: string): boolean {
     // Try to generate a code with the secret
     authenticator.generate(secret);
     return true;
-  } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+  } catch (_error) {
+    // eslint-disable-line @typescript-eslint/no-unused-vars
     return false;
   }
 }
@@ -354,7 +356,7 @@ export function requiresTwoFactor(user: {
 // Diagnostic function to test TOTP configuration
 export function diagnoseTOTPIssue(
   secret: string,
-  userCode: string
+  userCode: string,
 ): {
   secretValid: boolean;
   codeFormat: boolean;
@@ -381,7 +383,7 @@ export function diagnoseTOTPIssue(
     try {
       const windowCode = authenticator.generate(secret);
       windowCodes.push(
-        `${i === 0 ? "*" : ""}${windowCode}${i === 0 ? "*" : ""} (${i})`
+        `${i === 0 ? "*" : ""}${windowCode}${i === 0 ? "*" : ""} (${i})`,
       );
 
       // Test validation for each window
@@ -390,7 +392,8 @@ export function diagnoseTOTPIssue(
         secret: secret.trim().toUpperCase(),
       });
       validationResults.push(isValid);
-    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
       windowCodes.push(`ERROR (${i})`);
       validationResults.push(false);
     }

@@ -55,21 +55,22 @@
 
 2. **Alternative Header Implementation**
    - If headers still don't work, consider using next.config.js:
+
    ```javascript
    module.exports = {
      async headers() {
        return [
          {
-           source: '/:path*',
+           source: "/:path*",
            headers: [
-             { key: 'X-Content-Type-Options', value: 'nosniff' },
-             { key: 'X-Frame-Options', value: 'DENY' },
+             { key: "X-Content-Type-Options", value: "nosniff" },
+             { key: "X-Frame-Options", value: "DENY" },
              // etc...
            ],
          },
-       ]
+       ];
      },
-   }
+   };
    ```
 
 3. **Continue Component Migration**
@@ -80,17 +81,19 @@
 ## Technical Notes
 
 ### Secure Locale Pattern
+
 ```typescript
 // ❌ OLD (Unsafe)
-const pathname = window.location.pathname
-const locale = pathname.split('/')[1] || 'en'
+const pathname = window.location.pathname;
+const locale = pathname.split("/")[1] || "en";
 
 // ✅ NEW (Safe)
-import { useSafeLocale } from '@/hooks/use-safe-locale'
-const locale = useSafeLocale()
+import { useSafeLocale } from "@/hooks/use-safe-locale";
+const locale = useSafeLocale();
 ```
 
 ### Navigation Pattern
+
 ```typescript
 // For Next.js router.push()
 router.push(`/${locale}/path`)
@@ -100,6 +103,7 @@ router.push(`/${locale}/path`)
 ```
 
 ## Success Metrics
+
 - ✅ Auth error page loads without errors
 - ⏳ Security headers applied to all responses
 - ⏳ Auth errors redirect to dedicated error page

@@ -3,12 +3,16 @@
  * These are async versions that support locale-based translations
  */
 
-import { translateError, translateCommonError, translateSuccess } from './server-translations';
-import type { 
-  ErrorResponse, 
-  SuccessResponse, 
-  CommonErrorType 
-} from './form-responses';
+import {
+  translateError,
+  translateCommonError,
+  translateSuccess,
+} from "./server-translations";
+import type {
+  ErrorResponse,
+  SuccessResponse,
+  CommonErrorType,
+} from "./form-responses";
 
 /**
  * Creates an error response with i18n support
@@ -16,16 +20,16 @@ import type {
 export async function createErrorResponseI18n(
   messageKey: string,
   locale?: string,
-  fallbackMessage?: string
+  fallbackMessage?: string,
 ): Promise<ErrorResponse> {
   // If locale is provided, try to translate the message
-  const translatedMessage = locale 
+  const translatedMessage = locale
     ? await translateError(locale, messageKey, fallbackMessage || messageKey)
-    : (fallbackMessage || messageKey);
+    : fallbackMessage || messageKey;
 
   return {
     success: false,
-    message: translatedMessage
+    message: translatedMessage,
   };
 }
 
@@ -36,22 +40,22 @@ export async function createFieldErrorResponseI18n(
   messageKey: string,
   field: string,
   locale?: string,
-  fallbackMessage?: string
+  fallbackMessage?: string,
 ): Promise<ErrorResponse> {
-  const translatedMessage = locale 
+  const translatedMessage = locale
     ? await translateError(locale, messageKey, fallbackMessage || messageKey)
-    : (fallbackMessage || messageKey);
-  
-  const translatedErrorMessage = locale 
+    : fallbackMessage || messageKey;
+
+  const translatedErrorMessage = locale
     ? await translateError(locale, messageKey, fallbackMessage || messageKey)
-    : (fallbackMessage || messageKey);
+    : fallbackMessage || messageKey;
 
   return {
     success: false,
     message: translatedMessage,
     errors: {
-      [field]: [translatedErrorMessage]
-    }
+      [field]: [translatedErrorMessage],
+    },
   };
 }
 
@@ -61,12 +65,12 @@ export async function createFieldErrorResponseI18n(
 export async function createGenericErrorResponseI18n(
   type: CommonErrorType,
   customMessage?: string,
-  locale?: string
+  locale?: string,
 ): Promise<ErrorResponse> {
   let message: string;
-  
+
   if (customMessage) {
-    message = locale 
+    message = locale
       ? await translateError(locale, customMessage, customMessage)
       : customMessage;
   } else if (locale) {
@@ -80,7 +84,7 @@ export async function createGenericErrorResponseI18n(
       serverError: "An error occurred on the server",
       unknown: "Something went wrong. Please try again.",
       alreadyExists: "This resource already exists",
-      invalidInput: "Invalid input provided"
+      invalidInput: "Invalid input provided",
     };
     message = messages[type] || messages.unknown;
   }
@@ -95,15 +99,15 @@ export async function createSuccessResponseI18n(
   messageKey: string,
   locale?: string,
   fallbackMessage?: string,
-  data?: any
+  data?: any,
 ): Promise<SuccessResponse> {
-  const translatedMessage = locale 
+  const translatedMessage = locale
     ? await translateSuccess(locale, messageKey, fallbackMessage || messageKey)
-    : (fallbackMessage || messageKey);
+    : fallbackMessage || messageKey;
 
   const response: SuccessResponse = {
     success: true,
-    message: translatedMessage
+    message: translatedMessage,
   };
 
   if (data !== undefined) {

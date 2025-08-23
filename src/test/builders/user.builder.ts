@@ -1,16 +1,16 @@
-import { User } from '@/lib/types/prisma'
-import bcrypt from 'bcryptjs'
-import { ChainableBuilder } from './base.builder'
-import { generate } from '../utils/test-utils'
+import { User } from "@/lib/types/prisma";
+import bcrypt from "bcryptjs";
+import { ChainableBuilder } from "./base.builder";
+import { generate } from "../utils/test-utils";
 
 /**
  * User builder for test data
  */
 export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
-  private sequence = 0
+  private sequence = 0;
 
   protected getDefaults(): User {
-    this.sequence++
+    this.sequence++;
     return {
       id: generate.uuid(),
       name: `Test User ${this.sequence}`,
@@ -24,7 +24,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       lastLoginIp: null,
       hasEmailAccount: false,
       hasGoogleAccount: false,
-      primaryAuthMethod: 'email',
+      primaryAuthMethod: "email",
       passwordSetAt: null,
       lastPasswordChange: null,
       requiresPasswordChange: false,
@@ -35,73 +35,71 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       loginAttempts: 0,
       lockedUntil: null,
       emailVerificationRequired: true,
-      role: 'USER' as const
-    }
+      role: "USER" as const,
+    };
   }
 
   protected doBuild(): User {
     return {
       ...this.getDefaults(),
-      ...this.data
-    } as User
+      ...this.data,
+    } as User;
   }
 
   /**
    * Set user ID
    */
   withId(id: string): this {
-    return this.with('id', id)
+    return this.with("id", id);
   }
 
   /**
    * Set user name
    */
   withName(name: string): this {
-    return this.with('name', name)
+    return this.with("name", name);
   }
 
   /**
    * Set user email
    */
   withEmail(email: string): this {
-    return this.with('email', email)
+    return this.with("email", email);
   }
 
   /**
    * Set password (will be hashed)
    */
   async withPassword(password: string): Promise<this> {
-    const hashedPassword = await bcrypt.hash(password, 4)
-    return this
-      .with('password', hashedPassword)
-      .with('hasEmailAccount', true)
-      .with('passwordSetAt', new Date())
-      .with('lastPasswordChange', new Date())
+    const hashedPassword = await bcrypt.hash(password, 4);
+    return this.with("password", hashedPassword)
+      .with("hasEmailAccount", true)
+      .with("passwordSetAt", new Date())
+      .with("lastPasswordChange", new Date());
   }
 
   /**
    * Set raw hashed password
    */
   withHashedPassword(hashedPassword: string): this {
-    return this
-      .with('password', hashedPassword)
-      .with('hasEmailAccount', true)
-      .with('passwordSetAt', new Date())
-      .with('lastPasswordChange', new Date())
+    return this.with("password", hashedPassword)
+      .with("hasEmailAccount", true)
+      .with("passwordSetAt", new Date())
+      .with("lastPasswordChange", new Date());
   }
 
   /**
    * Make user unverified
    */
   unverified(): this {
-    return this.with('emailVerified', null)
+    return this.with("emailVerified", null);
   }
 
   /**
    * Make user verified
    */
   verified(date?: Date): this {
-    return this.with('emailVerified', date || new Date())
+    return this.with("emailVerified", date || new Date());
   }
 
   /**
@@ -110,7 +108,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
    */
   inactive(): this {
     // No-op: isActive field doesn't exist in schema
-    return this
+    return this;
   }
 
   /**
@@ -119,159 +117,162 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
    */
   active(): this {
     // No-op: isActive field doesn't exist in schema
-    return this
+    return this;
   }
 
   /**
    * Add Google account
    */
   withGoogleAccount(): this {
-    return this
-      .with('hasGoogleAccount', true)
-      .with('primaryAuthMethod', 'google')
+    return this.with("hasGoogleAccount", true).with(
+      "primaryAuthMethod",
+      "google",
+    );
   }
 
   /**
    * Add email account
    */
   withEmailAccount(): this {
-    return this
-      .with('hasEmailAccount', true)
-      .with('primaryAuthMethod', 'email')
+    return this.with("hasEmailAccount", true).with(
+      "primaryAuthMethod",
+      "email",
+    );
   }
 
   /**
    * Enable 2FA
    */
   with2FA(secret?: string): this {
-    return this
-      .with('twoFactorEnabled', true)
-      .with('twoFactorSecret', secret || 'SECRET123')
-      .with('backupCodes', [
-        'BACKUP1', 'BACKUP2', 'BACKUP3', 'BACKUP4', 'BACKUP5',
-        'BACKUP6', 'BACKUP7', 'BACKUP8', 'BACKUP9', 'BACKUP10'
+    return this.with("twoFactorEnabled", true)
+      .with("twoFactorSecret", secret || "SECRET123")
+      .with("backupCodes", [
+        "BACKUP1",
+        "BACKUP2",
+        "BACKUP3",
+        "BACKUP4",
+        "BACKUP5",
+        "BACKUP6",
+        "BACKUP7",
+        "BACKUP8",
+        "BACKUP9",
+        "BACKUP10",
       ])
-      .with('twoFactorEnabledAt', new Date())
+      .with("twoFactorEnabledAt", new Date());
   }
 
   /**
    * Disable 2FA
    */
   without2FA(): this {
-    return this
-      .with('twoFactorEnabled', false)
-      .with('twoFactorSecret', null)
-      .with('backupCodes', [])
-      .with('twoFactorEnabledAt', null)
+    return this.with("twoFactorEnabled", false)
+      .with("twoFactorSecret", null)
+      .with("backupCodes", [])
+      .with("twoFactorEnabledAt", null);
   }
 
   /**
    * Lock account
    */
   locked(until?: Date, attempts?: number): this {
-    return this
-      .with('lockedUntil', until || new Date(Date.now() + 3600000))
-      .with('loginAttempts', attempts || 5)
+    return this.with(
+      "lockedUntil",
+      until || new Date(Date.now() + 3600000),
+    ).with("loginAttempts", attempts || 5);
   }
 
   /**
    * Unlock account
    */
   unlocked(): this {
-    return this
-      .with('lockedUntil', null)
-      .with('loginAttempts', 0)
+    return this.with("lockedUntil", null).with("loginAttempts", 0);
   }
 
   /**
    * Require password change
    */
   requiresPasswordChange(): this {
-    return this.with('requiresPasswordChange', true)
+    return this.with("requiresPasswordChange", true);
   }
 
   /**
    * Set last login
    */
   withLastLogin(date?: Date, ip?: string): this {
-    return this
-      .with('lastLoginAt', date || new Date())
-      .with('lastLoginIp', ip || '127.0.0.1')
+    return this.with("lastLoginAt", date || new Date()).with(
+      "lastLoginIp",
+      ip || "127.0.0.1",
+    );
   }
 
   /**
    * Set profile image
    */
   withImage(url: string): this {
-    return this.with('image', url)
+    return this.with("image", url);
   }
 
   /**
    * Set user role
    */
-  withRole(role: 'USER' | 'PRO_USER' | 'ADMIN'): this {
-    return this.with('role', role)
+  withRole(role: "USER" | "PRO_USER" | "ADMIN"): this {
+    return this.with("role", role);
   }
 
   /**
    * Create admin user
    */
   admin(): this {
-    return this
-      .withName('Admin User')
-      .withEmail('admin@example.com')
-      .withRole('ADMIN')
+    return this.withName("Admin User")
+      .withEmail("admin@example.com")
+      .withRole("ADMIN")
       .verified()
-      .active()
+      .active();
   }
 
   /**
    * Create test user with common setup
    */
   testUser(index: number = 1): this {
-    return this
-      .withName(`Test User ${index}`)
+    return this.withName(`Test User ${index}`)
       .withEmail(`test${index}@example.com`)
       .verified()
-      .active()
+      .active();
   }
 
   /**
    * Create OAuth user
    */
-  oauthUser(provider: string = 'google'): this {
-    return this
-      .verified()
+  oauthUser(provider: string = "google"): this {
+    return this.verified()
       .active()
-      .with('hasGoogleAccount', provider === 'google')
-      .with('primaryAuthMethod', provider)
-      .with('password', null)
+      .with("hasGoogleAccount", provider === "google")
+      .with("primaryAuthMethod", provider)
+      .with("password", null);
   }
 
   /**
    * Create new user (just registered)
    */
   newUser(): this {
-    return this
-      .unverified()
+    return this.unverified()
       .active()
-      .with('createdAt', new Date())
-      .with('updatedAt', new Date())
-      .with('lastLoginAt', null)
+      .with("createdAt", new Date())
+      .with("updatedAt", new Date())
+      .with("lastLoginAt", null);
   }
 
   /**
    * Create old user (long-time member)
    */
   oldUser(years: number = 2): this {
-    const createdAt = new Date()
-    createdAt.setFullYear(createdAt.getFullYear() - years)
-    
-    return this
-      .verified(createdAt)
+    const createdAt = new Date();
+    createdAt.setFullYear(createdAt.getFullYear() - years);
+
+    return this.verified(createdAt)
       .active()
-      .with('createdAt', createdAt)
-      .withLastLogin(new Date())
+      .with("createdAt", createdAt)
+      .withLastLogin(new Date());
   }
 }
 
@@ -282,10 +283,7 @@ export const userBuilders = {
   /**
    * Basic user with email/password
    */
-  basic: () => new UserBuilder()
-    .verified()
-    .active()
-    .withEmailAccount(),
+  basic: () => new UserBuilder().verified().active().withEmailAccount(),
 
   /**
    * Admin user
@@ -295,31 +293,23 @@ export const userBuilders = {
   /**
    * OAuth user
    */
-  oauth: (provider = 'google') => new UserBuilder().oauthUser(provider),
+  oauth: (provider = "google") => new UserBuilder().oauthUser(provider),
 
   /**
    * Unverified user
    */
-  unverified: () => new UserBuilder()
-    .unverified()
-    .active()
-    .withEmailAccount(),
+  unverified: () => new UserBuilder().unverified().active().withEmailAccount(),
 
   /**
    * Locked user
    */
-  locked: () => new UserBuilder()
-    .verified()
-    .locked(),
+  locked: () => new UserBuilder().verified().locked(),
 
   /**
    * User with 2FA
    */
-  with2FA: () => new UserBuilder()
-    .verified()
-    .active()
-    .withEmailAccount()
-    .with2FA(),
+  with2FA: () =>
+    new UserBuilder().verified().active().withEmailAccount().with2FA(),
 
   /**
    * New user
@@ -329,42 +319,42 @@ export const userBuilders = {
   /**
    * Old user
    */
-  old: (years = 2) => new UserBuilder().oldUser(years)
-}
+  old: (years = 2) => new UserBuilder().oldUser(years),
+};
 
 /**
  * User builder factory
  */
 export class UserBuilderFactory {
-  private builders: UserBuilder[] = []
+  private builders: UserBuilder[] = [];
 
   /**
    * Create a new user builder
    */
   create(): UserBuilder {
-    const builder = new UserBuilder()
-    this.builders.push(builder)
-    return builder
+    const builder = new UserBuilder();
+    this.builders.push(builder);
+    return builder;
   }
 
   /**
    * Create multiple user builders
    */
   createMany(count: number): UserBuilder[] {
-    return Array.from({ length: count }, () => this.create())
+    return Array.from({ length: count }, () => this.create());
   }
 
   /**
    * Build all created users
    */
   buildAll(): User[] {
-    return this.builders.map(builder => builder.build())
+    return this.builders.map((builder) => builder.build());
   }
 
   /**
    * Reset factory
    */
   reset(): void {
-    this.builders = []
+    this.builders = [];
   }
 }

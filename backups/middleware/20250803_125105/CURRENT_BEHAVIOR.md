@@ -3,11 +3,13 @@
 ## Date: 2025-08-03
 
 ### Active Middleware
+
 - **File**: `/middleware.ts` (root)
 - **Purpose**: OAuth/Auth error handling
 - **Key behavior**: Redirects auth errors to error page
 
 ### Inactive Middleware (likely ignored by Next.js)
+
 - **File**: `/src/middleware.ts`
 - **Purpose**: i18n routing with next-intl
 - **Note**: Only one middleware can be active, root takes precedence
@@ -31,6 +33,7 @@
    - `/api/auth/*`
 
 ### Test URLs
+
 ```bash
 # Valid auth error
 /en/auth/signin?error=OAuthAccountNotLinked
@@ -43,7 +46,9 @@
 ```
 
 ### Rollback Instructions
+
 If issues arise after changes:
+
 1. Copy backup files back:
    ```bash
    cp backups/middleware/20250803_125105/middleware.root.ts middleware.ts
@@ -53,6 +58,7 @@ If issues arise after changes:
 3. Test functionality
 
 ### Known Working Features
+
 - OAuth error redirects work
 - Default locale fallback to 'en'
 - API routes not affected

@@ -12,29 +12,38 @@ We implemented explicit locale passing from client forms to server actions:
 
 ```typescript
 // Append locale to FormData for server actions
-export function appendLocaleToFormData(formData: FormData, locale: string): FormData
+export function appendLocaleToFormData(
+  formData: FormData,
+  locale: string,
+): FormData;
 // Extract locale from FormData with fallback
-export function getLocaleFromFormData(formData: FormData, fallback: string = 'en'): string
+export function getLocaleFromFormData(
+  formData: FormData,
+  fallback: string = "en",
+): string;
 ```
 
 ### 2. Updated Server Actions
 
 All server actions now:
+
 - Extract locale from form data first
 - Fall back to cookie locale only if no form locale provided
 - Use the correct locale for translations
 
 Example:
+
 ```typescript
 const formLocale = getLocaleFromFormData(formData);
 const cookieLocale = await getCurrentLocale();
-const locale = formLocale !== 'en' ? formLocale : cookieLocale;
+const locale = formLocale !== "en" ? formLocale : cookieLocale;
 const t = await getTranslations({ locale, namespace: "validation" });
 ```
 
 ### 3. Updated Client Components
 
 All form-submitting components now append locale:
+
 ```typescript
 const formData = new FormData(e.currentTarget);
 appendLocaleToFormData(formData, locale);
@@ -44,12 +53,14 @@ const actionResult = await serverAction(formData);
 ## Updated Components
 
 ### Server Actions (with locale support):
+
 - `registerUser`
 - `deleteUserAccount`
 - `addPasswordToGoogleUser`
 - `changeUserPassword`
 
 ### Client Components (appending locale):
+
 - `RegistrationForm`
 - `AccountManagement`
 

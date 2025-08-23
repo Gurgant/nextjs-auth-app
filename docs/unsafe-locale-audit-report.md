@@ -9,6 +9,7 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ### 1. Middleware-Level Issues (CRITICAL)
 
 #### `/middleware.ts` (Root Middleware)
+
 - **Line 14**: `const locale = pathname.split('/')[1] || 'en'`
 - **Risk Level**: CRITICAL
 - **Impact**: All OAuth error redirects use unsafe locale extraction
@@ -17,37 +18,41 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ### 2. Authentication Components (HIGH RISK)
 
 #### `/src/app/[locale]/auth/error/page.tsx`
-- **Lines 68-69**: 
+
+- **Lines 68-69**:
   ```typescript
-  const pathname = window.location.pathname
-  const locale = pathname.split('/')[1] || 'en'
+  const pathname = window.location.pathname;
+  const locale = pathname.split("/")[1] || "en";
   ```
 - **Risk Level**: HIGH
 - **Impact**: Auth error page - critical for security messaging
 
 #### `/src/app/[locale]/auth/signin/page.tsx`
+
 - **Lines 10, 13**:
   ```typescript
-  const pathname = usePathname()
-  const locale = pathname.split('/')[1] || 'en'
+  const pathname = usePathname();
+  const locale = pathname.split("/")[1] || "en";
   ```
 - **Risk Level**: HIGH
 - **Impact**: Sign-in page - entry point for authentication
 
 #### `/src/components/auth/sign-in-button.tsx`
+
 - **Lines 12, 15**:
   ```typescript
-  const pathname = usePathname()
-  const currentLocale = pathname.split('/')[1] || 'en'
+  const pathname = usePathname();
+  const currentLocale = pathname.split("/")[1] || "en";
   ```
 - **Risk Level**: HIGH
 - **Impact**: Sign-in button used across the application
 
 #### `/src/components/auth/credentials-form.tsx`
+
 - **Lines 13, 21**:
   ```typescript
-  const pathname = usePathname()
-  const locale = pathname.split('/')[1] || 'en'
+  const pathname = usePathname();
+  const locale = pathname.split("/")[1] || "en";
   ```
 - **Risk Level**: HIGH
 - **Impact**: Credentials form - handles sensitive user input
@@ -55,15 +60,17 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ### 3. General Components (MEDIUM RISK)
 
 #### `/src/components/dashboard-content.tsx`
+
 - **Lines 11-12**:
   ```typescript
-  const pathname = usePathname()
-  const currentLocale = pathname.split('/')[1] || 'en'
+  const pathname = usePathname();
+  const currentLocale = pathname.split("/")[1] || "en";
   ```
 - **Risk Level**: MEDIUM
 - **Impact**: Dashboard content - protected route but still needs fixing
 
 #### `/src/components/language-selector.tsx`
+
 - **Line 50**: `const segments = pathname.split("/");`
 - **Risk Level**: MEDIUM
 - **Impact**: Language selector - affects locale switching
@@ -71,6 +78,7 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ### 4. Server-Side Code (MEDIUM RISK)
 
 #### `/src/lib/auth.ts`
+
 - **Line 324**: `const segments = urlObj.pathname.split("/").filter(Boolean);`
 - **Risk Level**: MEDIUM
 - **Impact**: Auth library - server-side URL parsing
@@ -78,16 +86,17 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ## Risk Prioritization
 
 ### Priority 1: CRITICAL (Immediate Action Required)
+
 1. **Middleware** (`/middleware.ts`)
    - Affects all OAuth error handling
    - Entry point for attacks
    - Must be fixed before any component migrations
 
 ### Priority 2: HIGH (Authentication Components)
+
 1. **Auth Error Page** (`/src/app/[locale]/auth/error/page.tsx`)
    - Handles sensitive error messages
    - User-facing error display
-   
 2. **Sign-in Page** (`/src/app/[locale]/auth/signin/page.tsx`)
    - Authentication entry point
    - High visibility component
@@ -101,6 +110,7 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
    - Form submission with locale
 
 ### Priority 3: MEDIUM (General Components)
+
 1. **Dashboard Content** (`/src/components/dashboard-content.tsx`)
    - Protected route
    - Lower attack surface
@@ -116,18 +126,21 @@ This audit identifies all instances of unsafe locale extraction from URLs in the
 ## Attack Vectors
 
 ### 1. Path Traversal
+
 ```
 /../../../../etc/passwd/dashboard
 Result: locale = ".." (potentially dangerous)
 ```
 
 ### 2. XSS Injection
+
 ```
 /<script>alert('xss')</script>/dashboard
 Result: locale = "<script>alert('xss')</script>"
 ```
 
 ### 3. Invalid Locale Handling
+
 ```
 /invalid-locale/dashboard
 Result: locale = "invalid-locale" (not in allowed list)
@@ -136,18 +149,21 @@ Result: locale = "invalid-locale" (not in allowed list)
 ## Migration Strategy
 
 ### Phase 1: Create Infrastructure ✅ (COMPLETED)
+
 - Created `/src/config/i18n.ts` with validation
-- Created `/src/hooks/use-safe-locale.ts` 
+- Created `/src/hooks/use-safe-locale.ts`
 - Created `/src/utils/navigation.ts`
 - All with comprehensive tests
 
 ### Phase 2: Fix Critical Components (CURRENT)
+
 1. Middleware consolidation and secure implementation
 2. Auth error page migration
 3. Sign-in page migration
 4. Authentication component updates
 
 ### Phase 3: Complete Migration
+
 1. Dashboard and protected routes
 2. Utility components
 3. Server-side locale handling

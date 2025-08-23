@@ -18,19 +18,25 @@ const ROLE_HIERARCHY: Record<Role, number> = {
 /**
  * Check if user has required role
  */
-export function hasRole(userRole: Role | undefined, requiredRole: Role): boolean {
+export function hasRole(
+  userRole: Role | undefined,
+  requiredRole: Role,
+): boolean {
   if (!userRole) return false;
-  
+
   const userLevel = ROLE_HIERARCHY[userRole] || 0;
   const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
-  
+
   return userLevel >= requiredLevel;
 }
 
 /**
  * Check if user has exact role (no hierarchy)
  */
-export function hasExactRole(userRole: Role | undefined, targetRole: Role): boolean {
+export function hasExactRole(
+  userRole: Role | undefined,
+  targetRole: Role,
+): boolean {
   return userRole === targetRole;
 }
 
@@ -54,17 +60,17 @@ export function isProUser(userRole: Role | undefined): boolean {
 export function requireRole(requiredRole: Role) {
   return async (request: NextRequest) => {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.redirect(new URL("/auth/signin", request.url));
     }
-    
+
     const userRole = session.user.role as Role | undefined;
-    
+
     if (!hasRole(userRole, requiredRole)) {
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
-    
+
     return NextResponse.next();
   };
 }
@@ -72,26 +78,29 @@ export function requireRole(requiredRole: Role) {
 /**
  * API route handler wrapper that requires specific role
  */
-export function withRole(requiredRole: Role, handler: (request: NextRequest, ...args: any[]) => Promise<Response>) {
+export function withRole(
+  requiredRole: Role,
+  handler: (request: NextRequest, ...args: any[]) => Promise<Response>,
+) {
   return async (request: NextRequest, ...args: any[]) => {
     const session = await auth();
-    
+
     if (!session?.user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
-    
+
     const userRole = session.user.role as Role | undefined;
-    
+
     if (!hasRole(userRole, requiredRole)) {
       return NextResponse.json(
         { error: "Insufficient permissions" },
-        { status: 403 }
+        { status: 403 },
       );
     }
-    
+
     return handler(request, ...args);
   };
 }
@@ -105,7 +114,7 @@ export function getRoleDisplayName(role: Role): string {
     PRO_USER: "Pro User",
     ADMIN: "Administrator",
   };
-  
+
   return displayNames[role] || "Unknown";
 }
 
@@ -118,7 +127,7 @@ export function getRoleBadgeColor(role: Role): string {
     PRO_USER: "bg-blue-100 text-blue-800",
     ADMIN: "bg-red-100 text-red-800",
   };
-  
+
   return colors[role] || "bg-gray-100 text-gray-800";
 }
 
@@ -127,11 +136,7 @@ export function getRoleBadgeColor(role: Role): string {
  */
 export function getRoleFeatures(role: Role): string[] {
   const features: Record<Role, string[]> = {
-    USER: [
-      "Basic dashboard",
-      "Profile management",
-      "Email notifications",
-    ],
+    USER: ["Basic dashboard", "Profile management", "Email notifications"],
     PRO_USER: [
       "Basic dashboard",
       "Profile management",
@@ -150,6 +155,6 @@ export function getRoleFeatures(role: Role): string[] {
       "Role assignments",
     ],
   };
-  
+
   return features[role] || [];
 }

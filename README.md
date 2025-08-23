@@ -49,6 +49,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 ## ✨ Features
 
 ### 🔐 Authentication & Security
+
 - **Dual Authentication**: Google OAuth + Email/Password
 - **JWT Session Management**: Secure token-based sessions
 - **Rate Limiting**: Prevents brute force attacks
@@ -58,6 +59,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 - **Secure Middleware**: Type-safe locale extraction
 
 ### 🏗️ Enterprise Architecture
+
 - **Command Pattern**: Encapsulated business operations
 - **Event-Driven Architecture**: Decoupled event system
 - **Repository Pattern**: Abstract data access layer
@@ -66,6 +68,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 - **Dependency Injection**: IoC container ready
 
 ### 🌍 Internationalization
+
 - **5 Languages**: English, Spanish, French, Italian, German
 - **Server-Side Translation**: SEO-friendly
 - **Type-Safe i18n**: Compile-time safety for translations
@@ -73,6 +76,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 - **Validation Messages**: Localized error messages
 
 ### 🧪 Testing Infrastructure
+
 - **100% Test Success**: 314/314 tests passing
 - **Multiple Test Strategies**:
   - Unit Tests with Jest
@@ -84,6 +88,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 - **Page Object Model**: Maintainable E2E tests
 
 ### 🎨 UI/UX Features
+
 - **Responsive Design**: Mobile-first approach
 - **Loading States**: Skeleton screens and spinners
 - **Error Handling**: User-friendly error messages
@@ -127,6 +132,7 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 ### Key Patterns
 
 #### Command Pattern
+
 ```typescript
 // Encapsulated business operations
 export class RegisterUserCommand extends BaseCommand {
@@ -137,17 +143,23 @@ export class RegisterUserCommand extends BaseCommand {
 ```
 
 #### Event System
+
 ```typescript
 // Decoupled event handling
-eventBus.publish(new UserRegisteredEvent({
-  userId, email, registeredAt
-}))
+eventBus.publish(
+  new UserRegisteredEvent({
+    userId,
+    email,
+    registeredAt,
+  }),
+);
 ```
 
 #### Repository Pattern
+
 ```typescript
 // Abstract data access
-const user = await userRepository.findByEmail(email)
+const user = await userRepository.findByEmail(email);
 ```
 
 ---
@@ -203,13 +215,13 @@ pnpm check  # Runs lint + typecheck
 
 ### Test Statistics
 
-| Type | Tests | Status | Coverage |
-|------|-------|--------|----------|
-| Unit Tests | 200+ | ✅ 100% | Business Logic |
-| Integration | 50+ | ✅ 100% | Database Operations |
-| Hybrid | 30+ | ✅ 100% | Mock/Real Modes |
-| E2E | 34+ | ✅ 100% | User Journeys |
-| **Total** | **314** | **✅ 100%** | **Comprehensive** |
+| Type        | Tests   | Status      | Coverage            |
+| ----------- | ------- | ----------- | ------------------- |
+| Unit Tests  | 200+    | ✅ 100%     | Business Logic      |
+| Integration | 50+     | ✅ 100%     | Database Operations |
+| Hybrid      | 30+     | ✅ 100%     | Mock/Real Modes     |
+| E2E         | 34+     | ✅ 100%     | User Journeys       |
+| **Total**   | **314** | **✅ 100%** | **Comprehensive**   |
 
 ### Testing Commands
 
@@ -241,19 +253,16 @@ pnpm test:coverage:full
 
 ```typescript
 // Test Builders for consistent test data
-const user = new UserBuilder()
-  .withEmail('test@example.com')
-  .verified()
-  .build()
+const user = new UserBuilder().withEmail("test@example.com").verified().build();
 
 // Page Object Model for E2E tests
-const registerPage = new RegisterPage(page)
+const registerPage = new RegisterPage(page);
 await registerPage.register({
-  name: 'Test User',
-  email: 'test@example.com',
-  password: 'Test123!',
-  acceptTerms: true
-})
+  name: "Test User",
+  email: "test@example.com",
+  password: "Test123!",
+  acceptTerms: true,
+});
 ```
 
 ---
@@ -325,23 +334,25 @@ src/
 ### Development Workflow
 
 1. **Feature Development**
+
    ```bash
    # Create feature branch
    git checkout -b feature/your-feature
-   
+
    # Develop with TDD
    pnpm test:watch
-   
+
    # Check quality
    pnpm check
    ```
 
 2. **Testing**
+
    ```bash
    # Run relevant tests
    pnpm test:unit
    pnpm test:integration
-   
+
    # Run E2E tests
    pnpm test:e2e
    ```
@@ -359,39 +370,38 @@ src/
 ### Authentication Endpoints
 
 #### Register User
+
 ```typescript
-POST /api/auth/register
+POST / api / auth / register;
 Body: {
-  name: string
-  email: string
-  password: string
-  confirmPassword: string
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
 }
-Response: ActionResponse<{ userId: string }>
+Response: ActionResponse<{ userId: string }>;
 ```
 
 #### Login
+
 ```typescript
-POST /api/auth/signin
+POST / api / auth / signin;
 Body: {
-  email: string
-  password: string
+  email: string;
+  password: string;
 }
-Response: Session
+Response: Session;
 ```
 
 ### Command System
 
 ```typescript
 // Execute commands through the command bus
-const result = await commandBus.execute(
-  new RegisterUserCommand(),
-  {
-    name: 'John Doe',
-    email: 'john@example.com',
-    password: 'SecurePass123!'
-  }
-)
+const result = await commandBus.execute(new RegisterUserCommand(), {
+  name: "John Doe",
+  email: "john@example.com",
+  password: "SecurePass123!",
+});
 ```
 
 ### Event System
@@ -402,16 +412,16 @@ eventBus.subscribe(UserRegisteredEvent, async (event) => {
   // Send welcome email
   // Update analytics
   // Log audit trail
-})
+});
 ```
 
 ### Error Handling
 
 ```typescript
 // Centralized error creation
-const error = ErrorFactory.validation.invalidInput('email')
-const error = ErrorFactory.auth.invalidCredentials()
-const error = ErrorFactory.business.alreadyExists('User')
+const error = ErrorFactory.validation.invalidInput("email");
+const error = ErrorFactory.auth.invalidCredentials();
+const error = ErrorFactory.business.alreadyExists("User");
 ```
 
 ---

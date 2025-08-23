@@ -21,13 +21,14 @@ import {
   hasFieldErrors,
   getFieldError,
   getAllFieldErrors,
-  type ActionResponse
-} from '@/lib/utils/form-responses';
+  type ActionResponse,
+} from "@/lib/utils/form-responses";
 ```
 
 ### Replace ActionResult interface
 
 **Before:**
+
 ```typescript
 export interface ActionResult {
   success: boolean;
@@ -38,6 +39,7 @@ export interface ActionResult {
 ```
 
 **After:**
+
 ```typescript
 // Using ActionResponse from form-responses instead of ActionResult
 export type ActionResult = ActionResponse;
@@ -48,14 +50,16 @@ export type ActionResult = ActionResponse;
 ### 1. Basic Error Response
 
 **Before:**
+
 ```typescript
 return {
   success: false,
-  message: "Something went wrong"
+  message: "Something went wrong",
 };
 ```
 
 **After:**
+
 ```typescript
 return createErrorResponse("Something went wrong");
 ```
@@ -63,57 +67,63 @@ return createErrorResponse("Something went wrong");
 ### 2. User Not Found Error
 
 **Before:**
+
 ```typescript
 if (!user) {
   return {
     success: false,
-    message: "User not found"
+    message: "User not found",
   };
 }
 ```
 
 **After:**
+
 ```typescript
 if (!user) {
-  return createGenericErrorResponse('notFound', 'User not found');
+  return createGenericErrorResponse("notFound", "User not found");
 }
 ```
 
 ### 3. Field-specific Errors
 
 **Before:**
+
 ```typescript
 return {
   success: false,
   message: "Invalid credentials",
-  errors: { password: "Incorrect password" }
+  errors: { password: "Incorrect password" },
 };
 ```
 
 **After:**
+
 ```typescript
 return createFieldErrorResponse(
   "Invalid credentials",
   "password",
-  "Incorrect password"
+  "Incorrect password",
 );
 ```
 
 ### 4. Validation Errors (Zod)
 
 **Before:**
+
 ```typescript
 if (error instanceof z.ZodError) {
   const errors = await translateValidationErrors(error, locale);
   return {
     success: false,
     message: t("form.validationError"),
-    errors
+    errors,
   };
 }
 ```
 
 **After:**
+
 ```typescript
 if (error instanceof z.ZodError) {
   return createValidationErrorResponse(error, locale);
@@ -123,14 +133,16 @@ if (error instanceof z.ZodError) {
 ### 5. Success Response
 
 **Before:**
+
 ```typescript
 return {
   success: true,
-  message: "Operation successful"
+  message: "Operation successful",
 };
 ```
 
 **After:**
+
 ```typescript
 return createSuccessResponse("Operation successful");
 ```
@@ -138,44 +150,49 @@ return createSuccessResponse("Operation successful");
 ### 6. Success Response with Data
 
 **Before:**
+
 ```typescript
 return {
   success: true,
   message: "Data retrieved",
   data: {
     userId: user.id,
-    email: user.email
-  }
+    email: user.email,
+  },
 };
 ```
 
 **After:**
+
 ```typescript
 return createSuccessResponse("Data retrieved", {
   userId: user.id,
-  email: user.email
+  email: user.email,
 });
 ```
 
 ### 7. Error Logging
 
 **Before:**
+
 ```typescript
 console.error("Function error:", error);
 ```
 
 **After:**
+
 ```typescript
-logActionError('functionName', error);
+logActionError("functionName", error);
 ```
 
 ### 8. Try-Catch Block Pattern
 
 **Before:**
+
 ```typescript
 } catch (error) {
   console.error("Registration error:", error);
-  
+
   if (error instanceof z.ZodError) {
     // Handle validation errors
     const errors = await translateValidationErrors(error, locale);
@@ -185,7 +202,7 @@ logActionError('functionName', error);
       errors
     };
   }
-  
+
   return {
     success: false,
     message: "Something went wrong. Please try again."
@@ -194,14 +211,15 @@ logActionError('functionName', error);
 ```
 
 **After:**
+
 ```typescript
 } catch (error) {
   const locale = await resolveFormLocale(formData);
-  
+
   if (error instanceof z.ZodError) {
     return createValidationErrorResponse(error, locale);
   }
-  
+
   logActionError('registerUser', error);
   return createGenericErrorResponse('unknown');
 }
@@ -212,6 +230,7 @@ logActionError('functionName', error);
 ### Accessing Errors in Components
 
 **Before:**
+
 ```typescript
 {result?.errors?.email && (
   <p className="text-red-600">{result.errors.email}</p>
@@ -219,6 +238,7 @@ logActionError('functionName', error);
 ```
 
 **After:**
+
 ```typescript
 import { isErrorResponse, getFieldError } from '@/lib/utils/form-responses';
 
@@ -230,6 +250,7 @@ import { isErrorResponse, getFieldError } from '@/lib/utils/form-responses';
 ### Displaying All Field Errors
 
 **Before:**
+
 ```typescript
 {result?.errors && (
   <div>
@@ -241,6 +262,7 @@ import { isErrorResponse, getFieldError } from '@/lib/utils/form-responses';
 ```
 
 **After:**
+
 ```typescript
 import { isErrorResponse, getAllFieldErrors } from '@/lib/utils/form-responses';
 
@@ -256,13 +278,15 @@ import { isErrorResponse, getAllFieldErrors } from '@/lib/utils/form-responses';
 ### State Type Updates
 
 **Before:**
+
 ```typescript
 const [result, setResult] = useState<ActionResult | null>(null);
 ```
 
 **After:**
+
 ```typescript
-import { type ActionResponse } from '@/lib/utils/form-responses';
+import { type ActionResponse } from "@/lib/utils/form-responses";
 
 const [result, setResult] = useState<ActionResponse | null>(null);
 ```
@@ -294,17 +318,19 @@ const [result, setResult] = useState<ActionResponse | null>(null);
 ## Common Gotchas
 
 1. **Type Casting**: When using functions that haven't been migrated yet, you may need to cast:
+
    ```typescript
    setResult(unmigratredFunction() as ActionResponse);
    ```
 
 2. **Field Access**: Always use type guards before accessing errors:
+
    ```typescript
    // Wrong
-   result.errors?.email
-   
+   result.errors?.email;
+
    // Right
-   result && isErrorResponse(result) && getFieldError(result, 'email')
+   result && isErrorResponse(result) && getFieldError(result, "email");
    ```
 
 3. **Import Cleanup**: Remove unused imports after migration:
@@ -314,54 +340,56 @@ const [result, setResult] = useState<ActionResponse | null>(null);
 ## Example: Complete Function Migration
 
 **Before:**
+
 ```typescript
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
   try {
     const name = formData.get("name") as string;
-    
+
     if (!name || name.trim().length < 2) {
       return {
         success: false,
         message: "Name must be at least 2 characters",
-        errors: { name: "Name must be at least 2 characters" }
+        errors: { name: "Name must be at least 2 characters" },
       };
     }
-    
+
     // Update logic...
-    
+
     return {
       success: true,
-      message: "Profile updated successfully"
+      message: "Profile updated successfully",
     };
   } catch (error) {
     console.error("Update profile error:", error);
     return {
       success: false,
-      message: "Failed to update profile"
+      message: "Failed to update profile",
     };
   }
 }
 ```
 
 **After:**
+
 ```typescript
 export async function updateProfile(formData: FormData): Promise<ActionResult> {
   try {
     const name = formData.get("name") as string;
-    
+
     if (!name || name.trim().length < 2) {
       return createFieldErrorResponse(
         "Name must be at least 2 characters",
         "name",
-        "Name must be at least 2 characters"
+        "Name must be at least 2 characters",
       );
     }
-    
+
     // Update logic...
-    
+
     return createSuccessResponse("Profile updated successfully");
   } catch (error) {
-    logActionError('updateProfile', error);
+    logActionError("updateProfile", error);
     return createErrorResponse("Failed to update profile");
   }
 }

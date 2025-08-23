@@ -7,6 +7,7 @@ Implementing secure locale handling to prevent security vulnerabilities from URL
 ## 📊 Current Status
 
 ### ✅ Completed (Phase 8.0 - 8.4)
+
 1. **Core Infrastructure**
    - Created `/src/config/i18n.ts` with whitelist validation
    - Implemented `useSafeLocale()` hook
@@ -28,6 +29,7 @@ Implementing secure locale handling to prevent security vulnerabilities from URL
    - ⏳ Requires server restart to test
 
 ### 🚧 In Progress (Phase 8.5 - 8.6)
+
 1. **Critical Issues**
    - 🔴 NextAuth hardcoded `/en/` paths
    - 🟡 Auth error redirect not working
@@ -35,6 +37,7 @@ Implementing secure locale handling to prevent security vulnerabilities from URL
    - 🟡 Verify-email page has hardcoded English text
 
 ### ⏳ Pending (Phase 8.7 - 8.8)
+
 1. Testing suite
 2. Documentation
 3. Monitoring setup
@@ -42,6 +45,7 @@ Implementing secure locale handling to prevent security vulnerabilities from URL
 ## 🚀 Immediate Actions Required
 
 ### Priority 1: Fix NextAuth Locale Issue (Critical)
+
 ```typescript
 // Current problem in auth.ts
 pages: {
@@ -51,18 +55,21 @@ pages: {
 ```
 
 **Solution**: Enhance middleware to intercept and rewrite auth URLs
+
 1. Detect `/en/auth/*` requests in middleware
 2. Extract user's actual locale from cookie/header
 3. Rewrite URL to correct locale
 4. Add security logging
 
 ### Priority 2: Complete Component Migration
+
 1. **Two-factor verification** - Replace `window.location.href`
 2. **Verify-email page** - Add i18n for hardcoded text
 3. **Link-account pages** - Check for locale issues
 4. **Password reset components** - Audit and migrate
 
 ### Priority 3: Fix Middleware Issues
+
 1. Test security headers after server restart
 2. Debug auth error redirect logic
 3. Add comprehensive logging
@@ -70,57 +77,66 @@ pages: {
 ## 📋 Detailed Execution Plan
 
 ### Step 1: Fix NextAuth Hardcoded Paths (30 mins)
+
 ```typescript
 // In middleware.ts, add auth URL interception
-function handleAuthRoutes(request: NextRequest, locale: Locale): NextResponse | null {
-  const pathname = request.nextUrl.pathname
-  
+function handleAuthRoutes(
+  request: NextRequest,
+  locale: Locale,
+): NextResponse | null {
+  const pathname = request.nextUrl.pathname;
+
   // Intercept hardcoded /en/auth/* paths
-  if (pathname.startsWith('/en/auth/')) {
-    const actualLocale = extractLocaleFromRequest(request).locale
-    if (actualLocale !== 'en') {
-      const newPath = pathname.replace('/en/', `/${actualLocale}/`)
-      return NextResponse.redirect(new URL(newPath, request.url))
+  if (pathname.startsWith("/en/auth/")) {
+    const actualLocale = extractLocaleFromRequest(request).locale;
+    if (actualLocale !== "en") {
+      const newPath = pathname.replace("/en/", `/${actualLocale}/`);
+      return NextResponse.redirect(new URL(newPath, request.url));
     }
   }
-  
-  return null
+
+  return null;
 }
 ```
 
 ### Step 2: Update Two-Factor Verification (20 mins)
+
 ```typescript
 // Replace window.location.href with router navigation
-import { useRouter } from 'next/navigation'
-import { useSafeLocale } from '@/hooks/use-safe-locale'
+import { useRouter } from "next/navigation";
+import { useSafeLocale } from "@/hooks/use-safe-locale";
 
 // In component:
-const router = useRouter()
-const locale = useSafeLocale()
+const router = useRouter();
+const locale = useSafeLocale();
 
 // Instead of: window.location.href = finalCallbackUrl
-router.push(finalCallbackUrl)
+router.push(finalCallbackUrl);
 ```
 
 ### Step 3: Add i18n to Verify-Email Page (15 mins)
+
 - Replace hardcoded "Email Verified Successfully!"
 - Replace "Go to Dashboard" button text
 - Replace error messages
 - Use translation keys
 
 ### Step 4: Complete Remaining Scans (45 mins)
+
 1. Search for remaining hardcoded paths
 2. Check all redirect() server-side calls
 3. Audit API routes for locale handling
 4. Check email templates
 
 ### Step 5: Implement Tests (60 mins)
+
 1. Unit tests for locale utilities
 2. Integration tests for middleware
 3. Security tests for malicious inputs
 4. E2E tests for locale switching
 
 ### Step 6: Documentation (30 mins)
+
 1. Update secure locale migration guide
 2. Create troubleshooting guide
 3. Document best practices

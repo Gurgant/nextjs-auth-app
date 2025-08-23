@@ -1,47 +1,47 @@
-'use server'
+"use server";
 
-import { z } from 'zod'
-import { prisma } from '@/lib/prisma'
-import { 
-  generateSecureToken, 
-  encrypt, 
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import {
+  generateSecureToken,
+  encrypt,
   decrypt,
-  logSecurityEvent, 
-  getClientIP
-} from '@/lib/security'
-import { 
-  sendVerificationEmail, 
+  logSecurityEvent,
+  getClientIP,
+} from "@/lib/security";
+import {
+  sendVerificationEmail,
   sendAccountLinkConfirmation,
-  sendSecurityAlert 
-} from '@/lib/email'
-import { 
-  setupTwoFactor, 
-  validateTOTPCode, 
+  sendSecurityAlert,
+} from "@/lib/email";
+import {
+  setupTwoFactor,
+  validateTOTPCode,
   validateBackupCode,
   encryptBackupCodes,
   generateNewBackupCodes,
   isValidTOTPFormat,
   isValidBackupCodeFormat,
-  type TwoFactorSetup 
-} from '@/lib/two-factor'
-import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+  type TwoFactorSetup,
+} from "@/lib/two-factor";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   createValidationErrorResponse,
   createFieldErrorResponse,
   createGenericErrorResponse,
   logActionError,
-  type ActionResponse
-} from '@/lib/utils/form-responses'
-import { resolveFormLocale } from '@/lib/utils/form-locale-enhanced'
+  type ActionResponse,
+} from "@/lib/utils/form-responses";
+import { resolveFormLocale } from "@/lib/utils/form-locale-enhanced";
 import {
   createErrorResponseI18n,
   createSuccessResponseI18n,
-  createFieldErrorResponseI18n
-} from '@/lib/utils/form-responses-i18n'
+  createFieldErrorResponseI18n,
+} from "@/lib/utils/form-responses-i18n";
 
 // Using ActionResponse from form-responses instead of ActionResult
-export type ActionResult = ActionResponse
+export type ActionResult = ActionResponse;
 
 // Email Verification Actions
 // TODO: Future feature - Email verification form validation
@@ -49,29 +49,32 @@ export type ActionResult = ActionResponse
 //   email: z.string().email('Invalid email address'),
 // })
 
-export async function sendEmailVerification(userEmail: string, locale: string = 'en'): Promise<ActionResult> {
+export async function sendEmailVerification(
+  userEmail: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: userEmail },
-      select: { id: true, name: true, email: true, emailVerified: true }
-    })
+      select: { id: true, name: true, email: true, emailVerified: true },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     if (user.emailVerified) {
       return await createErrorResponseI18n(
-        'errors.emailAlreadyVerified',
+        "errors.emailAlreadyVerified",
         locale,
-        'Email is already verified'
-      )
+        "Email is already verified",
+      );
     }
 
     // Generate verification token
-    const token = generateSecureToken(32)
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+    const token = generateSecureToken(32);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
     // Create verification token in database
     await prisma.emailVerificationToken.create({
@@ -79,145 +82,146 @@ export async function sendEmailVerification(userEmail: string, locale: string = 
         token,
         userId: user.id,
         email: user.email,
-        expires: expiresAt
-      }
-    })
+        expires: expiresAt,
+      },
+    });
 
     // Send verification email
     const emailSent = await sendVerificationEmail(
       user.email,
-      user.name || '',
+      user.name || "",
       token,
-      locale
-    )
+      locale,
+    );
 
     if (!emailSent) {
       return await createErrorResponseI18n(
-        'errors.failedToSendVerificationEmail',
+        "errors.failedToSendVerificationEmail",
         locale,
-        'Failed to send verification email'
-      )
+        "Failed to send verification email",
+      );
     }
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId: user.id,
-      eventType: 'email_verified',
-      details: 'Email verification token sent',
+      eventType: "email_verified",
+      details: "Email verification token sent",
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.verificationEmailSent',
+      "success.verificationEmailSent",
       locale,
-      'Verification email sent successfully'
-    )
-
+      "Verification email sent successfully",
+    );
   } catch (error) {
-    logActionError('sendEmailVerification', error)
+    logActionError("sendEmailVerification", error);
     return await createErrorResponseI18n(
-      'errors.failedToSendVerificationEmail',
+      "errors.failedToSendVerificationEmail",
       locale,
-      'Failed to send verification email'
-    )
+      "Failed to send verification email",
+    );
   }
 }
 
-export async function verifyEmailToken(token: string, locale: string = 'en'): Promise<ActionResult> {
+export async function verifyEmailToken(
+  token: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     // Find verification token
     const verificationToken = await prisma.emailVerificationToken.findUnique({
       where: { token },
-      include: { user: true }
-    })
+      include: { user: true },
+    });
 
     if (!verificationToken) {
       return await createErrorResponseI18n(
-        'errors.invalidVerificationToken',
+        "errors.invalidVerificationToken",
         locale,
-        'Invalid verification token'
-      )
+        "Invalid verification token",
+      );
     }
 
     if (verificationToken.used) {
       return await createErrorResponseI18n(
-        'errors.verificationTokenUsed',
+        "errors.verificationTokenUsed",
         locale,
-        'Verification token has already been used'
-      )
+        "Verification token has already been used",
+      );
     }
 
     if (new Date() > verificationToken.expires) {
       return await createErrorResponseI18n(
-        'errors.verificationTokenExpired',
+        "errors.verificationTokenExpired",
         locale,
-        'Verification token has expired'
-      )
+        "Verification token has expired",
+      );
     }
 
     // Mark email as verified and token as used
     await prisma.$transaction([
       prisma.user.update({
         where: { id: verificationToken.userId },
-        data: { 
+        data: {
           emailVerified: new Date(),
-          emailVerificationRequired: false
-        }
+          emailVerificationRequired: false,
+        },
       }),
       prisma.emailVerificationToken.update({
         where: { id: verificationToken.id },
-        data: { used: true }
-      })
-    ])
+        data: { used: true },
+      }),
+    ]);
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId: verificationToken.userId,
-      eventType: 'email_verified',
-      details: 'Email address verified successfully',
+      eventType: "email_verified",
+      details: "Email address verified successfully",
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.emailVerified',
+      "success.emailVerified",
       locale,
-      'Email verified successfully'
-    )
-
+      "Email verified successfully",
+    );
   } catch (error) {
-    logActionError('verifyEmailToken', error)
+    logActionError("verifyEmailToken", error);
     return await createErrorResponseI18n(
-      'errors.failedToVerifyEmail',
+      "errors.failedToVerifyEmail",
       locale,
-      'Failed to verify email'
-    )
+      "Failed to verify email",
+    );
   }
 }
 
 // Account Linking Actions
 export async function initiateAccountLinking(
   userId: string,
-  linkType: 'google' | 'email',
-  locale: string = 'en'
+  linkType: "google" | "email",
+  locale: string = "en",
 ): Promise<ActionResult> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { 
-        id: true, 
-        email: true, 
+      select: {
+        id: true,
+        email: true,
         name: true,
         hasGoogleAccount: true,
-        hasEmailAccount: true
-      }
-    })
+        hasEmailAccount: true,
+      },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     // Check if linking is already in progress
@@ -226,21 +230,21 @@ export async function initiateAccountLinking(
         userId,
         requestType: `link_${linkType}`,
         completed: false,
-        expires: { gt: new Date() }
-      }
-    })
+        expires: { gt: new Date() },
+      },
+    });
 
     if (existingRequest) {
       return await createErrorResponseI18n(
-        'errors.accountLinkingInProgress',
+        "errors.accountLinkingInProgress",
         locale,
-        'Account linking request already in progress'
-      )
+        "Account linking request already in progress",
+      );
     }
 
     // Generate linking token
-    const token = generateSecureToken(32)
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+    const token = generateSecureToken(32);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Create linking request
     await prisma.accountLinkRequest.create({
@@ -251,309 +255,332 @@ export async function initiateAccountLinking(
         expires: expiresAt,
         metadata: {
           initiatedAt: new Date().toISOString(),
-          linkType
-        }
-      }
-    })
+          linkType,
+        },
+      },
+    });
 
     // Send confirmation email
     const emailSent = await sendAccountLinkConfirmation(
       user.email,
-      user.name || '',
+      user.name || "",
       linkType,
       token,
-      locale
-    )
+      locale,
+    );
 
     if (!emailSent) {
       return await createErrorResponseI18n(
-        'errors.failedToSendConfirmationEmail',
+        "errors.failedToSendConfirmationEmail",
         locale,
-        'Failed to send confirmation email'
-      )
+        "Failed to send confirmation email",
+      );
     }
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId,
-      eventType: 'account_linked',
+      eventType: "account_linked",
       details: `Account linking initiated for ${linkType}`,
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.confirmationEmailSent',
+      "success.confirmationEmailSent",
       locale,
-      'Confirmation email sent. Please check your email to complete account linking.'
-    )
-
+      "Confirmation email sent. Please check your email to complete account linking.",
+    );
   } catch (error) {
-    logActionError('initiateAccountLinking', error)
+    logActionError("initiateAccountLinking", error);
     return await createErrorResponseI18n(
-      'errors.failedToInitiateAccountLinking',
+      "errors.failedToInitiateAccountLinking",
       locale,
-      'Failed to initiate account linking'
-    )
+      "Failed to initiate account linking",
+    );
   }
 }
 
-export async function confirmAccountLinking(token: string, locale: string = 'en'): Promise<ActionResult> {
+export async function confirmAccountLinking(
+  token: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     const linkRequest = await prisma.accountLinkRequest.findUnique({
       where: { token },
-      include: { user: true }
-    })
+      include: { user: true },
+    });
 
     if (!linkRequest) {
       return await createErrorResponseI18n(
-        'errors.invalidLinkingToken',
+        "errors.invalidLinkingToken",
         locale,
-        'Invalid linking token'
-      )
+        "Invalid linking token",
+      );
     }
 
     if (linkRequest.completed) {
       return await createErrorResponseI18n(
-        'errors.accountLinkingCompleted',
+        "errors.accountLinkingCompleted",
         locale,
-        'Account linking has already been completed'
-      )
+        "Account linking has already been completed",
+      );
     }
 
     if (new Date() > linkRequest.expires) {
       return await createErrorResponseI18n(
-        'errors.linkingTokenExpired',
+        "errors.linkingTokenExpired",
         locale,
-        'Linking token has expired'
-      )
+        "Linking token has expired",
+      );
     }
 
-    const linkType = linkRequest.requestType.replace('link_', '') as 'google' | 'email'
+    const linkType = linkRequest.requestType.replace("link_", "") as
+      | "google"
+      | "email";
 
     // Update user account linking status
-    const updateData: any = {}
-    if (linkType === 'google') {
-      updateData.hasGoogleAccount = true
-    } else if (linkType === 'email') {
-      updateData.hasEmailAccount = true
+    const updateData: any = {};
+    if (linkType === "google") {
+      updateData.hasGoogleAccount = true;
+    } else if (linkType === "email") {
+      updateData.hasEmailAccount = true;
     }
 
     await prisma.$transaction([
       prisma.user.update({
         where: { id: linkRequest.userId },
-        data: updateData
+        data: updateData,
       }),
       prisma.accountLinkRequest.update({
         where: { id: linkRequest.id },
-        data: { completed: true }
-      })
-    ])
+        data: { completed: true },
+      }),
+    ]);
 
     // Send security alert
     await sendSecurityAlert(
       linkRequest.user.email,
-      linkRequest.user.name || '',
-      'account_linked',
-      `${linkType} account has been linked to your account`
-    )
+      linkRequest.user.name || "",
+      "account_linked",
+      `${linkType} account has been linked to your account`,
+    );
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId: linkRequest.userId,
-      eventType: 'account_linked',
+      eventType: "account_linked",
       details: `${linkType} account linked successfully`,
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.accountLinked',
+      "success.accountLinked",
       locale,
-      'Account linked successfully'
-    )
-
+      "Account linked successfully",
+    );
   } catch (error) {
-    logActionError('confirmAccountLinking', error)
+    logActionError("confirmAccountLinking", error);
     return await createErrorResponseI18n(
-      'errors.failedToConfirmAccountLinking',
+      "errors.failedToConfirmAccountLinking",
       locale,
-      'Failed to confirm account linking'
-    )
+      "Failed to confirm account linking",
+    );
   }
 }
 
 // Two-Factor Authentication Actions
-export async function setupTwoFactorAuth(userId: string, locale: string = 'en'): Promise<ActionResult> {
+export async function setupTwoFactorAuth(
+  userId: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, twoFactorEnabled: true }
-    })
+      select: { id: true, email: true, twoFactorEnabled: true },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     if (user.twoFactorEnabled) {
       return await createErrorResponseI18n(
-        'errors.twoFactorAlreadyEnabled',
+        "errors.twoFactorAlreadyEnabled",
         locale,
-        'Two-factor authentication is already enabled'
-      )
+        "Two-factor authentication is already enabled",
+      );
     }
 
     // Setup 2FA
-    const twoFactorSetup: TwoFactorSetup = await setupTwoFactor(user.email)
-    
+    const twoFactorSetup: TwoFactorSetup = await setupTwoFactor(user.email);
+
     // Encrypt and store the secret temporarily (will be saved when user confirms)
-    const encryptedSecret = encrypt(twoFactorSetup.secret)
-    
+    const encryptedSecret = encrypt(twoFactorSetup.secret);
+
     // TODO: Store encrypted backup codes when implementing persistent storage
     // const encryptedBackupCodes = encryptBackupCodes(twoFactorSetup.backupCodes)
 
     return await createSuccessResponseI18n(
-      'success.twoFactorSetupInitiated',
+      "success.twoFactorSetupInitiated",
       locale,
-      '2FA setup initiated',
+      "2FA setup initiated",
       {
         qrCodeUrl: twoFactorSetup.qrCodeUrl,
         backupCodes: twoFactorSetup.backupCodes,
         secret: encryptedSecret, // Send encrypted secret to verify setup
-        manualEntrySecret: twoFactorSetup.secret // For manual entry
-      }
-    )
-
+        manualEntrySecret: twoFactorSetup.secret, // For manual entry
+      },
+    );
   } catch (error) {
-    logActionError('setupTwoFactorAuth', error)
+    logActionError("setupTwoFactorAuth", error);
     return await createErrorResponseI18n(
-      'errors.failedToSetupTwoFactor',
+      "errors.failedToSetupTwoFactor",
       locale,
-      'Failed to setup two-factor authentication'
-    )
+      "Failed to setup two-factor authentication",
+    );
   }
 }
 
 const enable2FASchema = z.object({
   encryptedSecret: z.string(),
   verificationCode: z.string().min(6).max(6),
-})
+});
 
-export async function enableTwoFactorAuth(formData: FormData, userId: string): Promise<ActionResult> {
+export async function enableTwoFactorAuth(
+  formData: FormData,
+  userId: string,
+): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   try {
     const data = {
-      encryptedSecret: formData.get('encryptedSecret')?.toString() || '',
-      verificationCode: formData.get('verificationCode')?.toString() || '',
-    }
+      encryptedSecret: formData.get("encryptedSecret")?.toString() || "",
+      verificationCode: formData.get("verificationCode")?.toString() || "",
+    };
 
-    const validatedData = enable2FASchema.parse(data)
+    const validatedData = enable2FASchema.parse(data);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, twoFactorEnabled: true }
-    })
+      select: { id: true, email: true, name: true, twoFactorEnabled: true },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     if (user.twoFactorEnabled) {
       return await createErrorResponseI18n(
-        'errors.twoFactorAlreadyEnabled',
+        "errors.twoFactorAlreadyEnabled",
         locale,
-        '2FA is already enabled'
-      )
+        "2FA is already enabled",
+      );
     }
 
     // Decrypt secret and validate code
-    let secret: string
+    let secret: string;
     try {
       // Test if the encrypted secret is valid format
-      if (!validatedData.encryptedSecret || validatedData.encryptedSecret.length < 10) {
+      if (
+        !validatedData.encryptedSecret ||
+        validatedData.encryptedSecret.length < 10
+      ) {
         return await createFieldErrorResponseI18n(
-          'errors.invalidSecret',
-          'verificationCode',
+          "errors.invalidSecret",
+          "verificationCode",
           locale,
-          'Invalid encrypted secret format. Please try setting up 2FA again.'
-        )
+          "Invalid encrypted secret format. Please try setting up 2FA again.",
+        );
       }
-      
-      secret = decrypt(validatedData.encryptedSecret)
-      
+
+      secret = decrypt(validatedData.encryptedSecret);
+
       // Additional validation - check if decrypted secret is empty
       if (!secret || secret.length === 0) {
         return await createFieldErrorResponseI18n(
-          'errors.emptySecret',
-          'verificationCode',
+          "errors.emptySecret",
+          "verificationCode",
           locale,
-          'Decrypted secret is empty. Please try setting up 2FA again.'
-        )
+          "Decrypted secret is empty. Please try setting up 2FA again.",
+        );
       }
-      
-    } catch (_error: any) { // eslint-disable-line @typescript-eslint/no-unused-vars
+    } catch (_error: any) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
       return await createFieldErrorResponseI18n(
-        'errors.secretDecryptionFailed',
-        'verificationCode',
+        "errors.secretDecryptionFailed",
+        "verificationCode",
         locale,
-        'Failed to decrypt 2FA secret. Please try setting up 2FA again.'
-      )
+        "Failed to decrypt 2FA secret. Please try setting up 2FA again.",
+      );
     }
 
     // Import validation functions
-    const { getCurrentTOTPCode, isValidSecret, diagnoseTOTPIssue, checkTimeSynchronization, validateTOTPCodeWithLargeTolerance } = await import('@/lib/two-factor')
-    
+    const {
+      getCurrentTOTPCode,
+      isValidSecret,
+      diagnoseTOTPIssue,
+      checkTimeSynchronization,
+      validateTOTPCodeWithLargeTolerance,
+    } = await import("@/lib/two-factor");
+
     // Validate secret format
     if (!isValidSecret(secret)) {
       return await createFieldErrorResponseI18n(
-        'errors.invalidSecretFormat',
-        'verificationCode',
+        "errors.invalidSecretFormat",
+        "verificationCode",
         locale,
-        'Invalid 2FA secret format. Please set up 2FA again.'
-      )
+        "Invalid 2FA secret format. Please set up 2FA again.",
+      );
     }
 
     // Validate the provided TOTP code
-    let isValidCode = validateTOTPCode(validatedData.verificationCode, secret)
-    
+    let isValidCode = validateTOTPCode(validatedData.verificationCode, secret);
+
     // If standard validation fails, try with large tolerance
     if (!isValidCode) {
-      isValidCode = validateTOTPCodeWithLargeTolerance(validatedData.verificationCode, secret)
+      isValidCode = validateTOTPCodeWithLargeTolerance(
+        validatedData.verificationCode,
+        secret,
+      );
     }
 
     if (!isValidCode) {
       // Run comprehensive diagnosis
-      const diagnosis = diagnoseTOTPIssue(secret, validatedData.verificationCode)
-      console.log('🔍 TOTP Diagnosis for debugging:', diagnosis) // Debug logging
-      const timeCheck = checkTimeSynchronization()
-      const currentCode = getCurrentTOTPCode(secret)
-      
+      const diagnosis = diagnoseTOTPIssue(
+        secret,
+        validatedData.verificationCode,
+      );
+      console.log("🔍 TOTP Diagnosis for debugging:", diagnosis); // Debug logging
+      const timeCheck = checkTimeSynchronization();
+      const currentCode = getCurrentTOTPCode(secret);
+
       // Build detailed error message
-      let detailedMessage = `Invalid verification code.\n\n`
-      detailedMessage += `• Expected current code: ${currentCode}\n`
-      detailedMessage += `• Your code: ${validatedData.verificationCode}\n`
-      detailedMessage += `• Server time: ${timeCheck.serverTime}\n`
-      detailedMessage += `• Next code in: ${timeCheck.nextCodeIn} seconds\n\n`
-      detailedMessage += `${timeCheck.recommendation}\n\n`
-      detailedMessage += `Please:\n`
-      detailedMessage += `1. Check your device time is synchronized\n`
-      detailedMessage += `2. Wait for a fresh code (codes change every 30 seconds)\n`
-      detailedMessage += `3. Enter the current code from your authenticator app`
-      
+      let detailedMessage = `Invalid verification code.\n\n`;
+      detailedMessage += `• Expected current code: ${currentCode}\n`;
+      detailedMessage += `• Your code: ${validatedData.verificationCode}\n`;
+      detailedMessage += `• Server time: ${timeCheck.serverTime}\n`;
+      detailedMessage += `• Next code in: ${timeCheck.nextCodeIn} seconds\n\n`;
+      detailedMessage += `${timeCheck.recommendation}\n\n`;
+      detailedMessage += `Please:\n`;
+      detailedMessage += `1. Check your device time is synchronized\n`;
+      detailedMessage += `2. Wait for a fresh code (codes change every 30 seconds)\n`;
+      detailedMessage += `3. Enter the current code from your authenticator app`;
+
       // TODO: Consider translating this detailed technical message
       return createFieldErrorResponse(
         detailedMessage,
-        'verificationCode',
-        'Invalid verification code'
-      )
+        "verificationCode",
+        "Invalid verification code",
+      );
     }
 
     // Generate backup codes and enable 2FA
-    const backupCodes = generateNewBackupCodes()
-    const encryptedBackupCodes = encryptBackupCodes(backupCodes)
+    const backupCodes = generateNewBackupCodes();
+    const encryptedBackupCodes = encryptBackupCodes(backupCodes);
 
     await prisma.user.update({
       where: { id: userId },
@@ -561,65 +588,67 @@ export async function enableTwoFactorAuth(formData: FormData, userId: string): P
         twoFactorEnabled: true,
         twoFactorSecret: validatedData.encryptedSecret, // Already encrypted
         backupCodes: encryptedBackupCodes,
-        twoFactorEnabledAt: new Date()
-      }
-    })
+        twoFactorEnabledAt: new Date(),
+      },
+    });
 
     // Send security alert
     await sendSecurityAlert(
       user.email,
-      user.name || '',
-      '2fa_enabled',
-      'Two-factor authentication has been enabled on your account'
-    )
+      user.name || "",
+      "2fa_enabled",
+      "Two-factor authentication has been enabled on your account",
+    );
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId,
-      eventType: '2fa_enabled',
-      details: 'Two-factor authentication enabled',
+      eventType: "2fa_enabled",
+      details: "Two-factor authentication enabled",
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.twoFactorEnabled',
+      "success.twoFactorEnabled",
       locale,
-      '2FA enabled successfully',
-      { backupCodes }
-    )
-
+      "2FA enabled successfully",
+      { backupCodes },
+    );
   } catch (error) {
-    logActionError('enableTwoFactorAuth', error)
+    logActionError("enableTwoFactorAuth", error);
 
     if (error instanceof z.ZodError) {
-      return createValidationErrorResponse(error, locale)
+      return createValidationErrorResponse(error, locale);
     }
 
     return await createErrorResponseI18n(
-      'errors.failedToEnableTwoFactor',
+      "errors.failedToEnableTwoFactor",
       locale,
-      'Failed to enable 2FA'
-    )
+      "Failed to enable 2FA",
+    );
   }
 }
 
 const verify2FASchema = z.object({
   code: z.string().min(6).max(8),
-  useBackupCode: z.boolean().optional()
-})
+  useBackupCode: z.boolean().optional(),
+});
 
-export async function verifyTwoFactorCode(formData: FormData, userId: string): Promise<ActionResult> {
+export async function verifyTwoFactorCode(
+  formData: FormData,
+  userId: string,
+): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   try {
     const data = {
-      code: formData.get('code') as string,
-      useBackupCode: formData.get('useBackupCode') === 'true'
-    }
+      code: formData.get("code") as string,
+      useBackupCode: formData.get("useBackupCode") === "true",
+    };
 
-    const validatedData = verify2FASchema.parse(data)
+    const validatedData = verify2FASchema.parse(data);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -627,118 +656,120 @@ export async function verifyTwoFactorCode(formData: FormData, userId: string): P
         id: true,
         twoFactorEnabled: true,
         twoFactorSecret: true,
-        backupCodes: true
-      }
-    })
+        backupCodes: true,
+      },
+    });
 
     if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
       return await createErrorResponseI18n(
-        'errors.twoFactorNotEnabled',
+        "errors.twoFactorNotEnabled",
         locale,
-        '2FA is not enabled for this user'
-      )
+        "2FA is not enabled for this user",
+      );
     }
 
-    let isValid = false
-    let updatedBackupCodes = user.backupCodes
+    let isValid = false;
+    let updatedBackupCodes = user.backupCodes;
 
     if (validatedData.useBackupCode) {
       // Validate backup code
       if (!isValidBackupCodeFormat(validatedData.code)) {
         return await createErrorResponseI18n(
-        'errors.invalidBackupCodeFormat',
-        locale,
-        'Invalid backup code format'
-      )
+          "errors.invalidBackupCodeFormat",
+          locale,
+          "Invalid backup code format",
+        );
       }
 
-      const result = validateBackupCode(validatedData.code, user.backupCodes)
-      isValid = result.valid
-      updatedBackupCodes = result.remainingCodes
+      const result = validateBackupCode(validatedData.code, user.backupCodes);
+      isValid = result.valid;
+      updatedBackupCodes = result.remainingCodes;
 
       if (isValid) {
         // Update user's backup codes (remove used code)
         await prisma.user.update({
           where: { id: userId },
-          data: { backupCodes: updatedBackupCodes }
-        })
+          data: { backupCodes: updatedBackupCodes },
+        });
       }
     } else {
       // Validate TOTP code
       if (!isValidTOTPFormat(validatedData.code)) {
         return await createErrorResponseI18n(
-          'errors.invalidVerificationCodeFormat',
+          "errors.invalidVerificationCodeFormat",
           locale,
-          'Invalid verification code format'
-        )
+          "Invalid verification code format",
+        );
       }
 
-      const secret = decrypt(user.twoFactorSecret)
-      isValid = validateTOTPCode(validatedData.code, secret)
+      const secret = decrypt(user.twoFactorSecret);
+      isValid = validateTOTPCode(validatedData.code, secret);
     }
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId,
-      eventType: isValid ? '2fa_verified' : '2fa_failed',
-      details: isValid 
-        ? `2FA verified using ${validatedData.useBackupCode ? 'backup code' : 'TOTP'}`
-        : `2FA verification failed using ${validatedData.useBackupCode ? 'backup code' : 'TOTP'}`,
+      eventType: isValid ? "2fa_verified" : "2fa_failed",
+      details: isValid
+        ? `2FA verified using ${validatedData.useBackupCode ? "backup code" : "TOTP"}`
+        : `2FA verification failed using ${validatedData.useBackupCode ? "backup code" : "TOTP"}`,
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined,
-      success: isValid
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+      success: isValid,
+    });
 
     if (isValid) {
       return await createSuccessResponseI18n(
-        'success.twoFactorVerified',
+        "success.twoFactorVerified",
         locale,
-        '2FA verified successfully',
+        "2FA verified successfully",
         {
-          remainingBackupCodes: updatedBackupCodes.length
-        }
-      )
+          remainingBackupCodes: updatedBackupCodes.length,
+        },
+      );
     } else {
       return await createErrorResponseI18n(
-        'errors.invalidVerificationCode',
+        "errors.invalidVerificationCode",
         locale,
-        'Invalid verification code'
-      )
+        "Invalid verification code",
+      );
+    }
+  } catch (error) {
+    logActionError("verifyTwoFactorCode", error);
+
+    if (error instanceof z.ZodError) {
+      return createValidationErrorResponse(error, locale);
     }
 
-  } catch (error) {
-    logActionError('verifyTwoFactorCode', error)
-    
-    if (error instanceof z.ZodError) {
-      return createValidationErrorResponse(error, locale)
-    }
-    
     return await createErrorResponseI18n(
-      'errors.failedToVerifyTwoFactorCode',
+      "errors.failedToVerifyTwoFactorCode",
       locale,
-      'Failed to verify 2FA code'
-    )
+      "Failed to verify 2FA code",
+    );
   }
 }
 
-export async function disableTwoFactorAuth(userId: string, locale: string = 'en'): Promise<ActionResult> {
+export async function disableTwoFactorAuth(
+  userId: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, twoFactorEnabled: true }
-    })
+      select: { id: true, email: true, name: true, twoFactorEnabled: true },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     if (!user.twoFactorEnabled) {
       return await createErrorResponseI18n(
-        'errors.twoFactorNotEnabled',
+        "errors.twoFactorNotEnabled",
         locale,
-        '2FA is not enabled'
-      )
+        "2FA is not enabled",
+      );
     }
 
     // Disable 2FA
@@ -748,46 +779,48 @@ export async function disableTwoFactorAuth(userId: string, locale: string = 'en'
         twoFactorEnabled: false,
         twoFactorSecret: null,
         backupCodes: [],
-        twoFactorEnabledAt: null
-      }
-    })
+        twoFactorEnabledAt: null,
+      },
+    });
 
     // Send security alert
     await sendSecurityAlert(
       user.email,
-      user.name || '',
-      '2fa_enabled', // Reuse template but with different message
-      'Two-factor authentication has been disabled on your account'
-    )
+      user.name || "",
+      "2fa_enabled", // Reuse template but with different message
+      "Two-factor authentication has been disabled on your account",
+    );
 
     // Log security event
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId,
-      eventType: '2fa_disabled',
-      details: 'Two-factor authentication disabled',
+      eventType: "2fa_disabled",
+      details: "Two-factor authentication disabled",
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+    });
 
     return await createSuccessResponseI18n(
-      'success.twoFactorDisabled',
+      "success.twoFactorDisabled",
       locale,
-      '2FA disabled successfully'
-    )
-
+      "2FA disabled successfully",
+    );
   } catch (error) {
-    logActionError('disableTwoFactorAuth', error)
+    logActionError("disableTwoFactorAuth", error);
     return await createErrorResponseI18n(
-      'errors.failedToDisableTwoFactor',
+      "errors.failedToDisableTwoFactor",
       locale,
-      'Failed to disable 2FA'
-    )
+      "Failed to disable 2FA",
+    );
   }
 }
 
 // Get comprehensive user account information including verification status
-export async function getEnhancedUserAccountInfo(userId: string, locale: string = 'en'): Promise<ActionResult> {
+export async function getEnhancedUserAccountInfo(
+  userId: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -795,23 +828,25 @@ export async function getEnhancedUserAccountInfo(userId: string, locale: string 
         accounts: {
           select: {
             provider: true,
-            type: true
-          }
-        }
-      }
-    })
+            type: true,
+          },
+        },
+      },
+    });
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale)
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
-    const hasGoogleAccount = user.accounts.some(account => account.provider === 'google')
-    const hasPassword = !!user.password
+    const hasGoogleAccount = user.accounts.some(
+      (account) => account.provider === "google",
+    );
+    const hasPassword = !!user.password;
 
     return await createSuccessResponseI18n(
-      'accountInfoRetrieved',
+      "accountInfoRetrieved",
       locale,
-      'Account information retrieved successfully',
+      "Account information retrieved successfully",
       {
         id: user.id,
         email: user.email,
@@ -829,17 +864,16 @@ export async function getEnhancedUserAccountInfo(userId: string, locale: string 
         lastPasswordChange: user.lastPasswordChange,
         lastLoginAt: user.lastLoginAt,
         accounts: user.accounts,
-        createdAt: user.createdAt
-      }
-    )
-
+        createdAt: user.createdAt,
+      },
+    );
   } catch (error) {
-    logActionError('getEnhancedUserAccountInfo', error)
+    logActionError("getEnhancedUserAccountInfo", error);
     return await createErrorResponseI18n(
-      'errors.failedToFetchAccountInfo',
+      "errors.failedToFetchAccountInfo",
       locale,
-      'Failed to fetch account information'
-    )
+      "Failed to fetch account information",
+    );
   }
 }
 
@@ -847,12 +881,12 @@ export async function getEnhancedUserAccountInfo(userId: string, locale: string 
 export async function getUserSecurityEvents(
   userId: string,
   limit: number = 20,
-  locale: string = 'en'
+  locale: string = "en",
 ): Promise<ActionResult> {
   try {
     const events = await prisma.securityEvent.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       select: {
         id: true,
@@ -860,97 +894,98 @@ export async function getUserSecurityEvents(
         details: true,
         ipAddress: true,
         success: true,
-        createdAt: true
-      }
-    })
+        createdAt: true,
+      },
+    });
 
     return await createSuccessResponseI18n(
-      'success.securityEventsRetrieved',
+      "success.securityEventsRetrieved",
       locale,
-      'Security events retrieved successfully',
-      events
-    )
-
+      "Security events retrieved successfully",
+      events,
+    );
   } catch (error) {
-    logActionError('getUserSecurityEvents', error)
+    logActionError("getUserSecurityEvents", error);
     return await createErrorResponseI18n(
-      'errors.failedToFetchSecurityEvents',
+      "errors.failedToFetchSecurityEvents",
       locale,
-      'Failed to fetch security events'
-    )
+      "Failed to fetch security events",
+    );
   }
 }
 
 // Complete 2FA authentication after successful verification
-export async function complete2FAAuthentication(userId: string, locale: string = 'en'): Promise<ActionResult> {
+export async function complete2FAAuthentication(
+  userId: string,
+  locale: string = "en",
+): Promise<ActionResult> {
   try {
     // Verify the temporary session exists
     if (!global.tempAuth2FA?.has(userId)) {
       return await createErrorResponseI18n(
-        'errors.invalidAuthenticationSession',
+        "errors.invalidAuthenticationSession",
         locale,
-        'Invalid or expired authentication session'
-      )
+        "Invalid or expired authentication session",
+      );
     }
 
-    const tempSession = global.tempAuth2FA.get(userId)
-    
+    const tempSession = global.tempAuth2FA.get(userId);
+
     if (!tempSession) {
       return await createErrorResponseI18n(
-        'errors.invalidAuthenticationSession',
+        "errors.invalidAuthenticationSession",
         locale,
-        'Invalid authentication session'
-      )
+        "Invalid authentication session",
+      );
     }
-    
+
     // Check if session is not too old (5 minutes max)
     if (Date.now() - tempSession.timestamp > 5 * 60 * 1000) {
-      global.tempAuth2FA.delete(userId)
+      global.tempAuth2FA.delete(userId);
       return await createErrorResponseI18n(
-        'errors.authenticationSessionExpired',
+        "errors.authenticationSessionExpired",
         locale,
-        'Authentication session expired'
-      )
+        "Authentication session expired",
+      );
     }
 
     // Update user's last login and 2FA verification time
     await prisma.user.update({
       where: { id: userId },
       data: {
-        lastLoginAt: new Date()
-      }
-    })
+        lastLoginAt: new Date(),
+      },
+    });
 
     // Log successful 2FA verification
-    const headersList = await headers()
+    const headersList = await headers();
     await logSecurityEvent({
       userId,
-      eventType: '2fa_verified',
-      details: 'Two-factor authentication verified successfully during login',
+      eventType: "2fa_verified",
+      details: "Two-factor authentication verified successfully during login",
       ipAddress: getClientIP(headersList),
-      userAgent: headersList.get('user-agent') || undefined,
-      success: true
-    })
+      userAgent: headersList.get("user-agent") || undefined,
+      success: true,
+    });
 
     // Clean up temporary session
-    global.tempAuth2FA.delete(userId)
+    global.tempAuth2FA.delete(userId);
 
     return await createSuccessResponseI18n(
-      'success.twoFactorAuthCompleted',
+      "success.twoFactorAuthCompleted",
       locale,
-      '2FA authentication completed successfully',
+      "2FA authentication completed successfully",
       {
         userId,
-        provider: 'credentials' // Default provider since tempSession doesn't have provider
-      }
-    )
-
+        provider: "credentials", // Default provider since tempSession doesn't have provider
+      },
+    );
   } catch (error) {
-    logActionError('complete2FAAuthentication', error)
+    logActionError("complete2FAAuthentication", error);
     return await createErrorResponseI18n(
-      'errors.failedToCompleteTwoFactorAuth',
+      "errors.failedToCompleteTwoFactorAuth",
       locale,
-      'Failed to complete 2FA authentication'
-    )
+      "Failed to complete 2FA authentication",
+    );
   }
 }

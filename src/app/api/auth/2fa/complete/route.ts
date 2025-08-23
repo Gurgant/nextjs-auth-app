@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { success: false, message: "Missing userId" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (!global.tempAuth2FA?.has(userId)) {
       return NextResponse.json(
         { success: false, message: "Invalid or expired 2FA session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     if (!tempSession) {
       return NextResponse.json(
         { success: false, message: "Invalid 2FA session" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       global.tempAuth2FA.delete(userId);
       return NextResponse.json(
         { success: false, message: "2FA session expired" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     console.error("2FA completion error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -105,14 +105,14 @@ export async function GET(request: NextRequest) {
 
   if (!userId) {
     return NextResponse.redirect(
-      new URL("/auth/signin?error=missing_params", request.url)
+      new URL("/auth/signin?error=missing_params", request.url),
     );
   }
 
   // Verify the temporary 2FA session exists
   if (!global.tempAuth2FA?.has(userId)) {
     return NextResponse.redirect(
-      new URL("/auth/signin?error=expired_session", request.url)
+      new URL("/auth/signin?error=expired_session", request.url),
     );
   }
 
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
   if (!tempSession) {
     return NextResponse.redirect(
-      new URL("/auth/signin?error=invalid_session", request.url)
+      new URL("/auth/signin?error=invalid_session", request.url),
     );
   }
 
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
   if (Date.now() - tempSession.timestamp > 5 * 60 * 1000) {
     global.tempAuth2FA.delete(userId);
     return NextResponse.redirect(
-      new URL("/auth/signin?error=expired_session", request.url)
+      new URL("/auth/signin?error=expired_session", request.url),
     );
   }
 
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.redirect(
-        new URL("/auth/signin?error=user_not_found", request.url)
+        new URL("/auth/signin?error=user_not_found", request.url),
       );
     }
 
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
     // For simplicity, we'll redirect to the NextAuth callback with special params
     const callbackRedirect = new URL(
       "/api/auth/callback/credentials",
-      request.url
+      request.url,
     );
     callbackRedirect.searchParams.set("2fa_completed", "true");
     callbackRedirect.searchParams.set("userId", userId);
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("2FA completion error:", error);
     return NextResponse.redirect(
-      new URL("/auth/signin?error=completion_failed", request.url)
+      new URL("/auth/signin?error=completion_failed", request.url),
     );
   }
 }

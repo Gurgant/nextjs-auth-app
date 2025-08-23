@@ -5,6 +5,7 @@
 ### 📋 **GitHub MCP Integration Components**
 
 #### **1. GitHub CLI Enhanced Integration**
+
 ```bash
 # Advanced GitHub CLI commands for MCP-like functionality
 gh api graphql --field query='
@@ -37,6 +38,7 @@ query($owner: String!, $repo: String!) {
 ```
 
 #### **2. Automated CI/CD Monitoring & Management**
+
 ```yaml
 # Enhanced workflow with MCP-like intelligence
 name: 🤖 MCP-Enhanced CI/CD Monitor
@@ -53,12 +55,12 @@ jobs:
         run: |
           # Get workflow run details
           WORKFLOW_RUN_ID="${{ github.event.workflow_run.id }}"
-          
+
           # Fetch detailed run information
           gh api repos/${{ github.repository }}/actions/runs/$WORKFLOW_RUN_ID/jobs \
             --jq '.jobs[] | select(.conclusion == "failure") | {name, steps: [.steps[] | select(.conclusion == "failure")]}' \
             > failure_analysis.json
-          
+
           # Intelligent failure categorization
           if grep -q "Install dependencies" failure_analysis.json; then
             echo "::warning::Dependency installation failure detected"
@@ -73,6 +75,7 @@ jobs:
 ```
 
 #### **3. Real-time Status Integration**
+
 ```bash
 #!/bin/bash
 # GitHub MCP Status Monitor Script
@@ -87,16 +90,16 @@ get_ci_status() {
     --field branch=$BRANCH \
     --field status=in_progress,completed \
     --jq '.workflow_runs[0]')
-  
+
   local status=$(echo "$run_data" | jq -r '.status')
   local conclusion=$(echo "$run_data" | jq -r '.conclusion')
   local workflow=$(echo "$run_data" | jq -r '.name')
-  
+
   echo "🤖 MCP Analysis:"
   echo "  Workflow: $workflow"
   echo "  Status: $status"
   echo "  Conclusion: $conclusion"
-  
+
   # Intelligent recommendations
   if [[ "$conclusion" == "failure" ]]; then
     echo "🔍 Analyzing failure patterns..."
@@ -106,10 +109,10 @@ get_ci_status() {
 
 analyze_failure_patterns() {
   local run_id=$(echo "$1" | jq -r '.id')
-  
+
   # Get job details
   local jobs=$(gh api repos/$REPO/actions/runs/$run_id/jobs)
-  
+
   # Pattern analysis
   if echo "$jobs" | grep -q "Install dependencies"; then
     echo "💡 MCP Recommendation: Dependency resolution issue"

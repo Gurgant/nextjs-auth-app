@@ -5,18 +5,20 @@
 ### Next Component: AlertMessage
 
 #### Step 1: Create the Component
+
 ```bash
 # Create the component file
 touch src/components/ui/alert-message.tsx
 ```
 
 #### Step 2: Component Structure
+
 ```tsx
 // src/components/ui/alert-message.tsx
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 interface AlertMessageProps {
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: "success" | "error" | "warning" | "info";
   message: string;
   errors?: Record<string, string>;
   onDismiss?: () => void;
@@ -25,30 +27,38 @@ interface AlertMessageProps {
 
 const typeStyles = {
   success: {
-    container: 'bg-green-50 border-green-200',
-    icon: 'text-green-400',
-    text: 'text-green-700'
+    container: "bg-green-50 border-green-200",
+    icon: "text-green-400",
+    text: "text-green-700",
   },
   error: {
-    container: 'bg-red-50 border-red-200',
-    icon: 'text-red-400',
-    text: 'text-red-700'
+    container: "bg-red-50 border-red-200",
+    icon: "text-red-400",
+    text: "text-red-700",
   },
   // ... add warning and info
 };
 
-export function AlertMessage({ type, message, errors, onDismiss, className }: AlertMessageProps) {
+export function AlertMessage({
+  type,
+  message,
+  errors,
+  onDismiss,
+  className,
+}: AlertMessageProps) {
   // Implementation here
 }
 ```
 
 #### Step 3: Find and Replace Pattern
+
 Look for these patterns:
+
 ```tsx
 // Pattern 1: Success/Error messages
 <div className={`rounded-xl p-4 ${
-  result.success 
-    ? 'bg-green-50 border border-green-200' 
+  result.success
+    ? 'bg-green-50 border border-green-200'
     : 'bg-red-50 border border-red-200'
 }`}>
 
@@ -70,6 +80,7 @@ Look for these patterns:
 ```
 
 #### Step 4: Test the Component
+
 ```bash
 # Create test file
 touch src/components/ui/__tests__/alert-message.test.tsx

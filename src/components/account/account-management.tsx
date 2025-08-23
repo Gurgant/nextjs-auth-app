@@ -16,7 +16,12 @@ import {
 // appendLocaleToFormData is now handled by useLocalizedAction hook
 import { GradientButton } from "@/components/ui/gradient-button";
 import { AlertMessage } from "@/components/ui/alert-message";
-import { isErrorResponse, getFieldError, getAllFieldErrors, type ActionResponse } from "@/lib/utils/form-responses";
+import {
+  isErrorResponse,
+  getFieldError,
+  getAllFieldErrors,
+  type ActionResponse,
+} from "@/lib/utils/form-responses";
 import {
   getEnhancedUserAccountInfo,
   sendEmailVerification,
@@ -63,7 +68,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
   const {
     execute: executeProfileUpdate,
     isLoading: isUpdatingProfile,
-    result: profileResult
+    result: profileResult,
   } = useLocalizedAction(
     async (formData: FormData) => updateUserProfile(formData, user.id!),
     locale,
@@ -72,14 +77,14 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         setTimeout(() => {
           window.location.reload();
         }, 1500);
-      }
-    }
+      },
+    },
   );
 
   const {
     execute: executeAccountDeletion,
     isLoading: isDeletingAccount,
-    result: deleteResult
+    result: deleteResult,
   } = useLocalizedAction(
     async (formData: FormData) => deleteUserAccount(formData, user.email!),
     locale,
@@ -88,14 +93,14 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         setTimeout(async () => {
           await signOut({ callbackUrl: `/${locale}?deleted=true` });
         }, 2000);
-      }
-    }
+      },
+    },
   );
 
   const {
     execute: executeAddPassword,
     isLoading: isAddingPassword,
-    result: passwordResult
+    result: passwordResult,
   } = useLocalizedAction(
     async (formData: FormData) => addPasswordToGoogleUser(formData, user.id!),
     locale,
@@ -112,14 +117,14 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             handleFormError(error, tConsole("accountInfoRefresh"));
           }
         }, 1500);
-      }
-    }
+      },
+    },
   );
 
   const {
     execute: executeChangePassword,
     isLoading: isChangingPassword,
-    result: changePasswordResult
+    result: changePasswordResult,
   } = useLocalizedAction(
     async (formData: FormData) => changeUserPassword(formData, user.id!),
     locale,
@@ -129,28 +134,35 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         setTimeout(() => {
           resetChangePasswordForm();
         }, 1500);
-      }
-    }
+      },
+    },
   );
 
   // State for non-FormData actions (email verification, account linking)
   const [isSendingVerification, setIsSendingVerification] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<ActionResponse | null>(null);
+  const [verificationResult, setVerificationResult] =
+    useState<ActionResponse | null>(null);
   const [isLinkingAccount, setIsLinkingAccount] = useState(false);
-  const [linkingResult, setLinkingResult] = useState<ActionResponse | null>(null);
+  const [linkingResult, setLinkingResult] = useState<ActionResponse | null>(
+    null,
+  );
 
   // Form reset hooks
-  const { formRef: addPasswordFormRef, resetForm: resetAddPasswordForm } = useFormReset({
-    formName: 'AddPasswordForm'
-  });
+  const { formRef: addPasswordFormRef, resetForm: resetAddPasswordForm } =
+    useFormReset({
+      formName: "AddPasswordForm",
+    });
 
-  const { formRef: changePasswordFormRef, resetForm: resetChangePasswordForm } = useFormReset({
-    formName: 'ChangePasswordForm'
-  });
+  const { formRef: changePasswordFormRef, resetForm: resetChangePasswordForm } =
+    useFormReset({
+      formName: "ChangePasswordForm",
+    });
 
-  const { formRef: profileFormRef, resetForm: resetProfileForm } = useFormReset({
-    formName: 'ProfileUpdateForm'
-  });
+  const { formRef: profileFormRef, resetForm: resetProfileForm } = useFormReset(
+    {
+      formName: "ProfileUpdateForm",
+    },
+  );
 
   // Enhanced error handler for consistent error management
   const handleFormError = useCallback((error: unknown, action: string) => {
@@ -169,14 +181,14 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
       setIsLoadingAccountInfo(true);
       try {
         const result = await getEnhancedUserAccountInfo(user.id);
-        
+
         if (result.success) {
           setAccountInfo(result.data);
           console.log(`✅ ${tConsole("accountInfoLoaded")}`);
         } else {
           handleFormError(
             new Error(result.message || tErrors("failedToLoadAccountInfo")),
-            tConsole("accountInfoLoading")
+            tConsole("accountInfoLoading"),
           );
           // Set fallback account info to prevent UI breaks
           setAccountInfo({
@@ -310,9 +322,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
   const handleDisableTwoFactor = async () => {
     if (!user.id) return;
 
-    const confirmed = window.confirm(
-      t("disableTwoFactorConfirm")
-    );
+    const confirmed = window.confirm(t("disableTwoFactorConfirm"));
     if (!confirmed) return;
 
     try {
@@ -422,7 +432,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         <>
                           {t("linkedOn", {
                             date: new Date(
-                              accountInfo.createdAt
+                              accountInfo.createdAt,
                             ).toLocaleDateString(),
                           })}
                           {accountInfo?.primaryAuthMethod === "google" && (
@@ -473,7 +483,8 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                         <>
                           {t("linkedOn", {
                             date: new Date(
-                              accountInfo.passwordSetAt || accountInfo.createdAt
+                              accountInfo.passwordSetAt ||
+                                accountInfo.createdAt,
                             ).toLocaleDateString(),
                           })}
                           {accountInfo?.primaryAuthMethod === "email" && (
@@ -530,11 +541,11 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
         </div>
 
         {accountInfo && (
-          <OAuthAccountLinking 
+          <OAuthAccountLinking
             accountInfo={{
               hasGoogleAccount: accountInfo.hasGoogleAccount,
               hasEmailAccount: accountInfo.hasPassword,
-              primaryAuthMethod: accountInfo.primaryAuthMethod
+              primaryAuthMethod: accountInfo.primaryAuthMethod,
             }}
             onAccountLinked={async () => {
               // Refresh account info after linking/unlinking
@@ -630,17 +641,19 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                 className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
                 placeholder={t("yourFullNamePlaceholder")}
               />
-              {profileResult && isErrorResponse(profileResult) && getFieldError(profileResult, 'name') && (
-                <p className="mt-1 text-sm text-red-600">
-                  {getFieldError(profileResult, 'name')}
-                </p>
-              )}
+              {profileResult &&
+                isErrorResponse(profileResult) &&
+                getFieldError(profileResult, "name") && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {getFieldError(profileResult, "name")}
+                  </p>
+                )}
             </div>
 
             {/* Success/Error Messages */}
             {profileResult?.message && (
               <AlertMessage
-                type={profileResult.success ? 'success' : 'error'}
+                type={profileResult.success ? "success" : "error"}
                 message={profileResult.message}
               />
             )}
@@ -738,21 +751,23 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                     {/* Success/Error Messages */}
                     {passwordResult?.message && (
                       <AlertMessage
-                        type={passwordResult.success ? 'success' : 'error'}
+                        type={passwordResult.success ? "success" : "error"}
                         message={passwordResult.message}
                       />
                     )}
-                    {passwordResult && isErrorResponse(passwordResult) && getAllFieldErrors(passwordResult).length > 0 && (
-                      <div className="mt-2">
-                        {getAllFieldErrors(passwordResult).map(
-                          (error, index) => (
-                            <p key={index} className="text-sm text-red-600">
-                              {error}
-                            </p>
-                          )
-                        )}
-                      </div>
-                    )}
+                    {passwordResult &&
+                      isErrorResponse(passwordResult) &&
+                      getAllFieldErrors(passwordResult).length > 0 && (
+                        <div className="mt-2">
+                          {getAllFieldErrors(passwordResult).map(
+                            (error, index) => (
+                              <p key={index} className="text-sm text-red-600">
+                                {error}
+                              </p>
+                            ),
+                          )}
+                        </div>
+                      )}
 
                     <GradientButton
                       type="submit"
@@ -838,21 +853,25 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                     {/* Success/Error Messages */}
                     {changePasswordResult?.message && (
                       <AlertMessage
-                        type={changePasswordResult.success ? 'success' : 'error'}
+                        type={
+                          changePasswordResult.success ? "success" : "error"
+                        }
                         message={changePasswordResult.message}
                       />
                     )}
-                    {changePasswordResult && isErrorResponse(changePasswordResult) && getAllFieldErrors(changePasswordResult).length > 0 && (
-                      <div className="mt-2">
-                        {getAllFieldErrors(changePasswordResult).map(
-                          (error, index) => (
-                            <p key={index} className="text-sm text-red-600">
-                              {error}
-                            </p>
-                          )
-                        )}
-                      </div>
-                    )}
+                    {changePasswordResult &&
+                      isErrorResponse(changePasswordResult) &&
+                      getAllFieldErrors(changePasswordResult).length > 0 && (
+                        <div className="mt-2">
+                          {getAllFieldErrors(changePasswordResult).map(
+                            (error, index) => (
+                              <p key={index} className="text-sm text-red-600">
+                                {error}
+                              </p>
+                            ),
+                          )}
+                        </div>
+                      )}
 
                     <GradientButton
                       type="submit"
@@ -965,7 +984,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             {/* Email verification result */}
             {verificationResult?.message && (
               <AlertMessage
-                type={verificationResult.success ? 'success' : 'error'}
+                type={verificationResult.success ? "success" : "error"}
                 message={verificationResult.message}
               />
             )}
@@ -1000,9 +1019,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
           </div>
 
           <div className="space-y-6">
-            <p className="text-gray-600">
-              {t("accountLinkingDescription")}
-            </p>
+            <p className="text-gray-600">{t("accountLinkingDescription")}</p>
 
             {/* Google Account Linking */}
             <div className="border border-gray-200 rounded-xl p-4">
@@ -1032,7 +1049,9 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                     <p className="text-sm font-medium text-gray-900">
                       {t("googleAccount")}
                     </p>
-                    <p className="text-xs text-gray-500">{t("signInWithGoogle")}</p>
+                    <p className="text-xs text-gray-500">
+                      {t("signInWithGoogle")}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -1112,7 +1131,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             {/* Account linking result */}
             {linkingResult?.message && (
               <AlertMessage
-                type={linkingResult.success ? 'success' : 'error'}
+                type={linkingResult.success ? "success" : "error"}
                 message={linkingResult.message}
               />
             )}
@@ -1154,7 +1173,9 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                 {accountInfo?.twoFactorEnabled &&
                   accountInfo?.backupCodesCount !== undefined && (
                     <p className="text-xs text-green-600 mt-1">
-                      {t("backupCodesAvailable", {count: accountInfo.backupCodesCount})}
+                      {t("backupCodesAvailable", {
+                        count: accountInfo.backupCodesCount,
+                      })}
                     </p>
                   )}
               </div>
@@ -1270,10 +1291,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
               </button>
             ) : (
               <div className="space-y-4">
-                <AlertMessage
-                  type="error"
-                  message={t("dangerZoneWarning")}
-                />
+                <AlertMessage type="error" message={t("dangerZoneWarning")} />
 
                 <form onSubmit={handleAccountDeletion} className="space-y-4">
                   <div>
@@ -1298,7 +1316,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
                   {/* Success/Error Messages */}
                   {deleteResult?.message && (
                     <AlertMessage
-                      type={deleteResult.success ? 'success' : 'error'}
+                      type={deleteResult.success ? "success" : "error"}
                       message={deleteResult.message}
                     />
                   )}

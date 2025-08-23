@@ -1,8 +1,8 @@
-import { CommandMetadata } from '../base/command.interface'
+import { CommandMetadata } from "../base/command.interface";
 
 export interface ICommandMiddleware {
-  name?: string
-  
+  name?: string;
+
   /**
    * Executed before the command
    * Return false to block execution
@@ -10,9 +10,9 @@ export interface ICommandMiddleware {
   before?(
     commandName: string,
     input: any,
-    metadata: CommandMetadata
-  ): Promise<boolean | void>
-  
+    metadata: CommandMetadata,
+  ): Promise<boolean | void>;
+
   /**
    * Executed after successful command execution
    */
@@ -21,9 +21,9 @@ export interface ICommandMiddleware {
     input: any,
     output: any,
     metadata: CommandMetadata,
-    duration: number
-  ): Promise<void>
-  
+    duration: number,
+  ): Promise<void>;
+
   /**
    * Executed on command error
    */
@@ -31,6 +31,6 @@ export interface ICommandMiddleware {
     commandName: string,
     input: any,
     error: Error,
-    metadata: CommandMetadata
-  ): Promise<void>
+    metadata: CommandMetadata,
+  ): Promise<void>;
 }

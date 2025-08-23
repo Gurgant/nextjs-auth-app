@@ -1,11 +1,13 @@
 # GradientButton Component Migration Guide
 
 ## Overview
+
 This guide helps you migrate from inline gradient button styles to the reusable `GradientButton` component.
 
 ## Import Statement
+
 ```tsx
-import { GradientButton } from '@/components/ui/gradient-button';
+import { GradientButton } from "@/components/ui/gradient-button";
 ```
 
 ## Migration Examples
@@ -13,6 +15,7 @@ import { GradientButton } from '@/components/ui/gradient-button';
 ### Example 1: Sign In Button (Blue Gradient)
 
 **BEFORE:**
+
 ```tsx
 <button
   type="submit"
@@ -22,30 +25,32 @@ import { GradientButton } from '@/components/ui/gradient-button';
   {loading ? (
     <>
       <LoadingSpinner size="md" color="white" className="-ml-1 mr-3" />
-      {t('signingIn')}
+      {t("signingIn")}
     </>
   ) : (
-    t('signInButton')
+    t("signInButton")
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <GradientButton
   type="submit"
   variant="blue"
   fullWidth
   loading={loading}
-  loadingText={t('signingIn')}
+  loadingText={t("signingIn")}
 >
-  {t('signInButton')}
+  {t("signInButton")}
 </GradientButton>
 ```
 
 ### Example 2: Register Button (Green Gradient)
 
 **BEFORE:**
+
 ```tsx
 <button
   type="submit"
@@ -55,15 +60,16 @@ import { GradientButton } from '@/components/ui/gradient-button';
   {isLoading ? (
     <>
       <LoadingSpinner size="md" color="white" className="-ml-1 mr-3" />
-      {t('creating')}
+      {t("creating")}
     </>
   ) : (
-    t('createAccount')
+    t("createAccount")
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <GradientButton
   type="submit"
@@ -71,15 +77,16 @@ import { GradientButton } from '@/components/ui/gradient-button';
   fullWidth
   disabled={!agreed}
   loading={isLoading}
-  loadingText={t('creating')}
+  loadingText={t("creating")}
 >
-  {t('createAccount')}
+  {t("createAccount")}
 </GradientButton>
 ```
 
 ### Example 3: Delete Account Button (Red Gradient)
 
 **BEFORE:**
+
 ```tsx
 <button
   type="submit"
@@ -92,12 +99,13 @@ import { GradientButton } from '@/components/ui/gradient-button';
       Deleting...
     </>
   ) : (
-    t('deleteAccount')
+    t("deleteAccount")
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <GradientButton
   type="submit"
@@ -107,13 +115,14 @@ import { GradientButton } from '@/components/ui/gradient-button';
   loading={isDeletingAccount}
   loadingText="Deleting..."
 >
-  {t('deleteAccount')}
+  {t("deleteAccount")}
 </GradientButton>
 ```
 
 ### Example 4: Two-Factor Setup (Blue-Purple Gradient)
 
 **BEFORE:**
+
 ```tsx
 <button
   type="button"
@@ -126,12 +135,13 @@ import { GradientButton } from '@/components/ui/gradient-button';
       Setting up...
     </>
   ) : (
-    'Continue'
+    "Continue"
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <GradientButton
   type="button"
@@ -147,6 +157,7 @@ import { GradientButton } from '@/components/ui/gradient-button';
 ### Example 5: Password Management (Yellow-Orange)
 
 **BEFORE:**
+
 ```tsx
 <button
   type="submit"
@@ -159,12 +170,13 @@ import { GradientButton } from '@/components/ui/gradient-button';
       Adding...
     </>
   ) : (
-    t('setPassword')
+    t("setPassword")
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <GradientButton
   type="submit"
@@ -173,34 +185,34 @@ import { GradientButton } from '@/components/ui/gradient-button';
   loading={isAddingPassword}
   loadingText="Adding..."
 >
-  {t('setPassword')}
+  {t("setPassword")}
 </GradientButton>
 ```
 
 ## Props Reference
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `variant` | `'blue-purple' \| 'green-emerald' \| 'yellow-orange' \| 'red' \| 'blue' \| 'green'` | `'blue-purple'` | Color gradient variant |
-| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Button size |
-| `fullWidth` | `boolean` | `false` | Makes button full width |
-| `loading` | `boolean` | `false` | Shows loading state |
-| `loadingText` | `string` | - | Text to show when loading |
-| `disabled` | `boolean` | `false` | Disables the button |
-| `className` | `string` | - | Additional CSS classes |
-| `...props` | `ButtonHTMLAttributes` | - | All standard button props |
+| Prop          | Type                                                                                | Default         | Description               |
+| ------------- | ----------------------------------------------------------------------------------- | --------------- | ------------------------- |
+| `variant`     | `'blue-purple' \| 'green-emerald' \| 'yellow-orange' \| 'red' \| 'blue' \| 'green'` | `'blue-purple'` | Color gradient variant    |
+| `size`        | `'sm' \| 'md' \| 'lg'`                                                              | `'md'`          | Button size               |
+| `fullWidth`   | `boolean`                                                                           | `false`         | Makes button full width   |
+| `loading`     | `boolean`                                                                           | `false`         | Shows loading state       |
+| `loadingText` | `string`                                                                            | -               | Text to show when loading |
+| `disabled`    | `boolean`                                                                           | `false`         | Disables the button       |
+| `className`   | `string`                                                                            | -               | Additional CSS classes    |
+| `...props`    | `ButtonHTMLAttributes`                                                              | -               | All standard button props |
 
 ## Variant Mapping
 
-| Old Gradient | New Variant |
-|--------------|-------------|
-| `from-blue-600 to-blue-700` | `blue` |
-| `from-green-600 to-green-700` | `green` |
-| `from-blue-600 to-purple-700` | `blue-purple` |
-| `from-green-600 to-emerald-700` | `green-emerald` |
-| `from-yellow-600 to-orange-600` | `yellow-orange` |
-| `from-red-600 to-red-700` | `red` |
-| `from-orange-600 to-red-600` | `red` (closest match) |
+| Old Gradient                    | New Variant           |
+| ------------------------------- | --------------------- |
+| `from-blue-600 to-blue-700`     | `blue`                |
+| `from-green-600 to-green-700`   | `green`               |
+| `from-blue-600 to-purple-700`   | `blue-purple`         |
+| `from-green-600 to-emerald-700` | `green-emerald`       |
+| `from-yellow-600 to-orange-600` | `yellow-orange`       |
+| `from-red-600 to-red-700`       | `red`                 |
+| `from-orange-600 to-red-600`    | `red` (closest match) |
 
 ## Search Patterns for Migration
 
@@ -220,18 +232,21 @@ rg "bg-gradient-to-r.*from-\w+-\d+.*to-\w+-\d+" --type tsx -A5 -B5
 ## Common Migration Patterns
 
 ### Pattern 1: Full Width Loading Button
+
 ```tsx
 // Look for: w-full.*bg-gradient-to-r.*{loading.*LoadingSpinner
 // Replace with: <GradientButton fullWidth loading={...} loadingText={...}>
 ```
 
 ### Pattern 2: Flex-1 Button (in button groups)
+
 ```tsx
 // Look for: flex-1.*bg-gradient-to-r
 // Replace with: <GradientButton className="flex-1">
 ```
 
 ### Pattern 3: Custom Disabled Logic
+
 ```tsx
 // Look for: disabled={condition1 || condition2}
 // Keep the same: <GradientButton disabled={condition1 || condition2}>
@@ -256,16 +271,20 @@ rg "bg-gradient-to-r.*from-\w+-\d+.*to-\w+-\d+" --type tsx -A5 -B5
 ## Troubleshooting
 
 ### Button Not Full Width
+
 - Use `fullWidth` prop, not `className="w-full"`
 
 ### Custom Gradient Needed
+
 - If you need a gradient not in variants, keep the original implementation
 - Consider adding new variant to the component
 
 ### Form Submission Issues
+
 - Ensure `type="submit"` is passed through
 - Check that loading state doesn't prevent submission
 
 ### Styling Conflicts
+
 - The component uses `cn()` utility, so custom classes will merge properly
 - If conflicts occur, check specificity and use `!important` sparingly

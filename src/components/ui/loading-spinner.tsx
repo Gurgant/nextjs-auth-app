@@ -5,19 +5,19 @@ interface LoadingSpinnerProps {
    * Size of the spinner
    * @default 'md'
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-  
+  size?: "sm" | "md" | "lg" | "xl";
+
   /**
    * Color variant of the spinner
    * @default 'primary'
    */
-  color?: 'white' | 'primary' | 'secondary' | 'gray';
-  
+  color?: "white" | "primary" | "secondary" | "gray";
+
   /**
    * Additional CSS classes
    */
   className?: string;
-  
+
   /**
    * Accessible label for screen readers
    * @default 'Loading...'
@@ -26,39 +26,39 @@ interface LoadingSpinnerProps {
 }
 
 const sizeClasses = {
-  sm: 'h-4 w-4',
-  md: 'h-5 w-5',
-  lg: 'h-6 w-6',
-  xl: 'h-8 w-8'
+  sm: "h-4 w-4",
+  md: "h-5 w-5",
+  lg: "h-6 w-6",
+  xl: "h-8 w-8",
 } as const;
 
 const colorClasses = {
-  white: 'text-white',
-  primary: 'text-blue-600',
-  secondary: 'text-purple-600',
-  gray: 'text-gray-600'
+  white: "text-white",
+  primary: "text-blue-600",
+  secondary: "text-purple-600",
+  gray: "text-gray-600",
 } as const;
 
 /**
  * A reusable loading spinner component with multiple size and color variants
- * 
+ *
  * @example
  * // Default medium spinner
  * <LoadingSpinner />
- * 
+ *
  * @example
  * // Small white spinner with custom margin
  * <LoadingSpinner size="sm" color="white" className="-ml-1 mr-3" />
- * 
+ *
  * @example
  * // Large primary spinner with custom label
  * <LoadingSpinner size="lg" color="primary" label="Processing payment..." />
  */
-export function LoadingSpinner({ 
-  size = 'md', 
-  color = 'primary', 
+export function LoadingSpinner({
+  size = "md",
+  color = "primary",
   className,
-  label = 'Loading...'
+  label = "Loading...",
 }: LoadingSpinnerProps) {
   return (
     <svg
@@ -66,7 +66,7 @@ export function LoadingSpinner({
         "animate-spin",
         sizeClasses[size],
         colorClasses[color],
-        className
+        className,
       )}
       fill="none"
       viewBox="0 0 24 24"

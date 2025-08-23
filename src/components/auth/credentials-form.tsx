@@ -1,53 +1,54 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { GradientButton } from '@/components/ui/gradient-button'
-import { AlertMessage } from '@/components/ui/alert-message'
-import { InputWithIcon } from '@/components/ui/input-with-icon'
-import { useSafeLocale } from '@/hooks/use-safe-locale'
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { AlertMessage } from "@/components/ui/alert-message";
+import { InputWithIcon } from "@/components/ui/input-with-icon";
+import { useSafeLocale } from "@/hooks/use-safe-locale";
 
 export function CredentialsForm() {
-  const router = useRouter()
-  const t = useTranslations('CredentialsForm')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const t = useTranslations("CredentialsForm");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Use safe locale extraction
-  const locale = useSafeLocale()
+  const locale = useSafeLocale();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email,
         password,
         redirect: false,
-      })
+      });
 
       if (result?.error) {
-        setError(t('invalidCredentials'))
+        setError(t("invalidCredentials"));
       } else {
-        router.push(`/${locale}/dashboard`)
-        router.refresh()
+        router.push(`/${locale}/dashboard`);
+        router.refresh();
       }
-    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      setError(t('genericError'))
+    } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      setError(t("genericError"));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Form validation: disable submit when fields are empty
-  const isFormValid = email.trim().length > 0 && password.trim().length > 0
-  const isSubmitDisabled = !isFormValid || loading
+  const isFormValid = email.trim().length > 0 && password.trim().length > 0;
+  const isSubmitDisabled = !isFormValid || loading;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 w-full">
@@ -56,11 +57,11 @@ export function CredentialsForm() {
           icon="mail"
           type="email"
           id="email"
-          label={t('emailLabel')}
+          label={t("emailLabel")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          placeholder={t('emailPlaceholder')}
+          placeholder={t("emailPlaceholder")}
           focusRing="blue"
         />
 
@@ -68,22 +69,17 @@ export function CredentialsForm() {
           icon="lock"
           type="password"
           id="password"
-          label={t('passwordLabel')}
+          label={t("passwordLabel")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          placeholder={t('passwordPlaceholder')}
+          placeholder={t("passwordPlaceholder")}
           focusRing="blue"
           showPasswordToggle
         />
       </div>
 
-      {error && (
-        <AlertMessage
-          type="error"
-          message={error}
-        />
-      )}
+      {error && <AlertMessage type="error" message={error} />}
 
       <GradientButton
         type="submit"
@@ -91,10 +87,10 @@ export function CredentialsForm() {
         fullWidth
         loading={loading}
         disabled={isSubmitDisabled}
-        loadingText={t('signingIn')}
+        loadingText={t("signingIn")}
       >
-        {t('signInButton')}
+        {t("signInButton")}
       </GradientButton>
     </form>
-  )
+  );
 }

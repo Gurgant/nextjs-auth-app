@@ -144,7 +144,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
       expect(user?.password).not.toBe(registrationData.password);
       const isPasswordValid = await bcrypt.compare(
         registrationData.password,
-        user?.password || ""
+        user?.password || "",
       );
       expect(isPasswordValid).toBe(true);
     }, 10000); // 10 second timeout for registration with bcrypt
@@ -426,13 +426,13 @@ describe("Authentication Integration Tests (Real Database)", () => {
 
       const isNewPasswordValid = await bcrypt.compare(
         newPassword,
-        updatedUser?.password || ""
+        updatedUser?.password || "",
       );
       expect(isNewPasswordValid).toBe(true);
 
       const isOldPasswordValid = await bcrypt.compare(
         oldPassword,
-        updatedUser?.password || ""
+        updatedUser?.password || "",
       );
       expect(isOldPasswordValid).toBe(false);
 

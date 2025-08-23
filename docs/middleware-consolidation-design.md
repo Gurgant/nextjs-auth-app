@@ -3,12 +3,14 @@
 ## Current State Analysis
 
 ### 1. Root Middleware (`/middleware.ts`)
+
 - **Purpose**: Handles OAuth/Auth error redirects
 - **Security Issue**: Uses unsafe locale extraction: `pathname.split('/')[1] || 'en'`
 - **Functionality**: Redirects auth errors to localized error page
 - **Active**: YES (Next.js only recognizes root middleware)
 
-### 2. Src Middleware (`/src/middleware.ts`) 
+### 2. Src Middleware (`/src/middleware.ts`)
+
 - **Purpose**: Handles i18n routing via next-intl
 - **Functionality**: Adds locale prefix to routes
 - **Active**: NO (Ignored by Next.js)
@@ -17,6 +19,7 @@
 ## The Problem
 
 Next.js only supports ONE middleware file in the root directory. The `/src/middleware.ts` is completely ignored, meaning:
+
 - ❌ The i18n routing is not actually working via middleware
 - ❌ The locale prefixing must be happening elsewhere (likely in app router)
 - ❌ We have conflicting middleware configurations
@@ -27,8 +30,8 @@ Next.js only supports ONE middleware file in the root directory. The `/src/middl
 
 ```typescript
 // /middleware.ts - Unified middleware handling both i18n and auth errors
-import { NextRequest, NextResponse } from 'next/server'
-import { getSafeLocale, ALLOWED_LOCALES } from '@/config/i18n'
+import { NextRequest, NextResponse } from "next/server";
+import { getSafeLocale, ALLOWED_LOCALES } from "@/config/i18n";
 
 export function middleware(request: NextRequest) {
   // 1. Extract and validate locale securely
@@ -62,33 +65,33 @@ export function middleware(request: NextRequest) {
 
 ```typescript
 function extractLocaleFromRequest(request: NextRequest): {
-  locale: Locale
-  isValid: boolean
-  source: 'path' | 'cookie' | 'header' | 'default'
+  locale: Locale;
+  isValid: boolean;
+  source: "path" | "cookie" | "header" | "default";
 } {
-  const pathname = request.nextUrl.pathname
-  
+  const pathname = request.nextUrl.pathname;
+
   // Try to extract from path
-  const pathMatch = pathname.match(/^\/([a-z]{2})(?:\/|$)/)
+  const pathMatch = pathname.match(/^\/([a-z]{2})(?:\/|$)/);
   if (pathMatch) {
-    const possibleLocale = pathMatch[1]
+    const possibleLocale = pathMatch[1];
     if (isValidLocale(possibleLocale)) {
-      return { locale: possibleLocale, isValid: true, source: 'path' }
+      return { locale: possibleLocale, isValid: true, source: "path" };
     }
   }
-  
+
   // Fallback to cookie
-  const cookieLocale = request.cookies.get('locale')?.value
+  const cookieLocale = request.cookies.get("locale")?.value;
   if (cookieLocale && isValidLocale(cookieLocale)) {
-    return { locale: cookieLocale, isValid: true, source: 'cookie' }
+    return { locale: cookieLocale, isValid: true, source: "cookie" };
   }
-  
+
   // Fallback to Accept-Language header
-  const acceptLanguage = request.headers.get('accept-language')
+  const acceptLanguage = request.headers.get("accept-language");
   // Parse and validate...
-  
+
   // Default
-  return { locale: DEFAULT_LOCALE, isValid: false, source: 'default' }
+  return { locale: DEFAULT_LOCALE, isValid: false, source: "default" };
 }
 ```
 
@@ -96,22 +99,20 @@ function extractLocaleFromRequest(request: NextRequest): {
 
 ```typescript
 function handleI18nRouting(request: NextRequest, locale: Locale) {
-  const pathname = request.nextUrl.pathname
-  
+  const pathname = request.nextUrl.pathname;
+
   // Check if locale is in path
   const hasLocaleInPath = ALLOWED_LOCALES.some(
-    l => pathname === `/${l}` || pathname.startsWith(`/${l}/`)
-  )
-  
+    (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`),
+  );
+
   if (!hasLocaleInPath) {
     // Redirect to localized path
-    return NextResponse.redirect(
-      new URL(`/${locale}${pathname}`, request.url)
-    )
+    return NextResponse.redirect(new URL(`/${locale}${pathname}`, request.url));
   }
-  
+
   // Continue with request
-  return null
+  return null;
 }
 ```
 
@@ -119,26 +120,26 @@ function handleI18nRouting(request: NextRequest, locale: Locale) {
 
 ```typescript
 function handleAuthErrors(request: NextRequest, locale: Locale) {
-  const { pathname, searchParams } = request.nextUrl
-  
-  if (searchParams.has('error')) {
-    const error = searchParams.get('error')
-    
+  const { pathname, searchParams } = request.nextUrl;
+
+  if (searchParams.has("error")) {
+    const error = searchParams.get("error");
+
     if (isAuthRelatedPath(pathname)) {
-      console.log('[Security] Auth error redirect:', {
+      console.log("[Security] Auth error redirect:", {
         error,
         locale,
         path: pathname,
-        ip: request.ip
-      })
-      
+        ip: request.ip,
+      });
+
       return NextResponse.redirect(
-        new URL(`/${locale}/auth/error?error=${error}`, request.url)
-      )
+        new URL(`/${locale}/auth/error?error=${error}`, request.url),
+      );
     }
   }
-  
-  return null
+
+  return null;
 }
 ```
 
@@ -148,34 +149,34 @@ function handleAuthErrors(request: NextRequest, locale: Locale) {
 export function middleware(request: NextRequest) {
   // Skip static assets
   if (isStaticAsset(request.nextUrl.pathname)) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
-  
+
   // Extract and validate locale
-  const { locale, isValid, source } = extractLocaleFromRequest(request)
-  
+  const { locale, isValid, source } = extractLocaleFromRequest(request);
+
   // Log invalid locale attempts
-  if (!isValid && process.env.NODE_ENV === 'production') {
-    console.error('[Security] Invalid locale attempt:', {
-      attempted: request.nextUrl.pathname.split('/')[1],
+  if (!isValid && process.env.NODE_ENV === "production") {
+    console.error("[Security] Invalid locale attempt:", {
+      attempted: request.nextUrl.pathname.split("/")[1],
       source,
-      ip: request.ip
-    })
+      ip: request.ip,
+    });
   }
-  
+
   // Handle i18n routing
-  const i18nResponse = handleI18nRouting(request, locale)
-  if (i18nResponse) return i18nResponse
-  
+  const i18nResponse = handleI18nRouting(request, locale);
+  if (i18nResponse) return i18nResponse;
+
   // Handle auth errors
-  const authResponse = handleAuthErrors(request, locale)
-  if (authResponse) return authResponse
-  
+  const authResponse = handleAuthErrors(request, locale);
+  if (authResponse) return authResponse;
+
   // Add security headers
-  const response = NextResponse.next()
-  response.headers.set('X-Locale', locale)
-  
-  return response
+  const response = NextResponse.next();
+  response.headers.set("X-Locale", locale);
+
+  return response;
 }
 ```
 

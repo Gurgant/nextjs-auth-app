@@ -4,26 +4,30 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { repositories } from "@/lib/repositories";
-import { commandBus, RegisterUserCommand, ChangePasswordCommand } from "@/lib/commands";
+import {
+  commandBus,
+  RegisterUserCommand,
+  ChangePasswordCommand,
+} from "@/lib/commands";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
-import { 
-  emailSchema, 
-  passwordSchema, 
+import {
+  emailSchema,
+  passwordSchema,
   passwordMatchRefinement,
-  emailMatchRefinement
+  emailMatchRefinement,
 } from "@/lib/validation";
 import { resolveFormLocale } from "@/lib/utils/form-locale-enhanced";
 import {
   createValidationErrorResponse,
   createGenericErrorResponse,
   logActionError,
-  type ActionResponse
+  type ActionResponse,
 } from "@/lib/utils/form-responses";
 import {
   createErrorResponseI18n,
   createSuccessResponseI18n,
-  createFieldErrorResponseI18n
+  createFieldErrorResponseI18n,
 } from "@/lib/utils/form-responses-i18n";
 
 // Registration schema validation
@@ -51,7 +55,10 @@ const addPasswordSchema = z
     password: passwordSchema,
     confirmPassword: z.string(),
   })
-  .refine((data) => data.password === data.confirmPassword, passwordMatchRefinement);
+  .refine(
+    (data) => data.password === data.confirmPassword,
+    passwordMatchRefinement,
+  );
 
 // Change password schema
 // TODO: Future feature - Change password form validation
@@ -67,30 +74,34 @@ const addPasswordSchema = z
 export type ActionResult = ActionResponse;
 
 export async function registerUser(formData: FormData): Promise<ActionResult> {
-  const locale = formData.get("locale") as string || "en";
-  
+  const locale = (formData.get("locale") as string) || "en";
+
   // Use command pattern for registration
-  const result = await commandBus.execute(RegisterUserCommand, {
-    name: formData.get("name") as string,
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-    locale
-  }, {
-    locale,
-    ipAddress: formData.get("ipAddress") as string | undefined,
-    userAgent: formData.get("userAgent") as string | undefined
-  });
-  
+  const result = await commandBus.execute(
+    RegisterUserCommand,
+    {
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      password: formData.get("password") as string,
+      confirmPassword: formData.get("confirmPassword") as string,
+      locale,
+    },
+    {
+      locale,
+      ipAddress: formData.get("ipAddress") as string | undefined,
+      userAgent: formData.get("userAgent") as string | undefined,
+    },
+  );
+
   return result;
 }
 
 export async function deleteUserAccount(
   formData: FormData,
-  userEmail: string
+  userEmail: string,
 ): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   try {
     const data = {
       email: userEmail,
@@ -105,7 +116,7 @@ export async function deleteUserAccount(
     const user = await userRepo.findByEmail(validatedData.email);
 
     if (!user) {
-      return createGenericErrorResponse('notFound', 'User not found', locale);
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     // Delete user account
@@ -116,28 +127,28 @@ export async function deleteUserAccount(
     return await createSuccessResponseI18n(
       "success.accountDeleted",
       locale,
-      "Account deleted successfully"
+      "Account deleted successfully",
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return createValidationErrorResponse(error, locale);
     }
 
-    logActionError('deleteUserAccount', error);
+    logActionError("deleteUserAccount", error);
     return await createErrorResponseI18n(
       "errors.failedToDeleteAccount",
       locale,
-      "Failed to delete account. Please try again."
+      "Failed to delete account. Please try again.",
     );
   }
 }
 
 export async function updateUserProfile(
   formData: FormData,
-  userId: string
+  userId: string,
 ): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   try {
     const name = formData.get("name") as string;
 
@@ -146,7 +157,7 @@ export async function updateUserProfile(
         "errors.nameMinLength",
         "name",
         locale,
-        "Name must be at least 2 characters long"
+        "Name must be at least 2 characters long",
       );
     }
 
@@ -159,15 +170,15 @@ export async function updateUserProfile(
     return await createSuccessResponseI18n(
       "success.profileUpdated",
       locale,
-      "Profile updated successfully"
+      "Profile updated successfully",
     );
   } catch (error) {
-    logActionError('updateUserProfile', error);
-    
+    logActionError("updateUserProfile", error);
+
     return await createErrorResponseI18n(
       "errors.failedToUpdateProfile",
       locale,
-      "Failed to update profile. Please try again."
+      "Failed to update profile. Please try again.",
     );
   }
 }
@@ -175,10 +186,10 @@ export async function updateUserProfile(
 // Add password for Google users
 export async function addPasswordToGoogleUser(
   formData: FormData,
-  userId: string
+  userId: string,
 ): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   try {
     const data = {
       password: formData.get("password") as string,
@@ -191,10 +202,12 @@ export async function addPasswordToGoogleUser(
     // Check if user exists and is a Google user
     const userRepo = repositories.getUserRepository();
     const user = await userRepo.findById(userId);
-    const userWithAccounts = user ? await userRepo.findByEmailWithAccounts(user.email) : null;
+    const userWithAccounts = user
+      ? await userRepo.findByEmailWithAccounts(user.email)
+      : null;
 
     if (!userWithAccounts) {
-      return createGenericErrorResponse('notFound', 'User not found', locale);
+      return createGenericErrorResponse("notFound", "User not found", locale);
     }
 
     // Check if user already has a password
@@ -202,19 +215,20 @@ export async function addPasswordToGoogleUser(
       return await createErrorResponseI18n(
         "errors.userAlreadyHasPassword",
         locale,
-        "User already has a password. Use change password instead."
+        "User already has a password. Use change password instead.",
       );
     }
 
     // Check if user has Google account
-    const hasGoogleAccount = userWithAccounts.accounts?.some(
-      (account) => account.provider === "google"
-    ) || false;
+    const hasGoogleAccount =
+      userWithAccounts.accounts?.some(
+        (account) => account.provider === "google",
+      ) || false;
     if (!hasGoogleAccount) {
       return await createErrorResponseI18n(
         "errors.onlyGoogleUsers",
         locale,
-        "Only Google authenticated users can add passwords"
+        "Only Google authenticated users can add passwords",
       );
     }
 
@@ -236,18 +250,18 @@ export async function addPasswordToGoogleUser(
     return await createSuccessResponseI18n(
       "success.passwordAdded",
       locale,
-      "Password added successfully! You can now sign in with email and password."
+      "Password added successfully! You can now sign in with email and password.",
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
       return createValidationErrorResponse(error, locale);
     }
 
-    logActionError('addPasswordToGoogleUser', error);
+    logActionError("addPasswordToGoogleUser", error);
     return await createErrorResponseI18n(
       "errors.failedToAddPassword",
       locale,
-      "Failed to add password. Please try again."
+      "Failed to add password. Please try again.",
     );
   }
 }
@@ -255,43 +269,50 @@ export async function addPasswordToGoogleUser(
 // Change existing password
 export async function changeUserPassword(
   formData: FormData,
-  userId: string
+  userId: string,
 ): Promise<ActionResult> {
   const locale = await resolveFormLocale(formData);
-  
+
   // Use command pattern for password change
-  const result = await commandBus.execute(ChangePasswordCommand, {
-    userId,
-    currentPassword: formData.get("currentPassword") as string,
-    newPassword: formData.get("newPassword") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-    locale
-  }, {
-    userId,
-    locale,
-    ipAddress: formData.get("ipAddress") as string | undefined,
-    userAgent: formData.get("userAgent") as string | undefined
-  });
-  
+  const result = await commandBus.execute(
+    ChangePasswordCommand,
+    {
+      userId,
+      currentPassword: formData.get("currentPassword") as string,
+      newPassword: formData.get("newPassword") as string,
+      confirmPassword: formData.get("confirmPassword") as string,
+      locale,
+    },
+    {
+      userId,
+      locale,
+      ipAddress: formData.get("ipAddress") as string | undefined,
+      userAgent: formData.get("userAgent") as string | undefined,
+    },
+  );
+
   return result;
 }
 
 // Migrate user account metadata (run once for existing users)
 export async function migrateUserAccountMetadata(
-  userId: string
+  userId: string,
 ): Promise<ActionResult> {
   try {
     const userRepo = repositories.getUserRepository();
     const user = await userRepo.findById(userId);
-    const userWithAccounts = user ? await userRepo.findByEmailWithAccounts(user.email) : null;
+    const userWithAccounts = user
+      ? await userRepo.findByEmailWithAccounts(user.email)
+      : null;
 
     if (!userWithAccounts) {
-      return createGenericErrorResponse('notFound', 'User not found');
+      return createGenericErrorResponse("notFound", "User not found");
     }
 
-    const hasGoogleAccount = userWithAccounts.accounts?.some(
-      (account) => account.provider === "google"
-    ) || false;
+    const hasGoogleAccount =
+      userWithAccounts.accounts?.some(
+        (account) => account.provider === "google",
+      ) || false;
     const hasPassword = !!userWithAccounts.password;
     const hasEmailAccount = hasPassword;
 
@@ -331,15 +352,15 @@ export async function migrateUserAccountMetadata(
 
     return await createSuccessResponseI18n(
       "success.accountMetadataUpdated",
-      'en',
-      "Account metadata updated successfully"
+      "en",
+      "Account metadata updated successfully",
     );
   } catch (error) {
-    logActionError('migrateUserAccountMetadata', error);
+    logActionError("migrateUserAccountMetadata", error);
     return await createErrorResponseI18n(
       "errors.failedToMigrateAccountMetadata",
-      'en',
-      "Failed to migrate account metadata"
+      "en",
+      "Failed to migrate account metadata",
     );
   }
 }
@@ -353,26 +374,32 @@ export async function getUserAccountInfo(userId: string) {
     if (!user) {
       return null;
     }
-    
+
     const userWithAccounts = await userRepo.findByEmailWithAccounts(user.email);
-    
+
     if (!userWithAccounts) {
       return null;
     }
 
-    const hasGoogleAccount = userWithAccounts.accounts?.some(
-      (account) => account.provider === "google"
-    ) || false;
+    const hasGoogleAccount =
+      userWithAccounts.accounts?.some(
+        (account) => account.provider === "google",
+      ) || false;
     const hasPassword = !!userWithAccounts.password;
 
     // Auto-migrate if metadata is missing
-    if (userWithAccounts.hasGoogleAccount === null || userWithAccounts.hasEmailAccount === null) {
+    if (
+      userWithAccounts.hasGoogleAccount === null ||
+      userWithAccounts.hasEmailAccount === null
+    ) {
       console.log("Auto-migrating user metadata for:", userId);
       await migrateUserAccountMetadata(userId);
 
       // Re-fetch updated user data
       const updatedUser = await userRepo.findById(userId);
-      const updatedUserWithAccounts = updatedUser ? await userRepo.findByEmailWithAccounts(updatedUser.email) : null;
+      const updatedUserWithAccounts = updatedUser
+        ? await userRepo.findByEmailWithAccounts(updatedUser.email)
+        : null;
 
       if (updatedUserWithAccounts) {
         return {
@@ -402,7 +429,9 @@ export async function getUserAccountInfo(userId: string) {
           : hasGoogleAccount,
       hasPassword,
       hasEmailAccount:
-        userWithAccounts.hasEmailAccount !== null ? userWithAccounts.hasEmailAccount : hasPassword,
+        userWithAccounts.hasEmailAccount !== null
+          ? userWithAccounts.hasEmailAccount
+          : hasPassword,
       primaryAuthMethod: userWithAccounts.primaryAuthMethod,
       passwordSetAt: userWithAccounts.passwordSetAt,
       lastPasswordChange: userWithAccounts.lastPasswordChange,

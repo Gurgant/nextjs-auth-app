@@ -1,18 +1,26 @@
-import { resolveFormLocale, getFormTranslations } from '../form-locale-enhanced';
-import { getCurrentLocale } from '../get-locale';
-import { getLocaleFromFormData } from '../form-locale';
-import { getTranslations } from 'next-intl/server';
+import {
+  resolveFormLocale,
+  getFormTranslations,
+} from "../form-locale-enhanced";
+import { getCurrentLocale } from "../get-locale";
+import { getLocaleFromFormData } from "../form-locale";
+import { getTranslations } from "next-intl/server";
 
 // Mock dependencies
-jest.mock('../get-locale');
-jest.mock('../form-locale');
-jest.mock('next-intl/server');
+jest.mock("../get-locale");
+jest.mock("../form-locale");
+jest.mock("next-intl/server");
 
-describe('form-locale-enhanced', () => {
-  const mockGetCurrentLocale = getCurrentLocale as jest.MockedFunction<typeof getCurrentLocale>;
-  const mockGetLocaleFromFormData = getLocaleFromFormData as jest.MockedFunction<typeof getLocaleFromFormData>;
-  const mockGetTranslations = getTranslations as jest.MockedFunction<typeof getTranslations>;
-  
+describe("form-locale-enhanced", () => {
+  const mockGetCurrentLocale = getCurrentLocale as jest.MockedFunction<
+    typeof getCurrentLocale
+  >;
+  const mockGetLocaleFromFormData =
+    getLocaleFromFormData as jest.MockedFunction<typeof getLocaleFromFormData>;
+  const mockGetTranslations = getTranslations as jest.MockedFunction<
+    typeof getTranslations
+  >;
+
   // Create a proper mock translation function
   const createMockTranslationFn = () => {
     const fn = jest.fn((key: string) => key) as any;
@@ -27,124 +35,126 @@ describe('form-locale-enhanced', () => {
     jest.clearAllMocks();
   });
 
-  describe('resolveFormLocale', () => {
-    it('uses form locale when not default (en)', async () => {
+  describe("resolveFormLocale", () => {
+    it("uses form locale when not default (en)", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('es');
-      mockGetCurrentLocale.mockResolvedValue('fr');
+      mockGetLocaleFromFormData.mockReturnValue("es");
+      mockGetCurrentLocale.mockResolvedValue("fr");
 
       const result = await resolveFormLocale(formData);
 
-      expect(result).toBe('es');
+      expect(result).toBe("es");
       expect(mockGetLocaleFromFormData).toHaveBeenCalledWith(formData);
       expect(mockGetCurrentLocale).toHaveBeenCalled();
     });
 
-    it('uses cookie locale when form locale is default (en)', async () => {
+    it("uses cookie locale when form locale is default (en)", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('en');
-      mockGetCurrentLocale.mockResolvedValue('fr');
+      mockGetLocaleFromFormData.mockReturnValue("en");
+      mockGetCurrentLocale.mockResolvedValue("fr");
 
       const result = await resolveFormLocale(formData);
 
-      expect(result).toBe('fr');
+      expect(result).toBe("fr");
       expect(mockGetLocaleFromFormData).toHaveBeenCalledWith(formData);
       expect(mockGetCurrentLocale).toHaveBeenCalled();
     });
 
-    it('returns en when both form and cookie are en', async () => {
+    it("returns en when both form and cookie are en", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('en');
-      mockGetCurrentLocale.mockResolvedValue('en');
+      mockGetLocaleFromFormData.mockReturnValue("en");
+      mockGetCurrentLocale.mockResolvedValue("en");
 
       const result = await resolveFormLocale(formData);
 
-      expect(result).toBe('en');
+      expect(result).toBe("en");
     });
 
-    it('handles empty form data', async () => {
+    it("handles empty form data", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('en');
-      mockGetCurrentLocale.mockResolvedValue('de');
+      mockGetLocaleFromFormData.mockReturnValue("en");
+      mockGetCurrentLocale.mockResolvedValue("de");
 
       const result = await resolveFormLocale(formData);
 
-      expect(result).toBe('de');
+      expect(result).toBe("de");
     });
   });
 
-  describe('getFormTranslations', () => {
-    it('gets translations with resolved locale', async () => {
+  describe("getFormTranslations", () => {
+    it("gets translations with resolved locale", async () => {
       const formData = new FormData();
       const mockTranslationFn = createMockTranslationFn();
-      
-      mockGetLocaleFromFormData.mockReturnValue('es');
-      mockGetCurrentLocale.mockResolvedValue('fr');
+
+      mockGetLocaleFromFormData.mockReturnValue("es");
+      mockGetCurrentLocale.mockResolvedValue("fr");
       mockGetTranslations.mockResolvedValue(mockTranslationFn);
 
-      const result = await getFormTranslations(formData, 'validation');
+      const result = await getFormTranslations(formData, "validation");
 
       expect(mockGetTranslations).toHaveBeenCalledWith({
-        locale: 'es',
-        namespace: 'validation'
+        locale: "es",
+        namespace: "validation",
       });
       expect(result).toBe(mockTranslationFn);
     });
 
-    it('uses cookie locale for translations when form locale is default', async () => {
+    it("uses cookie locale for translations when form locale is default", async () => {
       const formData = new FormData();
       const mockTranslationFn = createMockTranslationFn();
-      
-      mockGetLocaleFromFormData.mockReturnValue('en');
-      mockGetCurrentLocale.mockResolvedValue('ja');
+
+      mockGetLocaleFromFormData.mockReturnValue("en");
+      mockGetCurrentLocale.mockResolvedValue("ja");
       mockGetTranslations.mockResolvedValue(mockTranslationFn);
 
-      const result = await getFormTranslations(formData, 'auth');
+      const result = await getFormTranslations(formData, "auth");
 
       expect(mockGetTranslations).toHaveBeenCalledWith({
-        locale: 'ja',
-        namespace: 'auth'
+        locale: "ja",
+        namespace: "auth",
       });
       expect(result).toBe(mockTranslationFn);
     });
 
-    it('works with different namespaces', async () => {
+    it("works with different namespaces", async () => {
       const formData = new FormData();
       const mockTranslationFn = createMockTranslationFn();
-      
-      mockGetLocaleFromFormData.mockReturnValue('de');
-      mockGetCurrentLocale.mockResolvedValue('en');
+
+      mockGetLocaleFromFormData.mockReturnValue("de");
+      mockGetCurrentLocale.mockResolvedValue("en");
       mockGetTranslations.mockResolvedValue(mockTranslationFn);
 
-      const namespaces = ['validation', 'auth', 'errors', 'success', 'common'];
-      
+      const namespaces = ["validation", "auth", "errors", "success", "common"];
+
       for (const namespace of namespaces) {
         await getFormTranslations(formData, namespace);
-        
+
         expect(mockGetTranslations).toHaveBeenCalledWith({
-          locale: 'de',
-          namespace
+          locale: "de",
+          namespace,
         });
       }
     });
   });
 
-  describe('edge cases', () => {
-    it('handles errors from getCurrentLocale gracefully', async () => {
+  describe("edge cases", () => {
+    it("handles errors from getCurrentLocale gracefully", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('en');
-      mockGetCurrentLocale.mockRejectedValue(new Error('Cookie error'));
+      mockGetLocaleFromFormData.mockReturnValue("en");
+      mockGetCurrentLocale.mockRejectedValue(new Error("Cookie error"));
 
-      await expect(resolveFormLocale(formData)).rejects.toThrow('Cookie error');
+      await expect(resolveFormLocale(formData)).rejects.toThrow("Cookie error");
     });
 
-    it('handles errors from getTranslations gracefully', async () => {
+    it("handles errors from getTranslations gracefully", async () => {
       const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue('es');
-      mockGetCurrentLocale.mockResolvedValue('en');
-      mockGetTranslations.mockRejectedValue(new Error('Translation error'));
+      mockGetLocaleFromFormData.mockReturnValue("es");
+      mockGetCurrentLocale.mockResolvedValue("en");
+      mockGetTranslations.mockRejectedValue(new Error("Translation error"));
 
-      await expect(getFormTranslations(formData, 'validation')).rejects.toThrow('Translation error');
+      await expect(getFormTranslations(formData, "validation")).rejects.toThrow(
+        "Translation error",
+      );
     });
   });
 });

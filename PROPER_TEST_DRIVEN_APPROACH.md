@@ -3,10 +3,12 @@
 ## ✅ GOLDEN RULES
 
 ### Rule 1: Tests Verify Features, Not Break Them
+
 - **WRONG**: Modify application to make tests pass
 - **RIGHT**: Fix tests to properly interact with features
 
 ### Rule 2: Respect Business Logic
+
 - If terms acceptance is required → TEST must accept terms
 - If button is disabled until valid → TEST must fulfill requirements
 - If validation exists → TEST must provide valid data
@@ -14,18 +16,21 @@
 ### Rule 3: Test Categories
 
 #### 1. ACTUAL BUGS (Fix the App)
+
 - Application crashes
 - Data corruption
 - Security vulnerabilities
 - Logic errors
 
 #### 2. BAD TESTS (Fix the Test)
+
 - Test doesn't check checkbox when required
 - Test expects wrong behavior
 - Test doesn't wait for async operations
 - Test uses wrong selectors
 
 #### 3. MISSING FEATURES (Mark as TODO)
+
 - Password reset not implemented → `test.todo()`
 - OAuth partially done → `test.skip()` with reason
 - Admin panel not built → Document in roadmap
@@ -33,6 +38,7 @@
 ## 📝 PROPER FIX FOR REGISTRATION TESTS
 
 ### The Feature (CORRECT BEHAVIOR)
+
 ```typescript
 // This is CORRECT - Users MUST accept terms
 <input type="checkbox" required />
@@ -40,24 +46,25 @@
 ```
 
 ### The Test Fix (NOT Feature Destruction)
+
 ```typescript
 // WRONG APPROACH (What I did before):
 // Remove 'required' from checkbox ❌
 // Remove 'disabled' logic ❌
 
 // RIGHT APPROACH:
-test('should register user', async () => {
+test("should register user", async () => {
   // Fill the form
-  await page.fill('input[name="name"]', 'Test User')
-  await page.fill('input[name="email"]', 'test@example.com')
-  await page.fill('input[name="password"]', 'Test123!')
-  
+  await page.fill('input[name="name"]', "Test User");
+  await page.fill('input[name="email"]', "test@example.com");
+  await page.fill('input[name="password"]', "Test123!");
+
   // CHECK THE CHECKBOX! (Don't remove the requirement!)
-  await page.check('input[type="checkbox"]')
-  
+  await page.check('input[type="checkbox"]');
+
   // Now button is enabled and we can click
-  await page.click('button[type="submit"]')
-})
+  await page.click('button[type="submit"]');
+});
 ```
 
 ## 🔍 HOW TO IDENTIFY WHAT TO FIX
@@ -100,31 +107,31 @@ minLength={8} → minLength={1} ❌
 ```typescript
 // Provide valid test data
 await fillForm({
-  email: 'valid@email.com', // Not 'invalid-email'
-  password: 'ValidPass123!', // Meets requirements
-  terms: true // Accept required terms
-})
+  email: "valid@email.com", // Not 'invalid-email'
+  password: "ValidPass123!", // Meets requirements
+  terms: true, // Accept required terms
+});
 
 // Wait for async operations
-await page.waitForSelector('.success-message')
+await page.waitForSelector(".success-message");
 
 // Handle multi-step processes
-await page.click('button:has-text("Next")')
-await page.waitForURL(/step-2/)
+await page.click('button:has-text("Next")');
+await page.waitForURL(/step-2/);
 
 // Use proper selectors
-await page.locator('input[name="email"]') // Not 'input'
+await page.locator('input[name="email"]'); // Not 'input'
 ```
 
 ## 📊 TEST CLASSIFICATION MATRIX
 
-| Test Fails Because | Action | Priority |
-|-------------------|--------|----------|
-| Feature not implemented | `test.todo()` | Low |
-| Test doesn't handle feature correctly | Fix test | High |
-| Actual bug in application | Fix app | Critical |
-| Flaky test (timing issues) | Add waits/retries | Medium |
-| Environment issue (DB down) | Fix environment | Immediate |
+| Test Fails Because                    | Action            | Priority  |
+| ------------------------------------- | ----------------- | --------- |
+| Feature not implemented               | `test.todo()`     | Low       |
+| Test doesn't handle feature correctly | Fix test          | High      |
+| Actual bug in application             | Fix app           | Critical  |
+| Flaky test (timing issues)            | Add waits/retries | Medium    |
+| Environment issue (DB down)           | Fix environment   | Immediate |
 
 ## 🎯 DECISION FLOWCHART
 
@@ -143,6 +150,7 @@ Fix the TEST (bad test logic)
 ## 💡 EXAMPLE: Registration Form
 
 ### Feature Requirements
+
 - ✅ User must provide name
 - ✅ User must provide valid email
 - ✅ Password must be 8+ characters
@@ -150,30 +158,32 @@ Fix the TEST (bad test logic)
 - ✅ Submit disabled until all requirements met
 
 ### Test Implementation
+
 ```typescript
-describe('Registration', () => {
-  test('should enforce terms acceptance', async () => {
+describe("Registration", () => {
+  test("should enforce terms acceptance", async () => {
     // Fill all fields correctly
-    await registerPage.fillForm(validUserData)
-    
+    await registerPage.fillForm(validUserData);
+
     // Try to submit WITHOUT checking terms
-    const submitButton = page.locator('button[type="submit"]')
-    await expect(submitButton).toBeDisabled() // CORRECT!
-    
+    const submitButton = page.locator('button[type="submit"]');
+    await expect(submitButton).toBeDisabled(); // CORRECT!
+
     // Now check terms
-    await page.check('input[name="terms"]')
-    await expect(submitButton).toBeEnabled() // NOW it works!
-    
+    await page.check('input[name="terms"]');
+    await expect(submitButton).toBeEnabled(); // NOW it works!
+
     // Submit successfully
-    await submitButton.click()
-    await expect(page).toHaveURL(/dashboard|welcome/)
-  })
-})
+    await submitButton.click();
+    await expect(page).toHaveURL(/dashboard|welcome/);
+  });
+});
 ```
 
 ## 🛡️ PROTECTING FEATURES
 
 When a test fails, ask:
+
 1. **Is this protecting users?** (validation, security)
 2. **Is this a business requirement?** (terms, age verification)
 3. **Is this preventing errors?** (data validation)

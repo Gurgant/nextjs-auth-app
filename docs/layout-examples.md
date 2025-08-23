@@ -3,6 +3,7 @@
 This document provides practical examples of using layout components in various scenarios.
 
 ## Table of Contents
+
 1. [Authentication Pages](#authentication-pages)
 2. [Protected Pages](#protected-pages)
 3. [Loading States](#loading-states)
@@ -16,23 +17,23 @@ This document provides practical examples of using layout components in various 
 
 ```tsx
 // app/[locale]/register/page.tsx
-import { AuthGuard, FormPageLayout } from '@/components/layouts'
-import { RegistrationForm } from '@/components/forms/registration-form'
+import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { RegistrationForm } from "@/components/forms/registration-form";
 
 interface Props {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }
 
 export default async function RegisterPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth={false}>
       <FormPageLayout>
         <RegistrationForm locale={locale} />
       </FormPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -40,19 +41,23 @@ export default async function RegisterPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/signin/page.tsx
-import { AuthGuard, FormPageLayout } from '@/components/layouts'
-import { SignInForm } from '@/components/forms/signin-form'
+import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { SignInForm } from "@/components/forms/signin-form";
 
 export default async function SignInPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
-    <AuthGuard locale={locale} requireAuth={false} redirectTo={`/${locale}/dashboard`}>
+    <AuthGuard
+      locale={locale}
+      requireAuth={false}
+      redirectTo={`/${locale}/dashboard`}
+    >
       <FormPageLayout gradient="purple-pink">
         <SignInForm locale={locale} />
       </FormPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -60,21 +65,23 @@ export default async function SignInPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/reset-password/page.tsx
-import { FormPageLayout } from '@/components/layouts'
-import { PasswordResetForm } from '@/components/forms/password-reset-form'
+import { FormPageLayout } from "@/components/layouts";
+import { PasswordResetForm } from "@/components/forms/password-reset-form";
 
 export default async function ResetPasswordPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <FormPageLayout gradient="green-blue" maxWidth="sm">
       <div className="text-center mb-6">
         <h1 className="text-2xl font-bold">Reset Your Password</h1>
-        <p className="text-gray-600 mt-2">Enter your email to receive a reset link</p>
+        <p className="text-gray-600 mt-2">
+          Enter your email to receive a reset link
+        </p>
       </div>
       <PasswordResetForm locale={locale} />
     </FormPageLayout>
-  )
+  );
 }
 ```
 
@@ -84,24 +91,26 @@ export default async function ResetPasswordPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/dashboard/page.tsx
-import { auth } from '@/lib/auth'
-import { AuthGuard, DashboardLayout } from '@/components/layouts'
-import { DashboardContent } from '@/components/dashboard-content'
+import { auth } from "@/lib/auth";
+import { AuthGuard, DashboardLayout } from "@/components/layouts";
+import { DashboardContent } from "@/components/dashboard-content";
 
 export default async function DashboardPage({ params }: Props) {
-  const session = await auth()
-  const { locale } = await params
-  
+  const session = await auth();
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <DashboardLayout maxWidth="7xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Welcome back, {session.user?.name}!</h1>
+          <h1 className="text-3xl font-bold">
+            Welcome back, {session.user?.name}!
+          </h1>
         </div>
         <DashboardContent user={session.user!} />
       </DashboardLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -109,21 +118,21 @@ export default async function DashboardPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/account/page.tsx
-import { auth } from '@/lib/auth'
-import { AuthGuard, DashboardLayout } from '@/components/layouts'
-import { AccountManagement } from '@/components/account/account-management'
+import { auth } from "@/lib/auth";
+import { AuthGuard, DashboardLayout } from "@/components/layouts";
+import { AccountManagement } from "@/components/account/account-management";
 
 export default async function AccountPage({ params }: Props) {
-  const session = await auth()
-  const { locale } = await params
-  
+  const session = await auth();
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <DashboardLayout gradient maxWidth="4xl" className="py-12">
         <AccountManagement user={session.user!} locale={locale} />
       </DashboardLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -131,12 +140,16 @@ export default async function AccountPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/profile/page.tsx
-import { AuthGuard, GradientPageLayout, CenteredContentLayout } from '@/components/layouts'
-import { UserProfile } from '@/components/profile/user-profile'
+import {
+  AuthGuard,
+  GradientPageLayout,
+  CenteredContentLayout,
+} from "@/components/layouts";
+import { UserProfile } from "@/components/profile/user-profile";
 
 export default async function ProfilePage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <GradientPageLayout gradient="blue-purple">
@@ -145,7 +158,7 @@ export default async function ProfilePage({ params }: Props) {
         </CenteredContentLayout>
       </GradientPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -155,15 +168,10 @@ export default async function ProfilePage({ params }: Props) {
 
 ```tsx
 // app/[locale]/dashboard/loading.tsx
-import { LoadingLayout } from '@/components/layouts'
+import { LoadingLayout } from "@/components/layouts";
 
 export default function Loading() {
-  return (
-    <LoadingLayout 
-      message="Loading your dashboard..." 
-      spinnerSize="xl"
-    />
-  )
+  return <LoadingLayout message="Loading your dashboard..." spinnerSize="xl" />;
 }
 ```
 
@@ -171,17 +179,17 @@ export default function Loading() {
 
 ```tsx
 // app/[locale]/loading.tsx
-import { LoadingLayout } from '@/components/layouts'
+import { LoadingLayout } from "@/components/layouts";
 
 export default function RootLoading() {
   return (
-    <LoadingLayout 
+    <LoadingLayout
       fullScreen
-      message="Initializing application..." 
+      message="Initializing application..."
       spinnerSize="xl"
       className="bg-gradient-to-br from-blue-50 to-purple-50"
     />
-  )
+  );
 }
 ```
 
@@ -189,7 +197,7 @@ export default function RootLoading() {
 
 ```tsx
 // components/custom-loading.tsx
-import { LoadingLayout } from '@/components/layouts'
+import { LoadingLayout } from "@/components/layouts";
 
 export function DataLoadingState({ message }: { message?: string }) {
   return (
@@ -199,7 +207,7 @@ export function DataLoadingState({ message }: { message?: string }) {
       fullScreen={false}
       className="min-h-[400px] bg-white rounded-lg shadow-sm"
     />
-  )
+  );
 }
 ```
 
@@ -209,41 +217,43 @@ export function DataLoadingState({ message }: { message?: string }) {
 
 ```tsx
 // app/[locale]/error/page.tsx
-import { CenteredContentLayout } from '@/components/layouts'
-import { AlertMessage } from '@/components/ui/alert-message'
-import Link from 'next/link'
+import { CenteredContentLayout } from "@/components/layouts";
+import { AlertMessage } from "@/components/ui/alert-message";
+import Link from "next/link";
 
 interface Props {
-  params: Promise<{ locale: string }>
-  searchParams: Promise<{ message?: string }>
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ message?: string }>;
 }
 
 export default async function ErrorPage({ params, searchParams }: Props) {
-  const { locale } = await params
-  const { message } = await searchParams
-  
+  const { locale } = await params;
+  const { message } = await searchParams;
+
   return (
     <CenteredContentLayout maxWidth="md" className="bg-gray-50">
       <div className="bg-white p-8 rounded-lg shadow-md">
         <div className="text-center mb-6">
           <div className="text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold text-gray-900">Something went wrong</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Something went wrong
+          </h1>
         </div>
-        
-        <AlertMessage 
-          type="error" 
-          message={message || "An unexpected error occurred"} 
+
+        <AlertMessage
+          type="error"
+          message={message || "An unexpected error occurred"}
           className="mb-6"
         />
-        
+
         <div className="flex gap-4 justify-center">
-          <Link 
+          <Link
             href={`/${locale}`}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Go Home
           </Link>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
           >
@@ -252,7 +262,7 @@ export default async function ErrorPage({ params, searchParams }: Props) {
         </div>
       </div>
     </CenteredContentLayout>
-  )
+  );
 }
 ```
 
@@ -260,8 +270,11 @@ export default async function ErrorPage({ params, searchParams }: Props) {
 
 ```tsx
 // app/[locale]/not-found.tsx
-import { GradientPageLayout, CenteredContentLayout } from '@/components/layouts'
-import Link from 'next/link'
+import {
+  GradientPageLayout,
+  CenteredContentLayout,
+} from "@/components/layouts";
+import Link from "next/link";
 
 export default function NotFound() {
   return (
@@ -269,9 +282,13 @@ export default function NotFound() {
       <CenteredContentLayout>
         <div className="text-center">
           <h1 className="text-9xl font-bold text-gray-200">404</h1>
-          <p className="text-2xl font-semibold text-gray-700 mt-4">Page not found</p>
-          <p className="text-gray-500 mt-2">The page you're looking for doesn't exist.</p>
-          <Link 
+          <p className="text-2xl font-semibold text-gray-700 mt-4">
+            Page not found
+          </p>
+          <p className="text-gray-500 mt-2">
+            The page you're looking for doesn't exist.
+          </p>
+          <Link
             href="/"
             className="mt-6 inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -280,7 +297,7 @@ export default function NotFound() {
         </div>
       </CenteredContentLayout>
     </GradientPageLayout>
-  )
+  );
 }
 ```
 
@@ -290,13 +307,13 @@ export default function NotFound() {
 
 ```tsx
 // app/[locale]/onboarding/page.tsx
-import { AuthGuard, FormPageLayout } from '@/components/layouts'
-import { OnboardingForm } from '@/components/forms/onboarding-form'
-import { ProgressBar } from '@/components/ui/progress-bar'
+import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { OnboardingForm } from "@/components/forms/onboarding-form";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 export default async function OnboardingPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <FormPageLayout maxWidth="lg">
@@ -306,7 +323,7 @@ export default async function OnboardingPage({ params }: Props) {
         </div>
       </FormPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -314,13 +331,13 @@ export default async function OnboardingPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/settings/page.tsx
-import { AuthGuard, DashboardLayout } from '@/components/layouts'
-import { SettingsSidebar } from '@/components/settings/sidebar'
-import { SettingsContent } from '@/components/settings/content'
+import { AuthGuard, DashboardLayout } from "@/components/layouts";
+import { SettingsSidebar } from "@/components/settings/sidebar";
+import { SettingsContent } from "@/components/settings/content";
 
 export default async function SettingsPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <DashboardLayout maxWidth="7xl">
@@ -334,7 +351,7 @@ export default async function SettingsPage({ params }: Props) {
         </div>
       </DashboardLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -342,11 +359,15 @@ export default async function SettingsPage({ params }: Props) {
 
 ```tsx
 // app/[locale]/confirm-action/page.tsx
-import { AuthGuard, GradientPageLayout, CenteredContentLayout } from '@/components/layouts'
+import {
+  AuthGuard,
+  GradientPageLayout,
+  CenteredContentLayout,
+} from "@/components/layouts";
 
 export default async function ConfirmActionPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <GradientPageLayout className="bg-black/50">
@@ -368,7 +389,7 @@ export default async function ConfirmActionPage({ params }: Props) {
         </CenteredContentLayout>
       </GradientPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -389,7 +410,7 @@ export default function OldRegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 ```
 
@@ -398,15 +419,15 @@ export default function OldRegisterPage() {
 ```tsx
 // ✅ New approach - clean and reusable
 export default function NewRegisterPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth={false}>
       <FormPageLayout>
         <RegistrationForm locale={locale} />
       </FormPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
@@ -415,12 +436,12 @@ export default function NewRegisterPage({ params }: Props) {
 ```tsx
 // ❌ Old approach - complex nested divs
 export default async function OldDashboard() {
-  const session = await auth()
-  
+  const session = await auth();
+
   if (!session) {
-    redirect('/login')
+    redirect("/login");
   }
-  
+
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       <div className="py-8">
@@ -431,7 +452,7 @@ export default async function OldDashboard() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 ```
 
@@ -440,9 +461,9 @@ export default async function OldDashboard() {
 ```tsx
 // ✅ New approach - authentication and layout handled elegantly
 export default async function NewDashboard({ params }: Props) {
-  const session = await auth()
-  const { locale } = await params
-  
+  const session = await auth();
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <DashboardLayout maxWidth="7xl">
@@ -451,7 +472,7 @@ export default async function NewDashboard({ params }: Props) {
         </div>
       </DashboardLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 

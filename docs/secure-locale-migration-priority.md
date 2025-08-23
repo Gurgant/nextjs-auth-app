@@ -7,6 +7,7 @@ This document outlines the prioritized migration order for implementing secure l
 ## CRITICAL PRIORITY - Middleware (Must be done first)
 
 ### 1. Root Middleware (`/middleware.ts`)
+
 - **Current Issue**: Uses `pathname.split('/')[1] || 'en'`
 - **Impact**: All OAuth error redirects
 - **Dependencies**: None
@@ -20,6 +21,7 @@ This document outlines the prioritized migration order for implementing secure l
 ## HIGH PRIORITY - Authentication Components
 
 ### 2. Auth Error Page (`/src/app/[locale]/auth/error/page.tsx`)
+
 - **Current Issue**: Uses `window.location.pathname` directly
 - **Impact**: Displays auth error messages to users
 - **Dependencies**: useSafeLocale hook
@@ -27,6 +29,7 @@ This document outlines the prioritized migration order for implementing secure l
 - **Action**: Replace with `useSafeLocale()` hook
 
 ### 3. Sign-in Page (`/src/app/[locale]/auth/signin/page.tsx`)
+
 - **Current Issue**: Manual pathname parsing
 - **Impact**: Authentication entry point
 - **Dependencies**: useSafeLocale hook
@@ -34,6 +37,7 @@ This document outlines the prioritized migration order for implementing secure l
 - **Action**: Replace with `useSafeLocale()` hook
 
 ### 4. Sign-in Button (`/src/components/auth/sign-in-button.tsx`)
+
 - **Current Issue**: Manual locale extraction
 - **Impact**: Used across the application
 - **Dependencies**: useSafeLocale hook
@@ -41,6 +45,7 @@ This document outlines the prioritized migration order for implementing secure l
 - **Action**: Replace with `useSafeLocale()` hook
 
 ### 5. Credentials Form (`/src/components/auth/credentials-form.tsx`)
+
 - **Current Issue**: Manual pathname parsing
 - **Impact**: Handles user credentials
 - **Dependencies**: useSafeLocale hook
@@ -50,6 +55,7 @@ This document outlines the prioritized migration order for implementing secure l
 ## MEDIUM PRIORITY - Dashboard & Utilities
 
 ### 6. Dashboard Content (`/src/components/dashboard-content.tsx`)
+
 - **Current Issue**: Manual locale extraction
 - **Impact**: Protected route, lower risk
 - **Dependencies**: useSafeLocale hook
@@ -57,6 +63,7 @@ This document outlines the prioritized migration order for implementing secure l
 - **Action**: Replace with `useSafeLocale()` hook
 
 ### 7. Language Selector (`/src/components/language-selector.tsx`)
+
 - **Current Issue**: Complex pathname splitting
 - **Impact**: Locale switching functionality
 - **Dependencies**: Navigation utilities
@@ -64,6 +71,7 @@ This document outlines the prioritized migration order for implementing secure l
 - **Action**: Use `switchLocale()` utility
 
 ### 8. Auth Library (`/src/lib/auth.ts`)
+
 - **Current Issue**: Server-side URL parsing
 - **Impact**: URL construction in server functions
 - **Dependencies**: getSafeLocale function
@@ -73,12 +81,14 @@ This document outlines the prioritized migration order for implementing secure l
 ## Migration Checklist per Component
 
 ### Pre-Migration Steps
+
 - [ ] Ensure infrastructure is ready (hooks, utilities, tests)
 - [ ] Review component for all locale usage
 - [ ] Identify all navigation/routing calls
 - [ ] Plan testing approach
 
 ### Migration Steps
+
 1. [ ] Import secure locale utilities
 2. [ ] Replace unsafe locale extraction
 3. [ ] Update navigation calls to use utilities
@@ -89,6 +99,7 @@ This document outlines the prioritized migration order for implementing secure l
 8. [ ] Verify i18n still works
 
 ### Post-Migration Steps
+
 - [ ] Run linting and type checking
 - [ ] Test locale switching
 - [ ] Test with attack vectors
@@ -98,6 +109,7 @@ This document outlines the prioritized migration order for implementing secure l
 ## Risk Mitigation Strategy
 
 ### For Middleware (CRITICAL)
+
 1. Create parallel implementation first
 2. Test extensively in development
 3. Deploy to staging with monitoring
@@ -105,6 +117,7 @@ This document outlines the prioritized migration order for implementing secure l
 5. Deploy during low-traffic period
 
 ### For Components (HIGH/MEDIUM)
+
 1. Migrate one component at a time
 2. Test each component individually
 3. Monitor for console errors
@@ -114,6 +127,7 @@ This document outlines the prioritized migration order for implementing secure l
 ## Success Criteria
 
 ### Component Migration Complete When:
+
 - No unsafe locale extraction remains
 - All tests pass
 - Locale switching works correctly
@@ -122,6 +136,7 @@ This document outlines the prioritized migration order for implementing secure l
 - Translations load properly
 
 ### Overall Migration Complete When:
+
 - All components use secure locale handling
 - Middleware validates all locale inputs
 - Security audit shows no vulnerabilities

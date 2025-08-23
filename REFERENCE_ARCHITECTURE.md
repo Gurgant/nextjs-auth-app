@@ -86,18 +86,21 @@
 ### 1. Command Pattern (CQRS-lite)
 
 #### Purpose
+
 Encapsulate business operations as objects, enabling logging, undo, and validation.
 
 #### Implementation
+
 ```typescript
 interface ICommand<TInput, TOutput> {
-  execute(input: TInput): Promise<TOutput>
-  validate?(input: TInput): Promise<boolean>
-  undo?(): Promise<void>
+  execute(input: TInput): Promise<TOutput>;
+  validate?(input: TInput): Promise<boolean>;
+  undo?(): Promise<void>;
 }
 ```
 
 #### Benefits
+
 - ✅ Separation of concerns
 - ✅ Testability
 - ✅ Audit trail
@@ -105,6 +108,7 @@ interface ICommand<TInput, TOutput> {
 - ✅ Validation encapsulation
 
 #### When to Use
+
 - Complex business operations
 - Operations requiring rollback
 - Operations needing audit logs
@@ -113,17 +117,20 @@ interface ICommand<TInput, TOutput> {
 ### 2. Event-Driven Architecture
 
 #### Purpose
+
 Decouple components through asynchronous message passing.
 
 #### Implementation
+
 ```typescript
 class EventBus {
-  publish(event: BaseEvent): Promise<void>
-  subscribe(eventType: EventType, handler: Handler): void
+  publish(event: BaseEvent): Promise<void>;
+  subscribe(eventType: EventType, handler: Handler): void;
 }
 ```
 
 #### Benefits
+
 - ✅ Loose coupling
 - ✅ Scalability
 - ✅ Async processing
@@ -131,6 +138,7 @@ class EventBus {
 - ✅ Multiple handlers per event
 
 #### When to Use
+
 - Cross-domain communication
 - Async notifications
 - Integration with external systems
@@ -139,19 +147,22 @@ class EventBus {
 ### 3. Repository Pattern
 
 #### Purpose
+
 Abstract data access logic and provide a more object-oriented view of the persistence layer.
 
 #### Implementation
+
 ```typescript
 interface IRepository<T> {
-  findById(id: string): Promise<T | null>
-  create(data: T): Promise<T>
-  update(id: string, data: Partial<T>): Promise<T>
-  delete(id: string): Promise<boolean>
+  findById(id: string): Promise<T | null>;
+  create(data: T): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T>;
+  delete(id: string): Promise<boolean>;
 }
 ```
 
 #### Benefits
+
 - ✅ Testability (easy mocking)
 - ✅ Flexibility (switch data sources)
 - ✅ Centralized queries
@@ -159,6 +170,7 @@ interface IRepository<T> {
 - ✅ Business logic separation
 
 #### When to Use
+
 - Always for data access
 - Multiple data sources
 - Complex queries
@@ -167,29 +179,33 @@ interface IRepository<T> {
 ### 4. Factory Pattern
 
 #### Purpose
+
 Centralize object creation logic.
 
 #### Implementation
+
 ```typescript
 const ErrorFactory = {
   validation: {
     required: (field) => new ValidationError(`${field} required`),
-    invalid: (field) => new ValidationError(`Invalid ${field}`)
+    invalid: (field) => new ValidationError(`Invalid ${field}`),
   },
   auth: {
-    unauthorized: () => new AuthError('Unauthorized'),
-    forbidden: () => new AuthError('Forbidden')
-  }
-}
+    unauthorized: () => new AuthError("Unauthorized"),
+    forbidden: () => new AuthError("Forbidden"),
+  },
+};
 ```
 
 #### Benefits
+
 - ✅ Consistent object creation
 - ✅ Centralized configuration
 - ✅ Easy testing
 - ✅ Type safety
 
 #### When to Use
+
 - Error creation
 - Complex object initialization
 - Multiple object variants
@@ -198,25 +214,29 @@ const ErrorFactory = {
 ### 5. Builder Pattern
 
 #### Purpose
+
 Construct complex objects step by step.
 
 #### Implementation
+
 ```typescript
 class UserBuilder {
-  withEmail(email: string): this
-  withRole(role: string): this
-  verified(): this
-  build(): User
+  withEmail(email: string): this;
+  withRole(role: string): this;
+  verified(): this;
+  build(): User;
 }
 ```
 
 #### Benefits
+
 - ✅ Readable object creation
 - ✅ Flexible construction
 - ✅ Immutable objects
 - ✅ Test data generation
 
 #### When to Use
+
 - Test data creation
 - Complex object construction
 - Optional parameters
@@ -229,12 +249,14 @@ class UserBuilder {
 ### Framework: Next.js 15
 
 #### Why Next.js?
+
 - **Server Components**: Improved performance and SEO
 - **App Router**: Modern routing with layouts
 - **Full-stack**: API routes included
 - **Production-ready**: Built-in optimizations
 
 #### Key Features Used
+
 - App Router for routing
 - Server Components for performance
 - API Routes for backend
@@ -245,30 +267,34 @@ class UserBuilder {
 ### Authentication: NextAuth v5 (Auth.js)
 
 #### Why NextAuth?
+
 - **Industry standard**: Battle-tested
 - **Provider agnostic**: 50+ providers
 - **Secure by default**: CSRF, JWT
 - **Flexible**: Credentials + OAuth
 
 #### Configuration
+
 ```typescript
 export const authConfig = {
   providers: [GoogleProvider, CredentialsProvider],
-  session: { strategy: 'jwt' },
+  session: { strategy: "jwt" },
   callbacks: { jwt, session },
-  pages: { signIn: '/login' }
-}
+  pages: { signIn: "/login" },
+};
 ```
 
 ### Database: PostgreSQL + Prisma
 
 #### Why PostgreSQL?
+
 - **ACID compliance**: Data integrity
 - **JSON support**: Flexible schemas
 - **Full-text search**: Built-in
 - **Scalability**: Proven at scale
 
 #### Why Prisma?
+
 - **Type safety**: Generated types
 - **Migrations**: Version control
 - **Relations**: Automatic joins
@@ -277,12 +303,14 @@ export const authConfig = {
 ### Internationalization: next-intl
 
 #### Why next-intl?
+
 - **Type-safe**: TypeScript support
 - **RSC support**: Server components
 - **Performance**: Lazy loading
 - **Developer experience**: Great API
 
 #### Structure
+
 ```
 messages/
 ├── en.json
@@ -295,12 +323,14 @@ messages/
 ### Testing: Jest + Playwright
 
 #### Why This Stack?
+
 - **Jest**: Fast unit/integration tests
 - **Playwright**: Cross-browser E2E
 - **Coverage**: Multiple test strategies
 - **CI-friendly**: Parallel execution
 
 #### Test Pyramid
+
 ```
          E2E (34 tests)
         /    \
@@ -324,7 +354,7 @@ sequenceDiagram
     participant Repository
     participant Database
     participant EventBus
-    
+
     Client->>Middleware: HTTP Request
     Middleware->>Middleware: Auth Check
     Middleware->>Middleware: i18n Setup
@@ -338,7 +368,7 @@ sequenceDiagram
     Command->>EventBus: Publish Event
     Command-->>Route: Response
     Route-->>Client: HTTP Response
-    
+
     Note over EventBus: Async Handlers
     EventBus->>EmailService: Send Email
     EventBus->>Analytics: Track Event
@@ -356,7 +386,7 @@ flowchart TD
     D -->|Yes| E[Check Permissions]
     E -->|Denied| F[403 Forbidden]
     E -->|Allowed| G[Process Request]
-    
+
     C --> H[Login Page]
     H --> I{OAuth or Credentials?}
     I -->|OAuth| J[Provider Auth]
@@ -406,12 +436,12 @@ src/
 
 ### Separation of Concerns
 
-| Layer | Responsibility | Examples |
-|-------|---------------|----------|
-| **Presentation** | UI rendering, user interaction | Components, pages, hooks |
-| **Application** | Business logic orchestration | Commands, services |
-| **Domain** | Core business rules | Models, validators, events |
-| **Infrastructure** | External systems | Database, email, storage |
+| Layer              | Responsibility                 | Examples                   |
+| ------------------ | ------------------------------ | -------------------------- |
+| **Presentation**   | UI rendering, user interaction | Components, pages, hooks   |
+| **Application**    | Business logic orchestration   | Commands, services         |
+| **Domain**         | Core business rules            | Models, validators, events |
+| **Infrastructure** | External systems               | Database, email, storage   |
 
 ---
 
@@ -470,16 +500,18 @@ Layer 5: Monitoring & Audit
 ### Optimization Strategies
 
 #### 1. Server-Side Rendering
+
 ```typescript
 // Static generation for public pages
-export const dynamic = 'force-static'
-export const revalidate = 3600 // 1 hour
+export const dynamic = "force-static";
+export const revalidate = 3600; // 1 hour
 
 // Dynamic rendering for personalized content
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 ```
 
 #### 2. Database Optimization
+
 ```typescript
 // Connection pooling
 datasource db {
@@ -496,6 +528,7 @@ model User {
 ```
 
 #### 3. Caching Strategy
+
 ```typescript
 // LRU cache for rate limiting
 const cache = new LRUCache({
@@ -509,6 +542,7 @@ const getUser = cache(async (id) => {...})
 ```
 
 #### 4. Code Splitting
+
 ```typescript
 // Dynamic imports
 const HeavyComponent = dynamic(
@@ -519,12 +553,12 @@ const HeavyComponent = dynamic(
 
 ### Performance Metrics
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| **First Contentful Paint** | < 1s | ✅ 0.8s |
-| **Time to Interactive** | < 3s | ✅ 2.5s |
-| **Lighthouse Score** | > 90 | ✅ 95 |
-| **Bundle Size** | < 200KB | ✅ 180KB |
+| Metric                     | Target  | Current  |
+| -------------------------- | ------- | -------- |
+| **First Contentful Paint** | < 1s    | ✅ 0.8s  |
+| **Time to Interactive**    | < 3s    | ✅ 2.5s  |
+| **Lighthouse Score**       | > 90    | ✅ 95    |
+| **Bundle Size**            | < 200KB | ✅ 180KB |
 
 ---
 
@@ -548,24 +582,28 @@ const HeavyComponent = dynamic(
 ### Test Types
 
 #### Unit Tests
+
 - **Purpose**: Test individual functions/components
 - **Tools**: Jest, React Testing Library
 - **Coverage**: 70% of tests
 - **Runtime**: < 10 seconds
 
 #### Integration Tests
+
 - **Purpose**: Test component interactions
 - **Tools**: Jest with real database
 - **Coverage**: 20% of tests
 - **Runtime**: < 30 seconds
 
 #### E2E Tests
+
 - **Purpose**: Test complete user flows
 - **Tools**: Playwright
 - **Coverage**: 10% of tests
 - **Runtime**: < 2 minutes
 
 #### Performance Tests
+
 - **Purpose**: Load and stress testing
 - **Tools**: Artillery
 - **Metrics**: Response time, throughput
@@ -653,6 +691,7 @@ flowchart LR
 ## 📋 Decision Records
 
 ### ADR-001: Next.js App Router
+
 **Date**: 2024-01
 **Status**: Accepted
 **Context**: Need modern React framework
@@ -660,6 +699,7 @@ flowchart LR
 **Consequences**: Better performance, learning curve for team
 
 ### ADR-002: JWT over Database Sessions
+
 **Date**: 2024-01
 **Status**: Accepted
 **Context**: Scalability requirements
@@ -667,6 +707,7 @@ flowchart LR
 **Consequences**: Easier scaling, larger cookies
 
 ### ADR-003: Command Pattern for Business Logic
+
 **Date**: 2024-02
 **Status**: Accepted
 **Context**: Complex business operations
@@ -674,6 +715,7 @@ flowchart LR
 **Consequences**: Better testability, more boilerplate
 
 ### ADR-004: PostgreSQL over MongoDB
+
 **Date**: 2024-02
 **Status**: Accepted
 **Context**: Need ACID compliance
@@ -685,16 +727,19 @@ flowchart LR
 ## 🎓 Learning Resources
 
 ### Architecture Patterns
+
 - [Domain-Driven Design](https://martinfowler.com/tags/domain%20driven%20design.html)
 - [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [SOLID Principles](https://www.digitalocean.com/community/conceptual_articles/s-o-l-i-d-the-principles-of-object-oriented-design)
 
 ### Next.js Specific
+
 - [Next.js Documentation](https://nextjs.org/docs)
 - [App Router Best Practices](https://nextjs.org/docs/app/building-your-application)
 - [Server Components](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
 
 ### Testing
+
 - [Testing Best Practices](https://github.com/goldbergyoni/javascript-testing-best-practices)
 - [Jest Documentation](https://jestjs.io/docs/getting-started)
 - [Playwright Guide](https://playwright.dev/docs/intro)
@@ -704,18 +749,21 @@ flowchart LR
 ## 🚀 Future Roadmap
 
 ### Phase 1: Enhanced Features (Q1 2025)
+
 - [ ] WebSocket support for real-time
 - [ ] GraphQL API layer
 - [ ] Advanced search with Elasticsearch
 - [ ] File upload with S3
 
 ### Phase 2: Enterprise Features (Q2 2025)
+
 - [ ] Multi-tenancy support
 - [ ] Advanced RBAC
 - [ ] Audit logging system
 - [ ] API versioning
 
 ### Phase 3: Platform Evolution (Q3 2025)
+
 - [ ] Microservices migration
 - [ ] Kubernetes deployment
 - [ ] Event sourcing

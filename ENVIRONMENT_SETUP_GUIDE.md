@@ -1,13 +1,16 @@
 # 🔐 ENVIRONMENT VARIABLES SETUP GUIDE
 
 ## ✅ Email Configuration (Already Done)
+
 You've already added:
+
 - `RESEND_API_KEY` - Your Resend API key
 - `EMAIL_FROM` - Your sender email address
 
 ## 🔑 REQUIRED SECRETS FOR ENCRYPTION & 2FA
 
 ### 1. ENCRYPTION_KEY (For 2FA secrets encryption)
+
 This key is used to encrypt sensitive data like 2FA secrets in the database.
 
 **Generate your key (choose ONE):**
@@ -24,11 +27,13 @@ openssl rand -base64 32 | head -c 32
 ```
 
 **Example generated key:**
+
 ```
 ENCRYPTION_KEY="WFezhc3Y4jcN4v5weVMAZOVh4oal4D20"
 ```
 
 ### 2. NEXTAUTH_SECRET (For session encryption)
+
 This is critical for NextAuth.js to encrypt sessions and JWT tokens.
 
 **Generate your secret:**
@@ -45,6 +50,7 @@ npx auth secret
 ```
 
 **Example generated secret:**
+
 ```
 NEXTAUTH_SECRET="zIZdejX22PEyHVziWzvFZOrbIERk9AeCwkqeMVm8xGU="
 ```

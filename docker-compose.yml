@@ -55,7 +55,7 @@ volumes:
     driver: local
   postgres_test_data:
     driver: local
-  postgres_data:  # Keep for backward compatibility
+  postgres_data: # Keep for backward compatibility
     driver: local
 
 networks:

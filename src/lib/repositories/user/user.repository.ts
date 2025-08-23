@@ -1,46 +1,54 @@
-import { User } from '@/generated/prisma'
-import { PrismaClient } from '@/generated/prisma'
-import bcrypt from 'bcryptjs'
-import { PrismaRepository } from '../base/prisma.repository'
-import { 
-  IUserRepository, 
-  CreateUserWithAccountDTO, 
+import { User } from "@/generated/prisma";
+import { PrismaClient } from "@/generated/prisma";
+import bcrypt from "bcryptjs";
+import { PrismaRepository } from "../base/prisma.repository";
+import {
+  IUserRepository,
+  CreateUserWithAccountDTO,
   UpdateUserDTO,
-  UserWithAccounts 
-} from './user.repository.interface'
+  UserWithAccounts,
+} from "./user.repository.interface";
 
-export class UserRepository extends PrismaRepository<User> implements IUserRepository {
+export class UserRepository
+  extends PrismaRepository<User>
+  implements IUserRepository
+{
   get model() {
-    return this.prisma.user
+    return this.prisma.user;
   }
 
   async findByEmail(email: string): Promise<User | null> {
     return await this.model.findUnique({
-      where: { email }
-    })
+      where: { email },
+    });
   }
 
-  async findByEmailWithAccounts(email: string): Promise<UserWithAccounts | null> {
+  async findByEmailWithAccounts(
+    email: string,
+  ): Promise<UserWithAccounts | null> {
     return await this.model.findUnique({
       where: { email },
-      include: { accounts: true }
-    })
+      include: { accounts: true },
+    });
   }
 
-  async findByCredentials(email: string, password: string): Promise<User | null> {
-    const user = await this.findByEmail(email)
-    
+  async findByCredentials(
+    email: string,
+    password: string,
+  ): Promise<User | null> {
+    const user = await this.findByEmail(email);
+
     if (!user || !user.password) {
-      return null
+      return null;
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password)
-    
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
-      return null
+      return null;
     }
 
-    return user
+    return user;
   }
 
   async createWithAccount(data: CreateUserWithAccountDTO): Promise<User> {
@@ -52,9 +60,9 @@ export class UserRepository extends PrismaRepository<User> implements IUserRepos
       image,
       twoFactorEnabled,
       twoFactorSecret,
-      provider = 'credentials',
-      providerAccountId
-    } = data
+      provider = "credentials",
+      providerAccountId,
+    } = data;
 
     return await this.prisma.user.create({
       data: {
@@ -67,37 +75,37 @@ export class UserRepository extends PrismaRepository<User> implements IUserRepos
         twoFactorSecret,
         accounts: {
           create: {
-            type: provider === 'credentials' ? 'credentials' : 'oauth',
+            type: provider === "credentials" ? "credentials" : "oauth",
             provider,
             providerAccountId: providerAccountId || email,
-          }
-        }
-      }
-    })
+          },
+        },
+      },
+    });
   }
 
   async updateLastLogin(userId: string): Promise<void> {
     await this.model.update({
       where: { id: userId },
-      data: { 
+      data: {
         lastLoginAt: new Date(),
-        updatedAt: new Date()
-      }
-    })
+        updatedAt: new Date(),
+      },
+    });
   }
 
   async updatePassword(userId: string, hashedPassword: string): Promise<void> {
     await this.model.update({
       where: { id: userId },
-      data: { password: hashedPassword }
-    })
+      data: { password: hashedPassword },
+    });
   }
 
   async verifyEmail(userId: string): Promise<void> {
     await this.model.update({
       where: { id: userId },
-      data: { emailVerified: new Date() }
-    })
+      data: { emailVerified: new Date() },
+    });
   }
 
   async enableTwoFactor(userId: string, secret: string): Promise<void> {
@@ -105,9 +113,9 @@ export class UserRepository extends PrismaRepository<User> implements IUserRepos
       where: { id: userId },
       data: {
         twoFactorEnabled: true,
-        twoFactorSecret: secret
-      }
-    })
+        twoFactorSecret: secret,
+      },
+    });
   }
 
   async disableTwoFactor(userId: string): Promise<void> {
@@ -115,35 +123,38 @@ export class UserRepository extends PrismaRepository<User> implements IUserRepos
       where: { id: userId },
       data: {
         twoFactorEnabled: false,
-        twoFactorSecret: null
-      }
-    })
+        twoFactorSecret: null,
+      },
+    });
   }
 
-  async findByProvider(provider: string, providerAccountId: string): Promise<User | null> {
+  async findByProvider(
+    provider: string,
+    providerAccountId: string,
+  ): Promise<User | null> {
     const account = await this.prisma.account.findFirst({
       where: {
         provider,
-        providerAccountId
+        providerAccountId,
       },
       include: {
-        user: true
-      }
-    })
+        user: true,
+      },
+    });
 
-    return account?.user || null
+    return account?.user || null;
   }
 
   async update(id: string, data: UpdateUserDTO): Promise<User> {
-    const updateData: any = { ...data }
-    
+    const updateData: any = { ...data };
+
     if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 12)
+      updateData.password = await bcrypt.hash(data.password, 12);
     }
 
     return await this.model.update({
       where: { id },
-      data: updateData
-    })
+      data: updateData,
+    });
   }
 }

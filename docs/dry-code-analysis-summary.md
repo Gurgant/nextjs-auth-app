@@ -3,6 +3,7 @@
 ## 🔴 Critical Duplications Found
 
 ### 1. **Loading Spinner** (8+ duplicates)
+
 ```tsx
 // CURRENT: Same SVG spinner copied everywhere
 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -15,6 +16,7 @@
 ```
 
 ### 2. **Gradient Buttons** (15+ duplicates)
+
 ```tsx
 // CURRENT: Long className strings repeated
 className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
@@ -26,6 +28,7 @@ className="w-full flex justify-center items-center py-3 px-4 border border-trans
 ```
 
 ### 3. **Alert Messages** (8+ duplicates)
+
 ```tsx
 // CURRENT: Complex conditional rendering repeated
 <div className={`rounded-xl p-4 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
@@ -46,18 +49,23 @@ className="w-full flex justify-center items-center py-3 px-4 border border-trans
 ```
 
 ### 4. **Locale Detection** (6+ duplicates in server actions)
+
 ```tsx
 // CURRENT: Same 4 lines repeated in every server action
 const formLocale = getLocaleFromFormData(formData);
 const cookieLocale = await getCurrentLocale();
-const locale = formLocale !== 'en' ? formLocale : cookieLocale;
+const locale = formLocale !== "en" ? formLocale : cookieLocale;
 const t = await getTranslations({ locale, namespace: "validation" });
 
 // PROPOSED: Single utility function
-const { locale, t } = await getFormLocaleWithTranslations(formData, "validation");
+const { locale, t } = await getFormLocaleWithTranslations(
+  formData,
+  "validation",
+);
 ```
 
 ### 5. **Form Input Fields** (12+ duplicates)
+
 ```tsx
 // CURRENT: Icon + input pattern repeated
 <div className="relative">
@@ -68,9 +76,9 @@ const { locale, t } = await getFormLocaleWithTranslations(formData, "validation"
 </div>
 
 // PROPOSED: Encapsulated component
-<InputWithIcon 
-  icon="email" 
-  type="email" 
+<InputWithIcon
+  icon="email"
+  type="email"
   placeholder="Enter your email"
   error={errors.email}
 />
@@ -78,17 +86,17 @@ const { locale, t } = await getFormLocaleWithTranslations(formData, "validation"
 
 ## 📊 Impact by the Numbers
 
-| Metric | Current | After Refactoring | Improvement |
-|--------|---------|-------------------|-------------|
-| **Duplicate Code Lines** | ~1000 | ~200 | **80% reduction** |
-| **Component Files** | 0 shared | 10-12 shared | **∞ improvement** |
-| **Average Component Size** | 400-600 lines | 200-300 lines | **50% reduction** |
-| **Time to Add New Form** | 2-3 hours | 30-45 minutes | **75% faster** |
-| **Consistency Bugs** | Common | Rare | **90% reduction** |
+| Metric                     | Current       | After Refactoring | Improvement       |
+| -------------------------- | ------------- | ----------------- | ----------------- |
+| **Duplicate Code Lines**   | ~1000         | ~200              | **80% reduction** |
+| **Component Files**        | 0 shared      | 10-12 shared      | **∞ improvement** |
+| **Average Component Size** | 400-600 lines | 200-300 lines     | **50% reduction** |
+| **Time to Add New Form**   | 2-3 hours     | 30-45 minutes     | **75% faster**    |
+| **Consistency Bugs**       | Common        | Rare              | **90% reduction** |
 
 ## 🎯 Quick Wins (Implement First)
 
-1. **LoadingSpinner Component** 
+1. **LoadingSpinner Component**
    - Effort: 2 hours
    - Impact: Removes 100+ lines
    - Risk: None
@@ -111,18 +119,18 @@ graph TD
     A --> C[GradientButton]
     A --> D[AlertMessage]
     A --> E[InputWithIcon]
-    
+
     F[Phase 2: Utilities] --> G[Locale Helpers]
     F --> H[Error Handlers]
-    
+
     I[Phase 3: Layouts] --> J[GlassCard]
     I --> K[PageLayout]
-    
+
     B --> F
     C --> F
     D --> F
     E --> F
-    
+
     F --> I
 ```
 

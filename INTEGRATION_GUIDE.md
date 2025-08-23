@@ -3,6 +3,7 @@
 ## Purpose & Usage Scenarios
 
 This guide provides comprehensive instructions for three primary use cases:
+
 1. **Starting Fresh**: Using as a complete starter template
 2. **Enhancing Existing**: Adding auth + i18n to your current project
 3. **Learning Reference**: Understanding patterns and implementations
@@ -47,6 +48,7 @@ Start Here
 ## Method 1: Complete Starter Template
 
 ### When to Use
+
 - Starting a new project from scratch
 - Need auth + i18n + testing infrastructure
 - Want enterprise patterns from day one
@@ -54,6 +56,7 @@ Start Here
 ### Step-by-Step Setup
 
 #### Phase 1: Initial Setup
+
 ```bash
 # 1.1 Clone and prepare
 git clone https://github.com/yourusername/nextjs-auth-app.git my-new-app
@@ -66,6 +69,7 @@ git init
 ```
 
 #### Phase 2: Customize Configuration
+
 ```javascript
 // 1. Update src/config/i18n.ts
 export const locales = ['en', 'es', 'fr'] // Your languages
@@ -93,6 +97,7 @@ model User {
 ```
 
 #### Phase 3: Environment Setup
+
 ```env
 # .env.local
 NEXTAUTH_URL=http://localhost:3000
@@ -103,6 +108,7 @@ GOOGLE_CLIENT_SECRET=your-google-secret
 ```
 
 #### Phase 4: Database & Dependencies
+
 ```bash
 # 4.1 Install dependencies
 pnpm install
@@ -118,6 +124,7 @@ pnpm dev
 ```
 
 #### Phase 5: Customize for Your Domain
+
 ```typescript
 // Create your own commands in src/lib/commands/
 export class CreateOrganizationCommand extends BaseCommand {
@@ -129,7 +136,7 @@ export class CreateOrganizationCommand extends BaseCommand {
 // Create your events in src/lib/events/domain/
 export class OrganizationCreatedEvent extends BaseEvent {
   constructor(public payload: OrgCreatedPayload) {
-    super('organization.created', payload)
+    super("organization.created", payload);
   }
 }
 ```
@@ -139,6 +146,7 @@ export class OrganizationCreatedEvent extends BaseEvent {
 ## Method 2: Enhance Existing Project
 
 ### Prerequisites Check
+
 ```javascript
 // Your project should have:
 {
@@ -153,6 +161,7 @@ export class OrganizationCreatedEvent extends BaseEvent {
 ### Section A: Adding Authentication
 
 #### Step A1: Install Dependencies
+
 ```bash
 pnpm add next-auth@beta @auth/prisma-adapter prisma @prisma/client
 pnpm add bcryptjs @types/bcryptjs
@@ -160,6 +169,7 @@ pnpm add zod
 ```
 
 #### Step A2: Copy Core Auth Files
+
 ```
 Files to copy:
 ├── src/lib/
@@ -176,6 +186,7 @@ Files to copy:
 ```
 
 #### Step A3: Integrate Auth Components
+
 ```typescript
 // 1. Update your root layout
 import { auth } from '@/lib/auth'
@@ -187,7 +198,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   const session = await auth()
-  
+
   return (
     <html>
       <body>
@@ -205,16 +216,17 @@ import { redirect } from 'next/navigation'
 
 export default async function ProtectedPage() {
   const session = await auth()
-  
+
   if (!session) {
     redirect('/login')
   }
-  
+
   return <div>Protected content</div>
 }
 ```
 
 #### Step A4: Copy Auth Components
+
 ```
 Components to integrate:
 ├── src/components/auth/
@@ -226,11 +238,13 @@ Components to integrate:
 ### Section B: Adding Internationalization
 
 #### Step B1: Install i18n Dependencies
+
 ```bash
 pnpm add next-intl
 ```
 
 #### Step B2: Copy i18n Configuration
+
 ```
 Files to copy:
 ├── src/
@@ -244,6 +258,7 @@ Files to copy:
 ```
 
 #### Step B3: Restructure App Directory
+
 ```
 Before:
 src/app/
@@ -260,6 +275,7 @@ src/app/
 ```
 
 #### Step B4: Update Components for i18n
+
 ```typescript
 // 1. Server components
 import { getTranslations } from 'next-intl/server'
@@ -270,7 +286,7 @@ export default async function Page({
   params: { locale: string }
 }) {
   const t = await getTranslations('Home')
-  
+
   return <h1>{t('title')}</h1>
 }
 
@@ -280,7 +296,7 @@ import { useTranslations } from 'next-intl'
 
 export function Component() {
   const t = useTranslations('Component')
-  
+
   return <button>{t('action')}</button>
 }
 ```
@@ -288,6 +304,7 @@ export function Component() {
 ### Section C: Adding Enterprise Patterns
 
 #### Step C1: Command Pattern Implementation
+
 ```typescript
 // 1. Copy command infrastructure
 src/lib/commands/
@@ -302,12 +319,12 @@ export class YourCommand extends BaseCommand {
     // Validation logic
     return true
   }
-  
+
   async execute(input: Input): Promise<ActionResponse> {
     // Business logic
     return createSuccessResponse('Done!')
   }
-  
+
   async undo(): Promise<void> {
     // Rollback logic
   }
@@ -321,6 +338,7 @@ export async function yourAction(input: Input) {
 ```
 
 #### Step C2: Event System Integration
+
 ```typescript
 // 1. Copy event infrastructure
 src/lib/events/
@@ -350,6 +368,7 @@ eventBus.subscribe(YourEvent, async (event) => {
 ```
 
 #### Step C3: Repository Pattern
+
 ```typescript
 // 1. Copy repository infrastructure
 src/lib/repositories/
@@ -364,7 +383,7 @@ export class YourRepository implements IRepository<YourEntity> {
       where: { id }
     })
   }
-  
+
   async create(data: CreateDTO): Promise<YourEntity> {
     return await prisma.yourEntity.create({ data })
   }
@@ -382,6 +401,7 @@ const entity = await repo.findById('123')
 ### Understanding the Architecture
 
 #### Core Concepts Map
+
 ```
 Authentication (NextAuth v5)
 ├── JWT Strategy
@@ -406,6 +426,7 @@ Enterprise Patterns
 ### Key Files to Study
 
 #### Authentication Flow
+
 ```typescript
 // 1. Configuration: src/lib/auth-config.ts
 // Learn: Provider setup, callbacks, JWT configuration
@@ -421,6 +442,7 @@ Enterprise Patterns
 ```
 
 #### i18n Implementation
+
 ```typescript
 // 1. Configuration: src/i18n.ts
 // Learn: Locale setup, message loading
@@ -436,6 +458,7 @@ Enterprise Patterns
 ```
 
 #### Testing Patterns
+
 ```typescript
 // 1. Builders: src/test/builders/
 // Learn: Test data creation patterns
@@ -456,25 +479,25 @@ Enterprise Patterns
 
 ### Essential Files Matrix
 
-| Component | Files | Purpose | Dependencies |
-|-----------|-------|---------|--------------|
-| **Auth Core** | `lib/auth.ts`, `lib/auth-config.ts` | NextAuth setup | next-auth, prisma |
-| **Database** | `lib/database.ts`, `prisma/schema.prisma` | Data layer | @prisma/client |
-| **Middleware** | `middleware.ts` | Route protection | next-auth, next-intl |
-| **i18n Core** | `i18n.ts`, `config/i18n.ts` | Translations | next-intl |
-| **Commands** | `lib/commands/base/*` | Business logic | Custom pattern |
-| **Events** | `lib/events/base/*` | Event system | Custom pattern |
-| **Errors** | `lib/errors/*` | Error handling | Custom pattern |
-| **Testing** | `test/*`, `e2e/*` | Test infrastructure | jest, playwright |
+| Component      | Files                                     | Purpose             | Dependencies         |
+| -------------- | ----------------------------------------- | ------------------- | -------------------- |
+| **Auth Core**  | `lib/auth.ts`, `lib/auth-config.ts`       | NextAuth setup      | next-auth, prisma    |
+| **Database**   | `lib/database.ts`, `prisma/schema.prisma` | Data layer          | @prisma/client       |
+| **Middleware** | `middleware.ts`                           | Route protection    | next-auth, next-intl |
+| **i18n Core**  | `i18n.ts`, `config/i18n.ts`               | Translations        | next-intl            |
+| **Commands**   | `lib/commands/base/*`                     | Business logic      | Custom pattern       |
+| **Events**     | `lib/events/base/*`                       | Event system        | Custom pattern       |
+| **Errors**     | `lib/errors/*`                            | Error handling      | Custom pattern       |
+| **Testing**    | `test/*`, `e2e/*`                         | Test infrastructure | jest, playwright     |
 
 ### Copy Priority Order
 
 1. **Minimal Auth**: auth.ts, auth-config.ts, database.ts, schema.prisma
-2. **Minimal i18n**: i18n.ts, messages/*, middleware.ts
-3. **Full Auth**: + components/auth/*, lib/actions/auth.ts
+2. **Minimal i18n**: i18n.ts, messages/\*, middleware.ts
+3. **Full Auth**: + components/auth/\*, lib/actions/auth.ts
 4. **Full i18n**: + config/i18n.ts, utils/get-locale.ts
-5. **Enterprise**: + commands/*, events/*, repositories/*
-6. **Testing**: + test/*, e2e/*, jest.config.js
+5. **Enterprise**: + commands/_, events/_, repositories/\*
+6. **Testing**: + test/_, e2e/_, jest.config.js
 
 ---
 
@@ -483,6 +506,7 @@ Enterprise Patterns
 ### Strategy 1: Gradual Migration (Recommended)
 
 #### Phase 1: Foundation (Week 1)
+
 ```bash
 # 1. Create feature branch
 git checkout -b feature/add-auth-i18n
@@ -499,6 +523,7 @@ pnpm dev
 ```
 
 #### Phase 2: Components (Week 2)
+
 ```bash
 # 1. Copy UI components
 cp -r [source]/components/auth ./src/components/
@@ -512,6 +537,7 @@ pnpm test
 ```
 
 #### Phase 3: i18n (Week 3)
+
 ```bash
 # 1. Copy translations
 cp -r [source]/messages ./
@@ -524,6 +550,7 @@ mv src/app/* src/app/[locale]/
 ```
 
 #### Phase 4: Patterns (Week 4)
+
 ```bash
 # 1. Copy enterprise patterns
 cp -r [source]/lib/commands ./src/lib/
@@ -536,11 +563,13 @@ cp -r [source]/lib/events ./src/lib/
 ### Strategy 2: Big Bang Migration
 
 #### Prerequisites
+
 - Complete test coverage of existing functionality
 - Feature freeze during migration
 - Rollback plan ready
 
 #### Steps
+
 ```bash
 # 1. Create migration branch
 git checkout -b major/auth-i18n-migration
@@ -568,9 +597,9 @@ pnpm test:all
 ```typescript
 // 1. Define input interface
 interface CreateProductInput {
-  name: string
-  price: number
-  description?: string
+  name: string;
+  price: number;
+  description?: string;
 }
 
 // 2. Create command class
@@ -582,47 +611,49 @@ export class CreateProductCommand extends BaseCommand<
     const schema = z.object({
       name: z.string().min(1),
       price: z.number().positive(),
-      description: z.string().optional()
-    })
-    
-    return schema.safeParse(input).success
+      description: z.string().optional(),
+    });
+
+    return schema.safeParse(input).success;
   }
-  
+
   async execute(
     input: CreateProductInput,
-    metadata?: CommandMetadata
+    metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
     try {
       // Validate
-      if (!await this.validate(input)) {
-        return createErrorResponse('Validation failed')
+      if (!(await this.validate(input))) {
+        return createErrorResponse("Validation failed");
       }
-      
+
       // Execute business logic
       const product = await prisma.product.create({
-        data: input
-      })
-      
+        data: input,
+      });
+
       // Emit event
-      await eventBus.publish(new ProductCreatedEvent({
-        productId: product.id,
-        name: product.name
-      }))
-      
+      await eventBus.publish(
+        new ProductCreatedEvent({
+          productId: product.id,
+          name: product.name,
+        }),
+      );
+
       // Return response
-      return createSuccessResponse('Product created', {
-        id: product.id
-      })
+      return createSuccessResponse("Product created", {
+        id: product.id,
+      });
     } catch (error) {
-      return createErrorResponse('Failed to create product')
+      return createErrorResponse("Failed to create product");
     }
   }
 }
 
 // 3. Use in server action
 export async function createProduct(input: CreateProductInput) {
-  const command = new CreateProductCommand()
-  return await command.execute(input)
+  const command = new CreateProductCommand();
+  return await command.execute(input);
 }
 ```
 
@@ -685,11 +716,11 @@ await eventBus.publish(new OrderPlacedEvent({
 ```typescript
 // 1. Define interface
 export interface IProductRepository {
-  findById(id: string): Promise<Product | null>
-  findByCategory(category: string): Promise<Product[]>
-  create(data: CreateProductDTO): Promise<Product>
-  update(id: string, data: UpdateProductDTO): Promise<Product>
-  delete(id: string): Promise<boolean>
+  findById(id: string): Promise<Product | null>;
+  findByCategory(category: string): Promise<Product[]>;
+  create(data: CreateProductDTO): Promise<Product>;
+  update(id: string, data: UpdateProductDTO): Promise<Product>;
+  delete(id: string): Promise<boolean>;
 }
 
 // 2. Implement repository
@@ -699,48 +730,48 @@ export class ProductRepository implements IProductRepository {
       where: { id },
       include: {
         category: true,
-        reviews: true
-      }
-    })
+        reviews: true,
+      },
+    });
   }
-  
+
   async findByCategory(category: string): Promise<Product[]> {
     return await prisma.product.findMany({
       where: {
         category: {
-          name: category
-        }
+          name: category,
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
-    })
+        createdAt: "desc",
+      },
+    });
   }
-  
+
   async create(data: CreateProductDTO): Promise<Product> {
     return await prisma.product.create({
       data,
       include: {
-        category: true
-      }
-    })
+        category: true,
+      },
+    });
   }
-  
+
   // ... other methods
 }
 
 // 3. Use with dependency injection
 export class ProductService {
   constructor(
-    private repository: IProductRepository = new ProductRepository()
+    private repository: IProductRepository = new ProductRepository(),
   ) {}
-  
+
   async getProduct(id: string) {
-    const product = await this.repository.findById(id)
+    const product = await this.repository.findById(id);
     if (!product) {
-      throw new NotFoundError('Product not found')
+      throw new NotFoundError("Product not found");
     }
-    return product
+    return product;
   }
 }
 ```
@@ -752,6 +783,7 @@ export class ProductService {
 ### Common Integration Issues
 
 #### Issue 1: TypeScript Errors After Copying Files
+
 ```typescript
 // Problem: Missing types or mismatched versions
 // Solution: Ensure versions match
@@ -767,30 +799,32 @@ pnpm prisma generate
 ```
 
 #### Issue 2: Middleware Conflicts
+
 ```typescript
 // Problem: Multiple middlewares conflicting
 // Solution: Combine middlewares properly
 
-import { NextResponse } from 'next/server'
-import { auth } from './lib/auth'
-import { i18nMiddleware } from './lib/i18n'
+import { NextResponse } from "next/server";
+import { auth } from "./lib/auth";
+import { i18nMiddleware } from "./lib/i18n";
 
 export async function middleware(request: NextRequest) {
   // Run i18n first
-  const i18nResponse = i18nMiddleware(request)
-  if (i18nResponse) return i18nResponse
-  
+  const i18nResponse = i18nMiddleware(request);
+  if (i18nResponse) return i18nResponse;
+
   // Then auth
-  const session = await auth()
-  if (!session && request.nextUrl.pathname.startsWith('/protected')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const session = await auth();
+  if (!session && request.nextUrl.pathname.startsWith("/protected")) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
-  
-  return NextResponse.next()
+
+  return NextResponse.next();
 }
 ```
 
 #### Issue 3: Database Connection Issues
+
 ```bash
 # Problem: Can't connect to database
 # Solution: Check DATABASE_URL format
@@ -806,6 +840,7 @@ pnpm prisma db pull
 ```
 
 #### Issue 4: OAuth Callback URLs
+
 ```typescript
 // Problem: OAuth redirect mismatch
 // Solution: Update callback URLs
@@ -820,45 +855,49 @@ NEXTAUTH_URL=http://localhost:3000  // Must match exactly
 ```
 
 #### Issue 5: Translation Keys Missing
+
 ```typescript
 // Problem: Missing translation keys
 // Solution: Add fallback
 
-import { getTranslations } from 'next-intl/server'
+import { getTranslations } from "next-intl/server";
 
 try {
-  const t = await getTranslations('Component')
-  return t('key')
+  const t = await getTranslations("Component");
+  return t("key");
 } catch {
   // Fallback to English
   const tEn = await getTranslations({
-    locale: 'en',
-    namespace: 'Component'
-  })
-  return tEn('key')
+    locale: "en",
+    namespace: "Component",
+  });
+  return tEn("key");
 }
 ```
 
 ### Performance Optimization Tips
 
 #### 1. Lazy Load Translations
+
 ```typescript
 // Only load needed namespaces
-const t = await getTranslations('Dashboard')  // Not all translations
+const t = await getTranslations("Dashboard"); // Not all translations
 ```
 
 #### 2. Cache Auth Sessions
+
 ```typescript
-import { unstable_cache } from 'next/cache'
+import { unstable_cache } from "next/cache";
 
 const getCachedSession = unstable_cache(
   async () => auth(),
-  ['session'],
-  { revalidate: 60 }  // Cache for 60 seconds
-)
+  ["session"],
+  { revalidate: 60 }, // Cache for 60 seconds
+);
 ```
 
 #### 3. Optimize Prisma Queries
+
 ```typescript
 // Use select to limit fields
 const user = await prisma.user.findUnique({
@@ -866,10 +905,10 @@ const user = await prisma.user.findUnique({
   select: {
     id: true,
     name: true,
-    email: true
+    email: true,
     // Only fields you need
-  }
-})
+  },
+});
 ```
 
 ---
@@ -877,6 +916,7 @@ const user = await prisma.user.findUnique({
 ## Quick Reference Checklist
 
 ### For New Projects
+
 - [ ] Clone repository
 - [ ] Update package.json metadata
 - [ ] Configure environment variables
@@ -888,6 +928,7 @@ const user = await prisma.user.findUnique({
 - [ ] Deploy
 
 ### For Existing Projects
+
 - [ ] Backup current project
 - [ ] Install dependencies
 - [ ] Copy core files
@@ -899,6 +940,7 @@ const user = await prisma.user.findUnique({
 - [ ] Deploy to staging
 
 ### For Learning
+
 - [ ] Study auth flow
 - [ ] Understand middleware chain
 - [ ] Learn command pattern
@@ -912,12 +954,14 @@ const user = await prisma.user.findUnique({
 ## Additional Resources
 
 ### Documentation Links
+
 - [Next.js 15 Docs](https://nextjs.org/docs)
 - [NextAuth.js v5 Beta](https://authjs.dev/)
 - [next-intl Guide](https://next-intl-docs.vercel.app/)
 - [Prisma Documentation](https://www.prisma.io/docs)
 
 ### Example Implementations
+
 - Authentication flows: `src/lib/actions/auth.ts`
 - i18n patterns: `src/app/[locale]/page.tsx`
 - Command examples: `src/lib/commands/auth/*.ts`
@@ -925,10 +969,11 @@ const user = await prisma.user.findUnique({
 - Test patterns: `src/test/unit/__tests__/*.ts`
 
 ### Support Channels
+
 - GitHub Issues: Report bugs and request features
 - Discord: Community support
 - Stack Overflow: Tag with `nextjs-auth-i18n`
 
 ---
 
-*This guide is structured for both human comprehension and systematic parsing. Each section is self-contained with clear dependencies and outcomes.*
+_This guide is structured for both human comprehension and systematic parsing. Each section is self-contained with clear dependencies and outcomes._

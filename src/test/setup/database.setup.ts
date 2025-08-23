@@ -3,10 +3,12 @@
  * Ensures proper test isolation and database cleanup
  */
 
-import { PrismaClient } from '@/lib/types/prisma'
+import { PrismaClient } from "@/lib/types/prisma";
 
 // Use test database URL
-const TEST_DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db'
+const TEST_DATABASE_URL =
+  process.env.DATABASE_URL ||
+  "postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db";
 
 // Create a separate Prisma client for tests
 export const prismaTest = new PrismaClient({
@@ -15,8 +17,8 @@ export const prismaTest = new PrismaClient({
       url: TEST_DATABASE_URL,
     },
   },
-  log: process.env.DEBUG === 'true' ? ['query', 'error', 'warn'] : ['error'],
-})
+  log: process.env.DEBUG === "true" ? ["query", "error", "warn"] : ["error"],
+});
 
 /**
  * Clean all data from database tables
@@ -25,17 +27,17 @@ export const prismaTest = new PrismaClient({
 export async function cleanDatabase() {
   try {
     // Delete in order to respect foreign key constraints
-    await prismaTest.securityEvent.deleteMany()
-    await prismaTest.accountLinkRequest.deleteMany()
-    await prismaTest.passwordResetToken.deleteMany()
-    await prismaTest.emailVerificationToken.deleteMany()
-    await prismaTest.verificationToken.deleteMany()
-    await prismaTest.session.deleteMany()
-    await prismaTest.account.deleteMany()
-    await prismaTest.user.deleteMany()
+    await prismaTest.securityEvent.deleteMany();
+    await prismaTest.accountLinkRequest.deleteMany();
+    await prismaTest.passwordResetToken.deleteMany();
+    await prismaTest.emailVerificationToken.deleteMany();
+    await prismaTest.verificationToken.deleteMany();
+    await prismaTest.session.deleteMany();
+    await prismaTest.account.deleteMany();
+    await prismaTest.user.deleteMany();
   } catch (error) {
-    console.error('Error cleaning database:', error)
-    throw error
+    console.error("Error cleaning database:", error);
+    throw error;
   }
 }
 
@@ -49,28 +51,28 @@ export async function seedTestData() {
     // This would require adding a 'role' field to the User model in schema.prisma
     const testUser = await prismaTest.user.create({
       data: {
-        email: 'test@example.com',
-        name: 'Test User',
-        password: '$2a$12$dummy.hashed.password', // Already hashed
+        email: "test@example.com",
+        name: "Test User",
+        password: "$2a$12$dummy.hashed.password", // Already hashed
         emailVerified: new Date(),
         // role: 'user', // TODO: Add when roles are implemented
       },
-    })
+    });
 
     const adminUser = await prismaTest.user.create({
       data: {
-        email: 'admin@example.com',
-        name: 'Admin User',
-        password: '$2a$12$dummy.hashed.password',
+        email: "admin@example.com",
+        name: "Admin User",
+        password: "$2a$12$dummy.hashed.password",
         emailVerified: new Date(),
         // role: 'admin', // TODO: Add when roles are implemented
       },
-    })
+    });
 
-    return { testUser, adminUser }
+    return { testUser, adminUser };
   } catch (error) {
-    console.error('Error seeding test data:', error)
-    throw error
+    console.error("Error seeding test data:", error);
+    throw error;
   }
 }
 
@@ -79,8 +81,8 @@ export async function seedTestData() {
  * Useful for integration tests
  */
 export async function resetDatabase() {
-  await cleanDatabase()
-  return await seedTestData()
+  await cleanDatabase();
+  return await seedTestData();
 }
 
 /**
@@ -90,12 +92,12 @@ export async function resetDatabase() {
 export async function ensureSchema() {
   try {
     // Check if tables exist by trying to count users
-    await prismaTest.user.count()
-    console.log('✓ Database schema is ready')
+    await prismaTest.user.count();
+    console.log("✓ Database schema is ready");
   } catch (error) {
-    console.error('Database schema not ready:', error)
-    console.log('Run: pnpm db:push:test to set up test database')
-    throw new Error('Test database not configured properly')
+    console.error("Database schema not ready:", error);
+    console.log("Run: pnpm db:push:test to set up test database");
+    throw new Error("Test database not configured properly");
   }
 }
 
@@ -104,5 +106,5 @@ export async function ensureSchema() {
  * Call after all tests complete
  */
 export async function disconnectDatabase() {
-  await prismaTest.$disconnect()
+  await prismaTest.$disconnect();
 }

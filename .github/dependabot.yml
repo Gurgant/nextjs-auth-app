@@ -13,13 +13,13 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "UTC"
-    
+
     # Security updates (immediate)
     open-pull-requests-limit: 10
-    
+
     # Update strategies
     versioning-strategy: "increase"
-    
+
     # Grouping strategy for related dependencies
     groups:
       # Framework core updates
@@ -30,19 +30,19 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # Authentication & Security
       auth-security:
         patterns:
           - "next-auth"
-          - "@auth/*" 
+          - "@auth/*"
           - "bcryptjs"
           - "jsonwebtoken"
           - "crypto-*"
         update-types:
           - "patch"
           - "minor"
-      
+
       # Database & ORM
       database:
         patterns:
@@ -53,7 +53,7 @@ updates:
         update-types:
           - "patch"
           - "minor"
-      
+
       # Testing frameworks
       testing:
         patterns:
@@ -65,7 +65,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # Linting & Code Quality
       linting:
         patterns:
@@ -77,7 +77,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # UI & Styling
       ui-styling:
         patterns:
@@ -88,7 +88,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # Internationalization
       i18n:
         patterns:
@@ -97,7 +97,7 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # Development tools
       dev-tools:
         patterns:
@@ -117,7 +117,7 @@ updates:
     # Reviewers and assignees
     reviewers:
       - "@me"
-    
+
     # Labels for categorization
     labels:
       - "dependencies"
@@ -128,12 +128,12 @@ updates:
       # Major version updates require manual review
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      
+
       # Specific packages that need careful manual updates
       - dependency-name: "next"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react"
-        update-types: ["version-update:semver-major"] 
+        update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
         update-types: ["version-update:semver-major"]
 
@@ -147,13 +147,13 @@ updates:
       day: "tuesday"
       time: "10:00"
       timezone: "UTC"
-    
+
     open-pull-requests-limit: 5
-    
+
     commit-message:
       prefix: "🚀"
       include: "scope"
-    
+
     labels:
       - "github-actions"
       - "ci-cd"
@@ -165,17 +165,17 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly" 
+      interval: "weekly"
       day: "wednesday"
       time: "11:00"
       timezone: "UTC"
-    
+
     open-pull-requests-limit: 3
-    
+
     commit-message:
       prefix: "🐳"
       include: "scope"
-    
+
     labels:
       - "docker"
       - "infrastructure"

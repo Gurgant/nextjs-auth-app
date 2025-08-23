@@ -3,10 +3,12 @@
 ## 📋 Overview
 
 This project uses **PostgreSQL** with two separate database instances for proper test isolation:
+
 - **Development Database**: Port 5432 - For local development
 - **Test Database**: Port 5433 - For running tests in isolation
 
 This separation ensures:
+
 - ✅ Tests don't interfere with development data
 - ✅ Tests run in a clean, predictable environment
 - ✅ Development can continue while tests run
@@ -15,6 +17,7 @@ This separation ensures:
 ## 🚀 Quick Start
 
 ### 1. Start Docker Containers
+
 ```bash
 # Start both PostgreSQL containers
 pnpm docker:up
@@ -24,6 +27,7 @@ docker ps | grep postgres
 ```
 
 ### 2. Setup Both Databases
+
 ```bash
 # Run the complete setup script
 pnpm db:setup:all
@@ -34,6 +38,7 @@ pnpm db:push:test  # Setup test DB (5433)
 ```
 
 ### 3. Verify Setup
+
 ```bash
 # Check development database
 PGPASSWORD=postgres123 psql -h localhost -p 5432 -U postgres -d nextjs_auth_db -c "\dt"
@@ -46,10 +51,10 @@ PGPASSWORD=postgres123 psql -h localhost -p 5433 -U postgres -d nextjs_auth_db -
 
 ### Database Instances
 
-| Database | Port | Purpose | Connection String |
-|----------|------|---------|-------------------|
+| Database        | Port | Purpose                           | Connection String                                                 |
+| --------------- | ---- | --------------------------------- | ----------------------------------------------------------------- |
 | **Development** | 5432 | Local development, manual testing | `postgresql://postgres:postgres123@localhost:5432/nextjs_auth_db` |
-| **Test** | 5433 | Automated tests, CI/CD | `postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db` |
+| **Test**        | 5433 | Automated tests, CI/CD            | `postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db` |
 
 ### Tables Structure
 
@@ -140,6 +145,7 @@ pnpm test:e2e          # End-to-end tests
 **Error**: `The table 'public.Account' does not exist in the current database`
 
 **Solution**:
+
 ```bash
 # Push schema to the affected database
 pnpm db:push:test   # If test database
@@ -151,6 +157,7 @@ pnpm db:push:dev    # If dev database
 **Error**: `connect ECONNREFUSED 127.0.0.1:5433`
 
 **Solution**:
+
 ```bash
 # Check if Docker is running
 docker ps
@@ -167,6 +174,7 @@ docker-compose ps postgres_test
 **Error**: `database "nextjs_auth_db" does not exist`
 
 **Solution**:
+
 ```bash
 # Create database manually
 PGPASSWORD=postgres123 psql -h localhost -p 5433 -U postgres -c "CREATE DATABASE nextjs_auth_db;"
@@ -180,6 +188,7 @@ pnpm db:push:test
 **Symptoms**: Tests start but never complete
 
 **Solution**:
+
 ```bash
 # 1. Check database connection
 PGPASSWORD=postgres123 psql -h localhost -p 5433 -U postgres -d nextjs_auth_db -c "SELECT 1;"
@@ -237,10 +246,10 @@ jest --testTimeout=10000
 
 ```typescript
 // In tests
-process.env.DATABASE_URL = 'postgresql://...@localhost:5433/...'
+process.env.DATABASE_URL = "postgresql://...@localhost:5433/...";
 
 // In development
-process.env.DATABASE_URL = 'postgresql://...@localhost:5432/...'
+process.env.DATABASE_URL = "postgresql://...@localhost:5432/...";
 ```
 
 ### 2. Clean Test Data
@@ -248,8 +257,8 @@ process.env.DATABASE_URL = 'postgresql://...@localhost:5432/...'
 ```typescript
 // Before each test
 beforeEach(async () => {
-  await cleanDatabase()
-})
+  await cleanDatabase();
+});
 ```
 
 ### 3. Use Transactions for Tests
@@ -258,8 +267,8 @@ beforeEach(async () => {
 // Wrap test in transaction
 await prisma.$transaction(async (tx) => {
   // Test operations
-  throw new Error('Rollback') // Rollback at end
-})
+  throw new Error("Rollback"); // Rollback at end
+});
 ```
 
 ### 4. Seed Development Data

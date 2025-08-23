@@ -183,7 +183,7 @@
     "dangerZoneWarning": "Danger Zone: This will permanently delete your account and all associated data. This action cannot be undone.",
     "googleAccountTitle": "Google Account",
     "linked": "Linked",
-    "notLinked": "Not Linked", 
+    "notLinked": "Not Linked",
     "googleSignInDescription": "You can sign in with your Google account",
     "googleLinkDescription": "Link your Google account for easier sign-in",
     "unlink": "Unlink",

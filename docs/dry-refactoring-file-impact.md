@@ -5,6 +5,7 @@
 ### 1. LoadingSpinner Component
 
 **New Files to Create:**
+
 ```
 src/components/ui/loading-spinner.tsx
 src/components/ui/__tests__/loading-spinner.test.tsx
@@ -22,6 +23,7 @@ src/components/ui/__tests__/loading-spinner.test.tsx
 ### 2. GradientButton Component
 
 **New Files to Create:**
+
 ```
 src/components/ui/gradient-button.tsx
 src/components/ui/__tests__/gradient-button.test.tsx
@@ -39,6 +41,7 @@ src/components/ui/__tests__/gradient-button.test.tsx
 ### 3. AlertMessage Component
 
 **New Files to Create:**
+
 ```
 src/components/ui/alert-message.tsx
 src/components/ui/__tests__/alert-message.test.tsx
@@ -55,6 +58,7 @@ src/components/ui/__tests__/alert-message.test.tsx
 ### 4. InputWithIcon Component
 
 **New Files to Create:**
+
 ```
 src/components/ui/input-with-icon.tsx
 src/components/ui/__tests__/input-with-icon.test.tsx
@@ -69,6 +73,7 @@ src/components/ui/__tests__/input-with-icon.test.tsx
 ### 5. Locale Utilities
 
 **New Files to Create:**
+
 ```
 src/lib/utils/locale-helpers.ts
 src/lib/utils/__tests__/locale-helpers.test.ts
@@ -87,6 +92,7 @@ src/lib/utils/__tests__/locale-helpers.test.ts
 ### 6. Error Handling Utilities
 
 **New Files to Create:**
+
 ```
 src/lib/utils/error-handlers.ts
 src/lib/utils/__tests__/error-handlers.test.ts
@@ -100,16 +106,20 @@ src/lib/utils/__tests__/error-handlers.test.ts
 ### 7. GlassCard Component
 
 **New Files to Create:**
+
 ```
 src/components/ui/glass-card.tsx
 ```
 
 **Pattern to Replace:**
+
 ```tsx
-className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20"
+className =
+  "bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20";
 ```
 
 **Files to Update (8+ instances):**
+
 - All account management sections
 - Authentication forms
 - Two-factor setup modals
@@ -117,6 +127,7 @@ className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-
 ### 8. CenteredPageLayout Component
 
 **New Files to Create:**
+
 ```
 src/components/layouts/centered-page-layout.tsx
 ```
@@ -133,24 +144,28 @@ src/components/layouts/centered-page-layout.tsx
 ## 📈 Refactoring Impact Summary
 
 ### Phase 1 Impact (Core UI Components)
+
 - **Files Modified**: 15
 - **Lines Removed**: ~400
 - **Lines Added**: ~200
 - **Net Reduction**: ~200 lines
 
 ### Phase 2 Impact (Utilities)
+
 - **Files Modified**: 6
 - **Lines Removed**: ~150
 - **Lines Added**: ~50
 - **Net Reduction**: ~100 lines
 
 ### Phase 3 Impact (Layouts)
+
 - **Files Modified**: 8
 - **Lines Removed**: ~300
 - **Lines Added**: ~100
 - **Net Reduction**: ~200 lines
 
 ### Total Project Impact
+
 - **Total Files Modified**: 29
 - **Total Lines Removed**: ~850
 - **Total Lines Added**: ~350
@@ -160,6 +175,7 @@ src/components/layouts/centered-page-layout.tsx
 ## 🔧 Migration Strategy
 
 ### Safe Replacement Process
+
 1. **Create** new component with full test coverage
 2. **Replace** one instance and verify functionality
 3. **Run** existing tests to ensure no regression
@@ -167,21 +183,22 @@ src/components/layouts/centered-page-layout.tsx
 5. **Deploy** incrementally with feature flags if needed
 
 ### Rollback Strategy
+
 - Keep old code commented for 1 sprint
 - Use feature flags for gradual rollout
 - Maintain backwards compatibility during transition
 
 ## ⚠️ Risk Assessment
 
-| Component | Risk Level | Mitigation Strategy |
-|-----------|------------|-------------------|
-| LoadingSpinner | ✅ Low | Visual component only |
-| GradientButton | ⚠️ Medium | Extensive testing needed |
-| AlertMessage | ✅ Low | Non-interactive component |
-| InputWithIcon | ⚠️ Medium | Form validation critical |
-| Locale Utilities | 🔴 High | Affects all server actions |
-| Error Handlers | 🔴 High | Critical for UX |
-| Layout Components | ✅ Low | Wrapper components only |
+| Component         | Risk Level | Mitigation Strategy        |
+| ----------------- | ---------- | -------------------------- |
+| LoadingSpinner    | ✅ Low     | Visual component only      |
+| GradientButton    | ⚠️ Medium  | Extensive testing needed   |
+| AlertMessage      | ✅ Low     | Non-interactive component  |
+| InputWithIcon     | ⚠️ Medium  | Form validation critical   |
+| Locale Utilities  | 🔴 High    | Affects all server actions |
+| Error Handlers    | 🔴 High    | Critical for UX            |
+| Layout Components | ✅ Low     | Wrapper components only    |
 
 ## 🚀 Quick Start Commands
 

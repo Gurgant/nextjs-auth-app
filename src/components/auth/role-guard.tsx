@@ -28,9 +28,9 @@ export function RoleGuard({
 }: RoleGuardProps) {
   const { hasRole, isLoading, isAuthenticated } = useRole();
   const router = useRouter();
-  
+
   const hasAccess = hasRole(requiredRole);
-  
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated && redirectTo) {
       router.push(redirectTo as any);
@@ -38,19 +38,19 @@ export function RoleGuard({
       router.push(redirectTo as any);
     }
   }, [isLoading, isAuthenticated, hasAccess, redirectTo, router]);
-  
+
   if (isLoading) {
     return showLoading ? <LoadingSpinner /> : null;
   }
-  
+
   if (!isAuthenticated) {
     return <>{fallback}</>;
   }
-  
+
   if (!hasAccess) {
     return <>{fallback}</>;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -72,16 +72,16 @@ export function RoleVisibility({
   fallback = null,
 }: RoleVisibilityProps) {
   const { hasRole, hasExactRole, isLoading } = useRole();
-  
+
   if (isLoading) {
     return null;
   }
-  
+
   const roles = Array.isArray(role) ? role : [role];
-  
+
   const hasAccess = exact
-    ? roles.some(r => hasExactRole(r))
-    : roles.some(r => hasRole(r));
-  
+    ? roles.some((r) => hasExactRole(r))
+    : roles.some((r) => hasRole(r));
+
   return hasAccess ? <>{children}</> : <>{fallback}</>;
 }

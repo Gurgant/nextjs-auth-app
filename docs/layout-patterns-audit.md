@@ -8,19 +8,20 @@
 
 ```typescript
 // Protected Route Pattern (redirect if not authenticated)
-const session = await auth()
+const session = await auth();
 if (!session?.user) {
-  redirect(`/${locale}`)
+  redirect(`/${locale}`);
 }
 
 // Public Route Pattern (redirect if authenticated)
-const session = await auth()
+const session = await auth();
 if (session?.user) {
-  redirect(`/${locale}/dashboard`)
+  redirect(`/${locale}/dashboard`);
 }
 ```
 
 **Found in**:
+
 - `/dashboard/page.tsx` - Protected route
 - `/account/page.tsx` - Protected route
 - `/register/page.tsx` - Public route
@@ -35,6 +36,7 @@ if (session?.user) {
 ```
 
 **Found in**:
+
 - `/register/page.tsx`
 - `/account/page.tsx`
 - Similar patterns in other auth pages
@@ -60,6 +62,7 @@ if (session?.user) {
 ```
 
 **Found in**:
+
 - `/register/page.tsx` - Form centering
 - `/auth/signin/page.tsx` - Loading state centering
 - Various other auth pages
@@ -80,6 +83,7 @@ if (session?.user) {
 ```
 
 **Variations**:
+
 - `max-w-md` - Forms (register, login)
 - `max-w-4xl` - Account management
 - `max-w-7xl` - Main navigation
@@ -109,18 +113,22 @@ min-h-[calc(100vh-4rem)]
 ## 📊 Layout Type Analysis
 
 ### Type 1: Authentication Pages
+
 - **Characteristics**: Gradient background, centered form, public access
 - **Pages**: register, signin, 2fa
 
 ### Type 2: Protected Pages
+
 - **Characteristics**: Auth guard, gradient background, content container
 - **Pages**: dashboard, account
 
 ### Type 3: Utility Pages
+
 - **Characteristics**: Simple layouts, specific purposes
 - **Pages**: error, verify-email, link-account
 
 ### Type 4: Loading/Redirect Pages
+
 - **Characteristics**: Minimal UI, centered spinner
 - **Pages**: signin redirect page
 

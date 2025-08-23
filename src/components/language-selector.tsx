@@ -51,16 +51,16 @@ export function LanguageSelector({ locale }: { locale: Locale }) {
   const handleLanguageChange = (newLocale: string) => {
     // Validate the new locale before using it
     if (!isValidLocale(newLocale)) {
-      console.error('[Security] Invalid locale selected:', newLocale);
+      console.error("[Security] Invalid locale selected:", newLocale);
       return;
     }
-    
+
     // Extract the path after the locale
     const segments = pathname.split("/");
     const pathAfterLocale = segments.slice(2).join("/");
-    
+
     // Construct the new path with validated locale
-    const newPath = `/${newLocale}${pathAfterLocale ? `/${pathAfterLocale}` : ''}`;
+    const newPath = `/${newLocale}${pathAfterLocale ? `/${pathAfterLocale}` : ""}`;
     router.push(newPath as any);
     setIsOpen(false);
   };

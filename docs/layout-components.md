@@ -24,6 +24,7 @@ src/components/layouts/
 A server component that handles authentication-based routing and access control.
 
 #### Props
+
 - `children`: React.ReactNode - Content to render
 - `locale`: string - Current locale for redirects
 - `requireAuth?`: boolean (default: true) - Whether authentication is required
@@ -53,6 +54,7 @@ A server component that handles authentication-based routing and access control.
 Provides gradient background styling with multiple color schemes.
 
 #### Props
+
 - `children`: React.ReactNode - Content to render
 - `className?`: string - Additional CSS classes
 - `gradient?`: 'default' | 'blue-purple' | 'green-blue' | 'purple-pink' (default: 'default')
@@ -76,6 +78,7 @@ Provides gradient background styling with multiple color schemes.
 Centers content with flexible max-width constraints and optional full-height centering.
 
 #### Props
+
 - `children`: React.ReactNode - Content to render
 - `maxWidth?`: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '7xl' (default: 'md')
 - `className?`: string - Additional CSS classes
@@ -105,6 +108,7 @@ Centers content with flexible max-width constraints and optional full-height cen
 Specialized layout combining gradient background with centered content, perfect for authentication forms.
 
 #### Props
+
 - `children`: React.ReactNode - Content to render
 - `gradient?`: 'default' | 'blue-purple' | 'green-blue' | 'purple-pink' (default: 'default')
 - `maxWidth?`: 'sm' | 'md' | 'lg' (default: 'md')
@@ -128,6 +132,7 @@ Specialized layout combining gradient background with centered content, perfect 
 Layout for dashboard and protected pages with optional gradient background.
 
 #### Props
+
 - `children`: React.ReactNode - Content to render
 - `maxWidth?`: 'lg' | 'xl' | '2xl' | '4xl' | '7xl' (default: '4xl')
 - `className?`: string - Additional CSS classes
@@ -152,6 +157,7 @@ Layout for dashboard and protected pages with optional gradient background.
 Provides consistent loading states across the application.
 
 #### Props
+
 - `message?`: string (default: 'Loading...') - Loading message to display
 - `fullScreen?`: boolean (default: false) - Whether to use full screen height
 - `spinnerSize?`: 'sm' | 'md' | 'lg' | 'xl' (default: 'lg') - Size of the loading spinner
@@ -185,7 +191,7 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 ```
 
@@ -193,14 +199,14 @@ export default function RegisterPage() {
 
 ```tsx
 // pages/register.tsx
-import { FormPageLayout } from '@/components/layouts'
+import { FormPageLayout } from "@/components/layouts";
 
 export default function RegisterPage() {
   return (
     <FormPageLayout>
       <RegistrationForm />
     </FormPageLayout>
-  )
+  );
 }
 ```
 
@@ -241,7 +247,10 @@ pnpm test src/components/layouts/__tests__
 All components are fully typed with TypeScript. Import types as needed:
 
 ```tsx
-import type { AuthGuardProps, GradientPageLayoutProps } from '@/components/layouts'
+import type {
+  AuthGuardProps,
+  GradientPageLayoutProps,
+} from "@/components/layouts";
 ```
 
 ## Examples
@@ -249,52 +258,47 @@ import type { AuthGuardProps, GradientPageLayoutProps } from '@/components/layou
 ### Complete Authentication Page
 
 ```tsx
-import { AuthGuard, FormPageLayout } from '@/components/layouts'
-import { RegistrationForm } from '@/components/forms'
+import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { RegistrationForm } from "@/components/forms";
 
 export default async function RegisterPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth={false}>
       <FormPageLayout>
         <RegistrationForm locale={locale} />
       </FormPageLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
 ### Protected Dashboard Page
 
 ```tsx
-import { AuthGuard, DashboardLayout } from '@/components/layouts'
-import { DashboardContent } from '@/components/dashboard'
+import { AuthGuard, DashboardLayout } from "@/components/layouts";
+import { DashboardContent } from "@/components/dashboard";
 
 export default async function DashboardPage({ params }: Props) {
-  const { locale } = await params
-  
+  const { locale } = await params;
+
   return (
     <AuthGuard locale={locale} requireAuth>
       <DashboardLayout gradient maxWidth="7xl">
         <DashboardContent />
       </DashboardLayout>
     </AuthGuard>
-  )
+  );
 }
 ```
 
 ### Loading State
 
 ```tsx
-import { LoadingLayout } from '@/components/layouts'
+import { LoadingLayout } from "@/components/layouts";
 
 export default function Loading() {
-  return (
-    <LoadingLayout 
-      message="Loading your dashboard..." 
-      spinnerSize="xl"
-    />
-  )
+  return <LoadingLayout message="Loading your dashboard..." spinnerSize="xl" />;
 }
 ```

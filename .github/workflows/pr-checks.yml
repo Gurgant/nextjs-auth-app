@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
-  PNPM_VERSION: '8'
+  NODE_VERSION: "20"
+  PNPM_VERSION: "8"
 
 jobs:
   # ==============================================================================
@@ -25,7 +25,7 @@ jobs:
 
     outputs:
       should-run-full: ${{ steps.changes.outputs.should-run-full }}
-      
+
     steps:
       - name: 📥 Checkout PR
         uses: actions/checkout@v4
@@ -37,9 +37,9 @@ jobs:
         run: |
           # Check if this PR affects core functionality
           CORE_CHANGES=$(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|jsx)$|package\.json|\.github/' | wc -l)
-          
+
           echo "Core file changes: $CORE_CHANGES"
-          
+
           if [ "$CORE_CHANGES" -gt 0 ]; then
             echo "should-run-full=true" >> $GITHUB_OUTPUT
             echo "🚨 Core changes detected - full validation recommended"
@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -67,7 +67,7 @@ jobs:
       - name: 🔧 TypeScript validation
         run: pnpm run typecheck
 
-      - name: 🎨 ESLint validation  
+      - name: 🎨 ESLint validation
         run: pnpm run lint
 
       - name: 🏗️ Build validation
@@ -128,7 +128,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: 📚 Install dependencies
         run: |
@@ -188,7 +188,7 @@ jobs:
         run: |
           echo "## 📋 PR Validation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Quick validation status
           if [ "${{ needs.quick-validation.result }}" == "success" ]; then
             echo "### ✅ Quick Validation: PASSED" >> $GITHUB_STEP_SUMMARY
@@ -199,9 +199,9 @@ jobs:
             echo "### ❌ Quick Validation: FAILED" >> $GITHUB_STEP_SUMMARY
             echo "Please fix the basic validation issues before proceeding." >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Critical tests status (if ran)
           if [ "${{ needs.quick-validation.outputs.should-run-full }}" == "true" ]; then
             if [ "${{ needs.critical-tests.result }}" == "success" ]; then
@@ -220,7 +220,7 @@ jobs:
             echo "### 📝 Critical Tests: NOT REQUIRED" >> $GITHUB_STEP_SUMMARY
             echo "No core code changes detected." >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔄 Next Steps:" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.quick-validation.result }}" == "success" ] && ([ "${{ needs.critical-tests.result }}" == "success" ] || [ "${{ needs.quick-validation.outputs.should-run-full }}" == "false" ]); then
@@ -246,19 +246,19 @@ jobs:
           QUICK_STATUS="${{ needs.quick-validation.result }}"
           CRITICAL_STATUS="${{ needs.critical-tests.result }}"
           SHOULD_RUN_FULL="${{ needs.quick-validation.outputs.should-run-full }}"
-          
+
           echo "Quick validation: $QUICK_STATUS"
           echo "Critical tests: $CRITICAL_STATUS" 
           echo "Should run full: $SHOULD_RUN_FULL"
-          
+
           if [ "$QUICK_STATUS" != "success" ]; then
             echo "❌ PR Gate: FAILED - Quick validation failed"
             exit 1
           fi
-          
+
           if [ "$SHOULD_RUN_FULL" == "true" ] && [ "$CRITICAL_STATUS" != "success" ]; then
             echo "❌ PR Gate: FAILED - Critical tests failed"
             exit 1
           fi
-          
+
           echo "✅ PR Gate: PASSED - Ready for review!"

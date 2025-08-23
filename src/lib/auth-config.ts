@@ -33,8 +33,8 @@ export const authOptions = {
   trustHost: true, // Required for E2E tests and development
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       authorization: {
         params: {
           prompt: "consent",
@@ -60,7 +60,10 @@ export const authOptions = {
           // Validate and normalize input
           const validation = credentialsSchema.safeParse(credentials);
           if (!validation.success) {
-            console.log("Invalid credentials format:", validation.error.flatten());
+            console.log(
+              "Invalid credentials format:",
+              validation.error.flatten(),
+            );
             return result;
           }
 
@@ -128,21 +131,21 @@ export const authOptions = {
   callbacks: {
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
       console.log("🔄 NextAuth redirect callback:", { url, baseUrl });
-      
+
       // For signout, redirect to home page
-      if (url.includes('/signout') || url.includes('/auth/signin')) {
+      if (url.includes("/signout") || url.includes("/auth/signin")) {
         return `${baseUrl}/en`;
       }
-      
+
       // Check if this is a post-login redirect - redirect to home page to show success message
-      if (url === baseUrl || url === `${baseUrl}/` || url.includes('/en')) {
+      if (url === baseUrl || url === `${baseUrl}/` || url.includes("/en")) {
         // After successful login, redirect to home page to show login success page
         return `${baseUrl}/en`;
       }
-      
+
       // Default redirect URL
       let redirectUrl = baseUrl;
-      
+
       // If url is relative, make it absolute
       if (url.startsWith("/")) {
         redirectUrl = `${baseUrl}${url}`;
@@ -157,7 +160,8 @@ export const authOptions = {
           if (urlObj.origin === baseUrl) {
             redirectUrl = url;
           }
-        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch (_e) {
+          // eslint-disable-line @typescript-eslint/no-unused-vars
           // If URL parsing failed, use default redirect
           console.log("URL parsing failed, using default redirect");
         }
@@ -165,7 +169,7 @@ export const authOptions = {
       return redirectUrl;
     },
     async signIn(params: { user: User; account?: Account | null }) {
-      const { user, account } = params
+      const { user, account } = params;
       console.log("🔐 NextAuth signIn callback triggered:", {
         userId: user?.id,
         provider: account?.provider,
@@ -178,12 +182,15 @@ export const authOptions = {
       if (account?.provider === "google") {
         try {
           const userRepo = repositories.getUserRepository();
-          const existingUser = await userRepo.findByEmailWithAccounts(user.email || '');
+          const existingUser = await userRepo.findByEmailWithAccounts(
+            user.email || "",
+          );
 
           if (existingUser) {
-            const hasGoogleAccount = (existingUser as any).accounts?.some(
-              (acc: any) => acc.provider === "google"
-            ) || false;
+            const hasGoogleAccount =
+              (existingUser as any).accounts?.some(
+                (acc: any) => acc.provider === "google",
+              ) || false;
             const hasPassword = !!existingUser.password;
 
             // Update user login metadata
@@ -218,7 +225,7 @@ export const authOptions = {
           // Don't block sign-in if metadata update fails - keep result as true
         }
       }
-      
+
       return result;
     },
     async jwt({ token, user }: { token: any; user?: any }) {
@@ -229,7 +236,7 @@ export const authOptions = {
         token.image = user.image;
         token.emailVerified = user.emailVerified;
         token.twoFactorEnabled = user.twoFactorEnabled;
-        token.role = user.role || 'USER';
+        token.role = user.role || "USER";
       }
       return token;
     },
@@ -238,7 +245,7 @@ export const authOptions = {
         session.user.id = token.id;
         session.user.emailVerified = token.emailVerified;
         session.user.twoFactorEnabled = token.twoFactorEnabled;
-        session.user.role = token.role || 'USER';
+        session.user.role = token.role || "USER";
       }
       return session;
     },

@@ -1,11 +1,13 @@
 # LoadingSpinner Component Migration Guide
 
 ## Overview
+
 This guide helps you migrate from inline SVG spinners to the reusable `LoadingSpinner` component.
 
 ## Import Statement
+
 ```tsx
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 ```
 
 ## Migration Examples
@@ -13,6 +15,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ### Example 1: Button Loading State (White Spinner)
 
 **BEFORE:**
+
 ```tsx
 <button className="...">
   {isLoading ? (
@@ -39,12 +42,13 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
       Loading...
     </>
   ) : (
-    'Submit'
+    "Submit"
   )}
 </button>
 ```
 
 **AFTER:**
+
 ```tsx
 <button className="...">
   {isLoading ? (
@@ -53,7 +57,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
       Loading...
     </>
   ) : (
-    'Submit'
+    "Submit"
   )}
 </button>
 ```
@@ -61,6 +65,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ### Example 2: Standalone Loading State
 
 **BEFORE:**
+
 ```tsx
 <div className="flex justify-center items-center">
   <svg
@@ -86,6 +91,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ```
 
 **AFTER:**
+
 ```tsx
 <div className="flex justify-center items-center">
   <LoadingSpinner size="xl" color="primary" />
@@ -95,6 +101,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ### Example 3: Custom Colored Spinner
 
 **BEFORE:**
+
 ```tsx
 <svg
   className="animate-spin h-6 w-6 text-purple-600"
@@ -106,6 +113,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ```
 
 **AFTER:**
+
 ```tsx
 <LoadingSpinner size="lg" color="secondary" />
 ```
@@ -113,6 +121,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ### Example 4: Small Inline Spinner
 
 **BEFORE:**
+
 ```tsx
 <span className="inline-flex items-center">
   <svg
@@ -127,6 +136,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 ```
 
 **AFTER:**
+
 ```tsx
 <span className="inline-flex items-center">
   <LoadingSpinner size="sm" color="gray" className="mr-2" />
@@ -136,27 +146,31 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 ## Props Reference
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `size` | `'sm' \| 'md' \| 'lg' \| 'xl'` | `'md'` | Size of the spinner |
-| `color` | `'white' \| 'primary' \| 'secondary' \| 'gray'` | `'primary'` | Color variant |
-| `className` | `string` | - | Additional CSS classes |
-| `label` | `string` | `'Loading...'` | Accessible label for screen readers |
+| Prop        | Type                                            | Default        | Description                         |
+| ----------- | ----------------------------------------------- | -------------- | ----------------------------------- |
+| `size`      | `'sm' \| 'md' \| 'lg' \| 'xl'`                  | `'md'`         | Size of the spinner                 |
+| `color`     | `'white' \| 'primary' \| 'secondary' \| 'gray'` | `'primary'`    | Color variant                       |
+| `className` | `string`                                        | -              | Additional CSS classes              |
+| `label`     | `string`                                        | `'Loading...'` | Accessible label for screen readers |
 
 ## Size Mapping
+
 - `sm`: 16px (h-4 w-4)
 - `md`: 20px (h-5 w-5) - Default
 - `lg`: 24px (h-6 w-6)
 - `xl`: 32px (h-8 w-8)
 
 ## Color Mapping
+
 - `white`: text-white
 - `primary`: text-blue-600 - Default
 - `secondary`: text-purple-600
 - `gray`: text-gray-600
 
 ## Accessibility Note
+
 The component automatically includes:
+
 - `role="status"` for screen readers
 - `aria-label` with customizable text
 - Proper SVG accessibility attributes
@@ -179,14 +193,17 @@ rg "animate-spin.*svg" --type tsx -A10
 ## Common Migration Patterns
 
 ### Pattern 1: Button with Loading State
+
 Look for: `{isLoading && <svg className="animate-spin`
 Replace with: `{isLoading && <LoadingSpinner`
 
 ### Pattern 2: Standalone Spinner
+
 Look for: `<svg className="animate-spin h-\d+ w-\d+`
 Replace with: `<LoadingSpinner size="..." color="..."`
 
 ### Pattern 3: Inline Text Spinner
+
 Look for: `animate-spin.*mr-\d+.*text`
 Replace with: `<LoadingSpinner ... className="mr-..."`
 
@@ -201,6 +218,7 @@ Replace with: `<LoadingSpinner ... className="mr-..."`
 ## Rollback Information
 
 If you need to rollback a specific instance:
+
 1. Comment out the LoadingSpinner import
 2. Restore the original SVG code from git history
 3. File an issue with the specific use case that didn't work
@@ -208,6 +226,7 @@ If you need to rollback a specific instance:
 ## Questions or Issues?
 
 If you encounter any edge cases not covered here:
+
 1. Check if a new size/color variant is needed
 2. Consider if a custom className can solve it
 3. Open a PR to add the new variant if widely used

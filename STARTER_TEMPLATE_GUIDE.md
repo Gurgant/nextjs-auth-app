@@ -3,12 +3,14 @@
 ## 📋 5-Minute Setup Guide
 
 ### Prerequisites Checklist
+
 - [ ] Node.js 18+ installed
 - [ ] pnpm 8+ installed (`npm install -g pnpm`)
 - [ ] Docker Desktop installed and running
 - [ ] Git configured
 
 ### Step 1: Clone & Initialize (1 minute)
+
 ```bash
 # Clone the template
 git clone https://github.com/yourusername/nextjs-auth-app.git my-awesome-app
@@ -22,6 +24,7 @@ git commit -m "Initial commit from nextjs-auth-app template"
 ```
 
 ### Step 2: Configure Project Identity (1 minute)
+
 ```bash
 # Update package.json
 pnpm pkg set name="my-awesome-app"
@@ -30,6 +33,7 @@ pnpm pkg set author="Your Name <you@example.com>"
 ```
 
 ### Step 3: Environment Setup (1 minute)
+
 ```bash
 # Copy environment template
 cp .env.example .env.local
@@ -40,6 +44,7 @@ echo "AUTH_SECRET=$(openssl rand -base64 32)" >> .env.local
 ```
 
 ### Step 4: Database Setup (1 minute)
+
 ```bash
 # Start PostgreSQL with Docker
 pnpm docker:up
@@ -52,6 +57,7 @@ pnpm prisma:push
 ```
 
 ### Step 5: Launch! (1 minute)
+
 ```bash
 # Install dependencies
 pnpm install
@@ -69,31 +75,34 @@ pnpm dev
 ### Immediate Customizations (Day 1)
 
 #### 1. Branding
+
 ```typescript
 // src/app/[locale]/layout.tsx
 export const metadata = {
-  title: 'My Awesome App',
-  description: 'Your app description',
-}
+  title: "My Awesome App",
+  description: "Your app description",
+};
 
 // Update logo in src/components/ui/logo.tsx
 ```
 
 #### 2. Language Configuration
+
 ```typescript
 // src/config/i18n.ts
-export const locales = ['en', 'es'] // Remove unused languages
-export const defaultLocale = 'en'
+export const locales = ["en", "es"]; // Remove unused languages
+export const defaultLocale = "en";
 
 // Delete unused translation files:
 // rm messages/fr.json messages/it.json messages/de.json
 ```
 
 #### 3. Authentication Providers
+
 ```typescript
 // src/lib/auth-config.ts
-import GoogleProvider from 'next-auth/providers/google'
-import GitHubProvider from 'next-auth/providers/github'
+import GoogleProvider from "next-auth/providers/google";
+import GitHubProvider from "next-auth/providers/github";
 
 export const authConfig = {
   providers: [
@@ -107,17 +116,18 @@ export const authConfig = {
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     }),
   ],
-}
+};
 ```
 
 ### Week 1 Customizations
 
 #### 1. User Model Extensions
+
 ```prisma
 // prisma/schema.prisma
 model User {
   // ... existing fields ...
-  
+
   // Add your domain-specific fields
   organization    String?
   department      String?
@@ -141,9 +151,10 @@ model Subscription {
 Run `pnpm prisma:push` after schema changes.
 
 #### 2. Custom Commands
+
 ```typescript
 // src/lib/commands/subscription/create-subscription.command.ts
-import { BaseCommand } from '../base/command.base'
+import { BaseCommand } from "../base/command.base";
 
 export class CreateSubscriptionCommand extends BaseCommand {
   async execute(input: CreateSubscriptionInput): Promise<ActionResponse> {
@@ -154,39 +165,42 @@ export class CreateSubscriptionCommand extends BaseCommand {
           plan: input.plan,
           endDate: this.calculateEndDate(input.plan),
         },
-      })
-      
-      await eventBus.publish(new SubscriptionCreatedEvent({
-        subscriptionId: subscription.id,
-        userId: input.userId,
-        plan: input.plan,
-      }))
-      
-      return createSuccessResponse('Subscription created', subscription)
+      });
+
+      await eventBus.publish(
+        new SubscriptionCreatedEvent({
+          subscriptionId: subscription.id,
+          userId: input.userId,
+          plan: input.plan,
+        }),
+      );
+
+      return createSuccessResponse("Subscription created", subscription);
     } catch (error) {
-      return createErrorResponse('Failed to create subscription')
+      return createErrorResponse("Failed to create subscription");
     }
   }
 }
 ```
 
 #### 3. Custom Events
+
 ```typescript
 // src/lib/events/domain/subscription.events.ts
 export class SubscriptionCreatedEvent extends BaseEvent {
   constructor(payload: SubscriptionPayload) {
-    super('subscription.created', payload)
+    super("subscription.created", payload);
   }
 }
 
 // Register handlers
 eventBus.subscribe(SubscriptionCreatedEvent, async (event) => {
   // Send welcome email
-  await emailService.sendSubscriptionWelcome(event.payload)
-  
+  await emailService.sendSubscriptionWelcome(event.payload);
+
   // Update analytics
-  await analytics.track('Subscription Created', event.payload)
-})
+  await analytics.track("Subscription Created", event.payload);
+});
 ```
 
 ---
@@ -214,6 +228,7 @@ src/
 ```
 
 ### Files to Keep As-Is
+
 - ✅ Authentication system (`src/lib/auth*`)
 - ✅ Middleware (`middleware.ts`)
 - ✅ Error handling (`src/lib/errors/*`)
@@ -221,6 +236,7 @@ src/
 - ✅ i18n configuration (`src/i18n.ts`)
 
 ### Files to Customize
+
 - 🎨 Layout files (`app/[locale]/layout.tsx`)
 - 🎨 Homepage (`app/[locale]/page.tsx`)
 - 🎨 UI components (`src/components/ui/*`)
@@ -231,6 +247,7 @@ src/
 ## 🔧 Common Setup Scenarios
 
 ### Scenario 1: SaaS Application
+
 ```bash
 # 1. Add Stripe
 pnpm add stripe @stripe/stripe-js
@@ -241,6 +258,7 @@ pnpm add stripe @stripe/stripe-js
 ```
 
 ### Scenario 2: Multi-tenant Application
+
 ```bash
 # 1. Add tenant model to schema
 # 2. Update middleware for tenant isolation
@@ -249,6 +267,7 @@ pnpm add stripe @stripe/stripe-js
 ```
 
 ### Scenario 3: API-First Application
+
 ```bash
 # 1. Add API documentation
 pnpm add @scalar/nextjs
@@ -263,6 +282,7 @@ pnpm add @scalar/nextjs
 ## 📦 Deployment Quick Start
 
 ### Vercel (Recommended)
+
 ```bash
 # 1. Install Vercel CLI
 pnpm add -g vercel
@@ -274,6 +294,7 @@ vercel
 ```
 
 ### Docker
+
 ```bash
 # 1. Build image
 docker build -t my-app .
@@ -283,6 +304,7 @@ docker run -p 3000:3000 --env-file .env.production my-app
 ```
 
 ### Traditional VPS
+
 ```bash
 # 1. Build for production
 pnpm build
@@ -296,18 +318,20 @@ pm2 start npm --name "my-app" -- start
 ## ⚡ Performance Optimizations
 
 ### Day 1 Optimizations
+
 ```typescript
 // 1. Enable static generation where possible
-export const dynamic = 'force-static' // In pages without auth
+export const dynamic = "force-static"; // In pages without auth
 
 // 2. Use proper caching
-export const revalidate = 3600 // 1 hour
+export const revalidate = 3600; // 1 hour
 
 // 3. Optimize images
-import Image from 'next/image'
+import Image from "next/image";
 ```
 
 ### Production Optimizations
+
 ```typescript
 // 1. Database connection pooling
 // Already configured in prisma/schema.prisma
@@ -324,6 +348,7 @@ import Image from 'next/image'
 ## 🔍 Testing Your Setup
 
 ### Quick Smoke Test
+
 ```bash
 # 1. Run all tests
 pnpm test
@@ -338,6 +363,7 @@ pnpm lint
 ```
 
 ### Manual Testing Checklist
+
 - [ ] Registration works
 - [ ] Login works
 - [ ] Password reset works
@@ -352,6 +378,7 @@ pnpm lint
 ### Common Issues & Solutions
 
 #### Database Connection Failed
+
 ```bash
 # Check Docker is running
 docker ps
@@ -365,6 +392,7 @@ echo $DATABASE_URL
 ```
 
 #### TypeScript Errors
+
 ```bash
 # Regenerate Prisma types
 pnpm prisma:generate
@@ -375,6 +403,7 @@ pnpm typecheck
 ```
 
 #### OAuth Not Working
+
 ```bash
 # Verify callback URL
 # Must be: http://localhost:3000/api/auth/callback/[provider]
@@ -388,6 +417,7 @@ grep GOOGLE .env.local
 ## 📚 What's Included
 
 ### ✅ Pre-configured Features
+
 - NextAuth v5 with JWT
 - Dual authentication (OAuth + Credentials)
 - 5-language internationalization
@@ -401,6 +431,7 @@ grep GOOGLE .env.local
 - Docker setup
 
 ### 🎁 Bonus Tools
+
 - Test data builders
 - Page Object Model for E2E
 - Performance testing setup
@@ -413,6 +444,7 @@ grep GOOGLE .env.local
 ## 🚦 Go-Live Checklist
 
 ### Before First Deploy
+
 - [ ] Update all environment variables
 - [ ] Configure OAuth providers
 - [ ] Set up error monitoring (Sentry)
@@ -423,6 +455,7 @@ grep GOOGLE .env.local
 - [ ] Configure SSL certificate
 
 ### After Deploy
+
 - [ ] Test registration flow
 - [ ] Test login flow
 - [ ] Test password reset

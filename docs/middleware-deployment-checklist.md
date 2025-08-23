@@ -3,6 +3,7 @@
 ## Pre-Deployment Checks
 
 ### Code Review
+
 - [ ] All locale extractions use validated functions
 - [ ] No hardcoded locale values
 - [ ] Security logging in place for invalid attempts
@@ -11,6 +12,7 @@
 - [ ] No console.log statements in production code
 
 ### Testing Verification
+
 - [ ] Unit tests pass for middleware
 - [ ] Manual testing completed for:
   - [ ] Valid locales (en, es, fr, it, de)
@@ -22,6 +24,7 @@
   - [ ] Accept-Language header fallback
 
 ### Performance Checks
+
 - [ ] Middleware overhead < 5ms
 - [ ] No blocking operations
 - [ ] Efficient regex patterns
@@ -30,6 +33,7 @@
 ## Deployment Steps
 
 ### 1. Development Environment
+
 - [ ] Copy `middleware.new.ts` to `middleware.ts`
 - [ ] Run `pnpm run dev`
 - [ ] Test all critical paths:
@@ -42,6 +46,7 @@
 - [ ] Check browser DevTools for correct headers
 
 ### 2. Staging Environment
+
 - [ ] Deploy to staging branch
 - [ ] Run full test suite
 - [ ] Test with different browsers:
@@ -54,6 +59,7 @@
 - [ ] Load test with multiple concurrent users
 
 ### 3. Production Deployment
+
 - [ ] Schedule deployment during low-traffic period
 - [ ] Create backup of current middleware
 - [ ] Deploy new middleware
@@ -65,6 +71,7 @@
 ## Monitoring Checklist
 
 ### Immediate (0-15 minutes)
+
 - [ ] Error rate stable or decreasing
 - [ ] No 500 errors related to middleware
 - [ ] Auth redirects working
@@ -72,12 +79,14 @@
 - [ ] Response times normal
 
 ### Short-term (15 minutes - 1 hour)
+
 - [ ] No increase in security warnings
 - [ ] Cookie setting working correctly
 - [ ] All locales accessible
 - [ ] No user complaints
 
 ### Long-term (1-24 hours)
+
 - [ ] Performance metrics stable
 - [ ] No memory leaks
 - [ ] Security logs show expected patterns
@@ -86,6 +95,7 @@
 ## Rollback Criteria
 
 Rollback immediately if:
+
 - [ ] Error rate increases by > 5%
 - [ ] Any 500 errors from middleware
 - [ ] Auth redirects broken
@@ -95,16 +105,19 @@ Rollback immediately if:
 ## Post-Deployment
 
 ### Documentation
+
 - [ ] Update deployment notes
 - [ ] Document any issues encountered
 - [ ] Update runbook with learnings
 
 ### Cleanup
+
 - [ ] Remove `middleware.new.ts`
 - [ ] Remove old middleware backups after 1 week
 - [ ] Update monitoring dashboards
 
 ### Communication
+
 - [ ] Notify team of successful deployment
 - [ ] Update status page if applicable
 - [ ] Document in changelog
@@ -114,10 +127,11 @@ Rollback immediately if:
 If rollback needed:
 
 1. **Immediate Actions**
+
    ```bash
    # Copy backup middleware
    cp backups/middleware/[timestamp]/middleware.ts ./middleware.ts
-   
+
    # Restart application
    pnpm run build
    pnpm run start
@@ -136,7 +150,7 @@ If rollback needed:
 
 ## Sign-offs
 
-- [ ] Developer: _______________ Date: _______________
-- [ ] Security Review: _______________ Date: _______________
-- [ ] QA Testing: _______________ Date: _______________
-- [ ] Production Approval: _______________ Date: _______________
+- [ ] Developer: ******\_\_\_****** Date: ******\_\_\_******
+- [ ] Security Review: ******\_\_\_****** Date: ******\_\_\_******
+- [ ] QA Testing: ******\_\_\_****** Date: ******\_\_\_******
+- [ ] Production Approval: ******\_\_\_****** Date: ******\_\_\_******

@@ -723,14 +723,14 @@ COULD HAVE (Future):
 
 ### Technology Stack Quick Reference
 
-| Decision | Option A | Option B | Option C | Choose If |
-|----------|----------|----------|----------|-----------|
-| **Auth** | JWT Only | JWT + Redis | JWT + DB Sessions | User count: <1K / 1K-100K / >100K |
-| **Database** | PostgreSQL | MySQL | MongoDB | Need: ACID / Simple / NoSQL |
-| **Cache** | LRU Memory | Redis | Redis Cluster | Load: Low / Medium / High |
-| **Deploy** | Vercel | AWS | Self-hosted | Budget: Low / Flexible / Control |
-| **i18n** | None | 2-3 Languages | 5+ Languages | Market: Local / Regional / Global |
-| **Testing** | 60% Coverage | 80% Coverage | 95% Coverage | Stage: MVP / Production / Enterprise |
+| Decision     | Option A     | Option B      | Option C          | Choose If                            |
+| ------------ | ------------ | ------------- | ----------------- | ------------------------------------ |
+| **Auth**     | JWT Only     | JWT + Redis   | JWT + DB Sessions | User count: <1K / 1K-100K / >100K    |
+| **Database** | PostgreSQL   | MySQL         | MongoDB           | Need: ACID / Simple / NoSQL          |
+| **Cache**    | LRU Memory   | Redis         | Redis Cluster     | Load: Low / Medium / High            |
+| **Deploy**   | Vercel       | AWS           | Self-hosted       | Budget: Low / Flexible / Control     |
+| **i18n**     | None         | 2-3 Languages | 5+ Languages      | Market: Local / Regional / Global    |
+| **Testing**  | 60% Coverage | 80% Coverage  | 95% Coverage      | Stage: MVP / Production / Enterprise |
 
 ---
 
@@ -739,6 +739,7 @@ COULD HAVE (Future):
 Based on your decisions above, use this checklist:
 
 ### Minimal Setup (MVP)
+
 ```
 □ Clone template
 □ Basic auth (JWT only)
@@ -750,6 +751,7 @@ Based on your decisions above, use this checklist:
 ```
 
 ### Standard Setup (Production)
+
 ```
 □ Full template features
 □ JWT + Redis sessions
@@ -762,6 +764,7 @@ Based on your decisions above, use this checklist:
 ```
 
 ### Enterprise Setup
+
 ```
 □ All template features
 □ Advanced auth (2FA, SSO)
@@ -780,6 +783,7 @@ Based on your decisions above, use this checklist:
 ## 🚦 Go/No-Go Decision Criteria
 
 ### Green Light (GO) ✅
+
 - [ ] Team has TypeScript experience
 - [ ] Need auth + i18n
 - [ ] Want enterprise patterns
@@ -787,6 +791,7 @@ Based on your decisions above, use this checklist:
 - [ ] Planning to scale
 
 ### Yellow Light (EVALUATE) ⚠️
+
 - [ ] Team new to Next.js
 - [ ] Simple requirements
 - [ ] Limited timeline
@@ -794,6 +799,7 @@ Based on your decisions above, use this checklist:
 - [ ] Legacy integration needed
 
 ### Red Light (RECONSIDER) 🔴
+
 - [ ] Need different framework
 - [ ] No TypeScript experience
 - [ ] Extremely simple app

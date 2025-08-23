@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { performanceMonitor } from '@/lib/monitoring/performance'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { performanceMonitor } from "@/lib/monitoring/performance";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Admin metrics endpoint - provides system performance and health metrics
@@ -10,18 +10,18 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth()
-    
+    const session = await auth();
+
     if (!session?.user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+        { error: "Authentication required" },
+        { status: 401 },
+      );
     }
 
     // TODO: Implement role-based access control
     // Currently, any authenticated user can view metrics (development mode)
-    // 
+    //
     // Future implementation steps:
     // 1. Add 'role' field to User model in schema.prisma:
     //    role String @default("USER")
@@ -42,86 +42,89 @@ export async function GET(request: NextRequest) {
     }
     */
 
-    const startTime = Date.now()
+    const startTime = Date.now();
 
     // Get performance statistics
-    const performanceStats = performanceMonitor.getStats()
-    const slowOperations = performanceMonitor.getSlowOperations(5)
-    const slowQueries = performanceMonitor.getSlowQueries(5)
+    const performanceStats = performanceMonitor.getStats();
+    const slowOperations = performanceMonitor.getSlowOperations(5);
+    const slowQueries = performanceMonitor.getSlowQueries(5);
 
     // Get system metrics
-    const memoryUsage = process.memoryUsage()
+    const memoryUsage = process.memoryUsage();
     const systemInfo = {
       nodeVersion: process.version,
       platform: process.platform,
       uptime: Math.round(process.uptime()),
-      environment: process.env.NODE_ENV || 'development',
-      pid: process.pid
-    }
+      environment: process.env.NODE_ENV || "development",
+      pid: process.pid,
+    };
 
     // Get database statistics
-    let databaseStats = null
+    let databaseStats = null;
     try {
       // Count total users
       const [userCount, sessionCount] = await Promise.all([
         prisma.user.count(),
-        prisma.session.count()
-      ])
+        prisma.session.count(),
+      ]);
 
       // Get recent security events
       const recentSecurityEvents = await prisma.securityEvent.findMany({
         take: 10,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         select: {
           eventType: true,
           success: true,
           createdAt: true,
-          details: true
-        }
-      })
+          details: true,
+        },
+      });
 
       databaseStats = {
         userCount,
         sessionCount,
-        recentSecurityEvents: recentSecurityEvents.map(event => ({
+        recentSecurityEvents: recentSecurityEvents.map((event) => ({
           type: event.eventType,
           success: event.success,
           timestamp: event.createdAt,
-          details: event.details
-        }))
-      }
-    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      databaseStats = { error: 'Failed to fetch database statistics' }
+          details: event.details,
+        })),
+      };
+    } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      databaseStats = { error: "Failed to fetch database statistics" };
     }
 
     // Calculate recent error rates (last hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-    let errorRate = null
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    let errorRate = null;
     try {
       const [totalEvents, errorEvents] = await Promise.all([
         prisma.securityEvent.count({
-          where: { createdAt: { gte: oneHourAgo } }
+          where: { createdAt: { gte: oneHourAgo } },
         }),
         prisma.securityEvent.count({
-          where: { 
+          where: {
             createdAt: { gte: oneHourAgo },
-            success: false
-          }
-        })
-      ])
-      
+            success: false,
+          },
+        }),
+      ]);
+
       errorRate = {
         total: totalEvents,
         errors: errorEvents,
-        rate: totalEvents > 0 ? Math.round((errorEvents / totalEvents) * 100) : 0,
-        period: '1 hour'
-      }
-    } catch (_error) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      errorRate = { error: 'Failed to calculate error rate' }
+        rate:
+          totalEvents > 0 ? Math.round((errorEvents / totalEvents) * 100) : 0,
+        period: "1 hour",
+      };
+    } catch (_error) {
+      // eslint-disable-line @typescript-eslint/no-unused-vars
+      errorRate = { error: "Failed to calculate error rate" };
     }
 
     // Response time for this request
-    const responseTime = Date.now() - startTime
+    const responseTime = Date.now() - startTime;
 
     // Build comprehensive metrics response
     const metrics = {
@@ -134,41 +137,42 @@ export async function GET(request: NextRequest) {
           heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
           heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
           external: Math.round(memoryUsage.external / 1024 / 1024),
-          heapUsagePercent: Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 100)
-        }
+          heapUsagePercent: Math.round(
+            (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100,
+          ),
+        },
       },
       performance: performanceStats,
       database: databaseStats,
       security: {
         errorRate,
-        recentEvents: databaseStats?.recentSecurityEvents || []
+        recentEvents: databaseStats?.recentSecurityEvents || [],
       },
       alerts: {
         slowOperations,
         slowQueries,
         highMemoryUsage: memoryUsage.heapUsed / memoryUsage.heapTotal > 0.8,
-        highErrorRate: (errorRate?.rate || 0) > 5
-      }
-    }
+        highErrorRate: (errorRate?.rate || 0) > 5,
+      },
+    };
 
     return NextResponse.json(metrics, {
       headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    })
-
-  } catch (error) {
-    console.error('Metrics endpoint error:', error)
-    
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch metrics',
-        timestamp: new Date().toISOString()
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
       },
-      { status: 500 }
-    )
+    });
+  } catch (error) {
+    console.error("Metrics endpoint error:", error);
+
+    return NextResponse.json(
+      {
+        error: "Failed to fetch metrics",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }
 
@@ -177,29 +181,28 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth()
-    
+    const session = await auth();
+
     if (!session?.user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+        { error: "Authentication required" },
+        { status: 401 },
+      );
     }
 
     // Clear performance metrics
-    performanceMonitor.clearOldMetrics()
+    performanceMonitor.clearOldMetrics();
 
     return NextResponse.json({
-      message: 'Metrics cleared successfully',
-      timestamp: new Date().toISOString()
-    })
-
+      message: "Metrics cleared successfully",
+      timestamp: new Date().toISOString(),
+    });
   } catch (error) {
-    console.error('Failed to clear metrics:', error)
-    
+    console.error("Failed to clear metrics:", error);
+
     return NextResponse.json(
-      { error: 'Failed to clear metrics' },
-      { status: 500 }
-    )
+      { error: "Failed to clear metrics" },
+      { status: 500 },
+    );
   }
 }

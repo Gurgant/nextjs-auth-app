@@ -7,13 +7,14 @@ This document analyzes the security implications of extracting locale values fro
 ## Current Implementation Analysis
 
 ```typescript
-const pathname = window.location.pathname
-const locale = pathname.split('/')[1] || 'en'
+const pathname = window.location.pathname;
+const locale = pathname.split("/")[1] || "en";
 ```
 
 ### Security Risk Assessment
 
 #### 1. Input Source Analysis
+
 - `window.location.pathname` comes from the browser's URL
 - Users can manually modify URLs
 - This is client-side code (indicated by `'use client'` directive)
@@ -21,6 +22,7 @@ const locale = pathname.split('/')[1] || 'en'
 #### 2. Potential Attack Vectors
 
 **URL Manipulation Examples:**
+
 ```
 https://example.com/../../../../etc/passwd/page
 https://example.com/<script>alert('xss')</script>/page
@@ -29,21 +31,24 @@ https://example.com/'; DROP TABLE users; --/page
 ```
 
 #### 3. Current Usage Context
+
 ```typescript
 // Locale is only used for navigation
-router.push(`/${locale}`)
-router.push(`/${locale}/dashboard`)
+router.push(`/${locale}`);
+router.push(`/${locale}/dashboard`);
 ```
 
 ### Risk Analysis
 
 #### Low Risk Factors:
+
 1. **No Direct HTML Injection**: The locale value isn't rendered directly in JSX/HTML
 2. **Router Protection**: Next.js `router.push()` has built-in URL validation
 3. **Limited Scope**: Only used for navigation, not database queries or file system access
 4. **Client-Side Only**: No server-side execution with this value
 
 #### Potential Concerns:
+
 1. **Invalid Locales**: Could result in 404s or unexpected navigation
 2. **Path Traversal**: Attempts like `../../../admin` would create invalid routes
 3. **URL Encoding**: Special characters could create malformed URLs
@@ -52,11 +57,13 @@ router.push(`/${locale}/dashboard`)
 ### Risk Level: LOW-MEDIUM
 
 The current implementation is not immediately dangerous because:
+
 - Next.js router validates URLs before navigation
 - No direct rendering of the locale value
 - Limited to client-side navigation only
 
 However, it violates the principle of "never trust user input" and could become a vulnerability if:
+
 - The locale value is used for anything beyond navigation
 - The code is refactored to use locale in API calls
 - The locale is logged or stored without sanitization
@@ -64,80 +71,86 @@ However, it violates the principle of "never trust user input" and could become 
 ## Secure Implementation Patterns
 
 ### Option 1: Whitelist Validation (Most Secure)
+
 ```typescript
 // Define allowed locales (could import from i18n config)
-const ALLOWED_LOCALES = ['en', 'fr', 'es', 'de'] as const
-type Locale = typeof ALLOWED_LOCALES[number]
+const ALLOWED_LOCALES = ["en", "fr", "es", "de"] as const;
+type Locale = (typeof ALLOWED_LOCALES)[number];
 
 // Extract and validate
-const pathname = window.location.pathname
-const extractedLocale = pathname.split('/')[1]
-const locale: Locale = ALLOWED_LOCALES.includes(extractedLocale as Locale) 
-  ? extractedLocale as Locale 
-  : 'en'
+const pathname = window.location.pathname;
+const extractedLocale = pathname.split("/")[1];
+const locale: Locale = ALLOWED_LOCALES.includes(extractedLocale as Locale)
+  ? (extractedLocale as Locale)
+  : "en";
 ```
 
 ### Option 2: Pattern Matching
+
 ```typescript
 // Only accept 2-letter language codes
-const pathname = window.location.pathname
-const localeMatch = pathname.match(/^\/([a-z]{2})(?:\/|$)/)
-const locale = localeMatch?.[1] || 'en'
+const pathname = window.location.pathname;
+const localeMatch = pathname.match(/^\/([a-z]{2})(?:\/|$)/);
+const locale = localeMatch?.[1] || "en";
 ```
 
 ### Option 3: Use Next.js Built-in Methods
+
 ```typescript
 // Better: Get locale from Next.js router
-import { useParams } from 'next/navigation'
+import { useParams } from "next/navigation";
 
 // In component
-const params = useParams()
-const locale = params.locale as string || 'en'
+const params = useParams();
+const locale = (params.locale as string) || "en";
 ```
 
 ### Option 4: Centralized Locale Extraction
+
 ```typescript
 // utils/locale.ts
 export function extractLocaleFromPath(pathname: string): string {
-  const LOCALE_REGEX = /^\/([a-z]{2}(?:-[A-Z]{2})?)(?:\/|$)/
-  const match = pathname.match(LOCALE_REGEX)
-  
-  if (!match) return 'en'
-  
-  const extractedLocale = match[1]
-  const supportedLocales = ['en', 'fr', 'es', 'de', 'en-US', 'en-GB']
-  
-  return supportedLocales.includes(extractedLocale) ? extractedLocale : 'en'
+  const LOCALE_REGEX = /^\/([a-z]{2}(?:-[A-Z]{2})?)(?:\/|$)/;
+  const match = pathname.match(LOCALE_REGEX);
+
+  if (!match) return "en";
+
+  const extractedLocale = match[1];
+  const supportedLocales = ["en", "fr", "es", "de", "en-US", "en-GB"];
+
+  return supportedLocales.includes(extractedLocale) ? extractedLocale : "en";
 }
 
 // Usage
-const locale = extractLocaleFromPath(window.location.pathname)
+const locale = extractLocaleFromPath(window.location.pathname);
 ```
 
 ### Option 5: Use URL API with Validation
+
 ```typescript
 // Parse URL properly
-const url = new URL(window.location.href)
-const pathSegments = url.pathname.split('/').filter(Boolean)
-const possibleLocale = pathSegments[0]
+const url = new URL(window.location.href);
+const pathSegments = url.pathname.split("/").filter(Boolean);
+const possibleLocale = pathSegments[0];
 
 // Validate against i18n config
-import { locales } from '@/i18n/config'
-const locale = locales.includes(possibleLocale) ? possibleLocale : 'en'
+import { locales } from "@/i18n/config";
+const locale = locales.includes(possibleLocale) ? possibleLocale : "en";
 ```
 
 ### Option 6: Server-Side Props (Most Secure)
+
 ```typescript
 // Convert to server component and get locale from params
 interface Props {
-  params: Promise<{ locale: string }>
-  searchParams: Promise<{ error?: string }>
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ error?: string }>;
 }
 
 export default async function AuthErrorPage({ params, searchParams }: Props) {
-  const { locale } = await params
-  const { error } = await searchParams
-  
+  const { locale } = await params;
+  const { error } = await searchParams;
+
   // Now locale is guaranteed safe by Next.js routing
 }
 ```
@@ -166,6 +179,7 @@ export default async function AuthErrorPage({ params, searchParams }: Props) {
 Next.js App Router uses a file-system based routing mechanism where:
 
 1. **Directory Structure = URL Structure**
+
    ```
    app/
    ├── [locale]/
@@ -190,7 +204,7 @@ Next.js App Router uses a file-system based routing mechanism where:
 ### Understanding `useParams`
 
 ```typescript
-import { useParams } from 'next/navigation'
+import { useParams } from "next/navigation";
 ```
 
 #### What is `useParams`?
@@ -200,18 +214,20 @@ import { useParams } from 'next/navigation'
 #### How it Works:
 
 1. **Extracts Dynamic Route Parameters**
+
    ```typescript
    // For URL: /en/products/123
    // With route: /[locale]/products/[id]/page.tsx
-   
-   const params = useParams()
+
+   const params = useParams();
    // params = { locale: 'en', id: '123' }
    ```
 
 2. **Type Safety**
+
    ```typescript
    // You can type the params
-   const params = useParams<{ locale: string; id: string }>()
+   const params = useParams<{ locale: string; id: string }>();
    ```
 
 3. **Why It's Secure**
@@ -223,15 +239,15 @@ import { useParams } from 'next/navigation'
 #### Example Usage:
 
 ```typescript
-'use client'
+"use client";
 
-import { useParams } from 'next/navigation'
+import { useParams } from "next/navigation";
 
 export default function ProductPage() {
-  const params = useParams()
-  const locale = params.locale as string
-  const productId = params.id as string
-  
+  const params = useParams();
+  const locale = params.locale as string;
+  const productId = params.id as string;
+
   // These values are guaranteed to match the route pattern
   // If they didn't, Next.js wouldn't have routed here
 }
@@ -242,11 +258,11 @@ export default function ProductPage() {
 ```typescript
 // Server components receive params as props
 interface Props {
-  params: Promise<{ locale: string; id: string }>
+  params: Promise<{ locale: string; id: string }>;
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { locale, id } = await params
+  const { locale, id } = await params;
   // Already validated by Next.js routing
 }
 ```
@@ -263,12 +279,12 @@ export default async function ProductPage({ params }: Props) {
 
 ```typescript
 // ❌ Manual extraction - risky
-const pathname = window.location.pathname
-const locale = pathname.split('/')[1] // Could be anything!
+const pathname = window.location.pathname;
+const locale = pathname.split("/")[1]; // Could be anything!
 
 // ✅ useParams - secure
-const params = useParams()
-const locale = params.locale // Guaranteed to match route pattern
+const params = useParams();
+const locale = params.locale; // Guaranteed to match route pattern
 ```
 
 ### Best Practices

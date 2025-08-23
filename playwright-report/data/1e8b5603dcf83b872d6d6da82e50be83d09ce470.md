@@ -2,57 +2,57 @@
 
 ```yaml
 - generic [active] [ref=e1]:
-  - generic [ref=e2]:
-    - navigation [ref=e3]:
-      - generic [ref=e5]:
-        - link "Auth App" [ref=e6] [cursor=pointer]:
-          - /url: /en
-          - img [ref=e8] [cursor=pointer]
-          - heading "Auth App" [level=1] [ref=e10] [cursor=pointer]
-        - 'button "Current language: English. Click to change language." [ref=e13] [cursor=pointer]':
-          - generic [ref=e14] [cursor=pointer]: EN
-          - generic [ref=e15] [cursor=pointer]: English
-          - img [ref=e16] [cursor=pointer]
-    - main [ref=e18]:
-      - generic [ref=e21]:
-        - generic [ref=e23]:
-          - img [ref=e25]
-          - generic [ref=e27]:
-            - heading "Welcome to Our App" [level=1] [ref=e28]
-            - paragraph [ref=e29]: Simple authentication with Google OAuth
-        - generic [ref=e31]:
-          - generic [ref=e32]:
-            - heading "Sign in to your account" [level=3] [ref=e33]
-            - paragraph [ref=e34]: Enter your credentials to continue
-          - generic [ref=e35]:
-            - generic [ref=e36]:
-              - generic [ref=e37]:
-                - generic [ref=e38]: Email Address
-                - generic [ref=e39]:
-                  - generic:
-                    - img
-                  - textbox "Email Address" [ref=e40]: unverified@example.com
-              - generic [ref=e41]:
-                - generic [ref=e42]: Password
-                - generic [ref=e43]:
-                  - generic:
-                    - img
-                  - textbox "Password" [ref=e44]: Unverified123!
-                  - button "Show password" [ref=e45]:
-                    - img [ref=e46]
-            - alert [ref=e49]:
-              - generic [ref=e50]:
-                - img [ref=e51]
-                - paragraph [ref=e54]: Invalid email or password
-            - button "Sign in with Email" [ref=e55]
-          - generic [ref=e60]: Or
-          - button "Sign in with Google instead" [ref=e61]
-        - paragraph [ref=e63]:
-          - text: Don't have an account?
-          - link "Register here" [ref=e64] [cursor=pointer]:
-            - /url: /en/register
-        - paragraph [ref=e66]: Secure authentication with industry-standard encryption
-  - button "Open Next.js Dev Tools" [ref=e72] [cursor=pointer]:
-    - img [ref=e73] [cursor=pointer]
-  - alert [ref=e76]
+    - generic [ref=e2]:
+        - navigation [ref=e3]:
+            - generic [ref=e5]:
+                - link "Auth App" [ref=e6] [cursor=pointer]:
+                    - /url: /en
+                    - img [ref=e8] [cursor=pointer]
+                    - heading "Auth App" [level=1] [ref=e10] [cursor=pointer]
+                - 'button "Current language: English. Click to change language." [ref=e13] [cursor=pointer]':
+                    - generic [ref=e14] [cursor=pointer]: EN
+                    - generic [ref=e15] [cursor=pointer]: English
+                    - img [ref=e16] [cursor=pointer]
+        - main [ref=e18]:
+            - generic [ref=e21]:
+                - generic [ref=e23]:
+                    - img [ref=e25]
+                    - generic [ref=e27]:
+                        - heading "Welcome to Our App" [level=1] [ref=e28]
+                        - paragraph [ref=e29]: Simple authentication with Google OAuth
+                - generic [ref=e31]:
+                    - generic [ref=e32]:
+                        - heading "Sign in to your account" [level=3] [ref=e33]
+                        - paragraph [ref=e34]: Enter your credentials to continue
+                    - generic [ref=e35]:
+                        - generic [ref=e36]:
+                            - generic [ref=e37]:
+                                - generic [ref=e38]: Email Address
+                                - generic [ref=e39]:
+                                    - generic:
+                                        - img
+                                    - textbox "Email Address" [ref=e40]: unverified@example.com
+                            - generic [ref=e41]:
+                                - generic [ref=e42]: Password
+                                - generic [ref=e43]:
+                                    - generic:
+                                        - img
+                                    - textbox "Password" [ref=e44]: Unverified123!
+                                    - button "Show password" [ref=e45]:
+                                        - img [ref=e46]
+                        - alert [ref=e49]:
+                            - generic [ref=e50]:
+                                - img [ref=e51]
+                                - paragraph [ref=e54]: Invalid email or password
+                        - button "Sign in with Email" [ref=e55]
+                    - generic [ref=e60]: Or
+                    - button "Sign in with Google instead" [ref=e61]
+                - paragraph [ref=e63]:
+                    - text: Don't have an account?
+                    - link "Register here" [ref=e64] [cursor=pointer]:
+                        - /url: /en/register
+                - paragraph [ref=e66]: Secure authentication with industry-standard encryption
+    - button "Open Next.js Dev Tools" [ref=e72] [cursor=pointer]:
+        - img [ref=e73] [cursor=pointer]
+    - alert [ref=e76]
 ```

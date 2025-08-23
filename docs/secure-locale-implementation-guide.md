@@ -10,20 +10,19 @@ This guide provides a comprehensive approach to implementing secure locale handl
 
 ```typescript
 // src/config/i18n.ts
-export const ALLOWED_LOCALES = ['en', 'fr', 'es', 'de'] as const
-export type Locale = typeof ALLOWED_LOCALES[number]
+export const ALLOWED_LOCALES = ["en", "fr", "es", "de"] as const;
+export type Locale = (typeof ALLOWED_LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = 'en'
+export const DEFAULT_LOCALE: Locale = "en";
 
 // Type guard function
 export function isValidLocale(value: unknown): value is Locale {
-  return typeof value === 'string' && 
-    ALLOWED_LOCALES.includes(value as Locale)
+  return typeof value === "string" && ALLOWED_LOCALES.includes(value as Locale);
 }
 
 // Helper to get safe locale
 export function getSafeLocale(value: unknown): Locale {
-  return isValidLocale(value) ? value : DEFAULT_LOCALE
+  return isValidLocale(value) ? value : DEFAULT_LOCALE;
 }
 ```
 
@@ -31,15 +30,15 @@ export function getSafeLocale(value: unknown): Locale {
 
 ```typescript
 // src/app/[locale]/auth/error/page.tsx
-'use client'
+"use client";
 
-import { useParams } from 'next/navigation'
-import { getSafeLocale } from '@/config/i18n'
+import { useParams } from "next/navigation";
+import { getSafeLocale } from "@/config/i18n";
 
 export default function AuthErrorPage() {
-  const params = useParams()
-  const locale = getSafeLocale(params.locale)
-  
+  const params = useParams();
+  const locale = getSafeLocale(params.locale);
+
   // Now locale is guaranteed to be a valid Locale type
   // Use it safely throughout the component
 }
@@ -49,16 +48,16 @@ export default function AuthErrorPage() {
 
 ```typescript
 // src/app/[locale]/some-page/page.tsx
-import { getSafeLocale } from '@/config/i18n'
+import { getSafeLocale } from "@/config/i18n";
 
 interface Props {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }
 
 export default async function SomePage({ params }: Props) {
-  const { locale: rawLocale } = await params
-  const locale = getSafeLocale(rawLocale)
-  
+  const { locale: rawLocale } = await params;
+  const locale = getSafeLocale(rawLocale);
+
   // Locale is validated and typed
 }
 ```
@@ -67,19 +66,19 @@ export default async function SomePage({ params }: Props) {
 
 ```typescript
 // src/hooks/use-safe-locale.ts
-'use client'
+"use client";
 
-import { useParams } from 'next/navigation'
-import { getSafeLocale, type Locale } from '@/config/i18n'
+import { useParams } from "next/navigation";
+import { getSafeLocale, type Locale } from "@/config/i18n";
 
 export function useSafeLocale(): Locale {
-  const params = useParams()
-  return getSafeLocale(params.locale)
+  const params = useParams();
+  return getSafeLocale(params.locale);
 }
 
 // Usage in any client component
 export default function MyComponent() {
-  const locale = useSafeLocale()
+  const locale = useSafeLocale();
   // Ready to use, no validation needed
 }
 ```
@@ -89,88 +88,88 @@ export default function MyComponent() {
 ```typescript
 // src/config/i18n.ts - Enhanced version
 export function getSafeLocale(
-  value: unknown, 
-  options?: { 
-    logInvalid?: boolean 
-    source?: string 
-  }
+  value: unknown,
+  options?: {
+    logInvalid?: boolean;
+    source?: string;
+  },
 ): Locale {
   if (isValidLocale(value)) {
-    return value
+    return value;
   }
-  
+
   // Log invalid attempts in development
-  if (options?.logInvalid && process.env.NODE_ENV === 'development') {
+  if (options?.logInvalid && process.env.NODE_ENV === "development") {
     console.warn(
-      `Invalid locale attempted: "${value}" from ${options.source || 'unknown source'}`
-    )
+      `Invalid locale attempted: "${value}" from ${options.source || "unknown source"}`,
+    );
   }
-  
-  return DEFAULT_LOCALE
+
+  return DEFAULT_LOCALE;
 }
 
 // Usage with logging
-const locale = getSafeLocale(params.locale, { 
-  logInvalid: true, 
-  source: 'AuthErrorPage' 
-})
+const locale = getSafeLocale(params.locale, {
+  logInvalid: true,
+  source: "AuthErrorPage",
+});
 ```
 
 ### 6. Middleware Integration (Optional)
 
 ```typescript
 // src/middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { ALLOWED_LOCALES, DEFAULT_LOCALE } from '@/config/i18n'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { ALLOWED_LOCALES, DEFAULT_LOCALE } from "@/config/i18n";
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname
-  const pathnameLocale = pathname.split('/')[1]
-  
+  const pathname = request.nextUrl.pathname;
+  const pathnameLocale = pathname.split("/")[1];
+
   // Check if locale in path is valid
   if (!ALLOWED_LOCALES.includes(pathnameLocale as any)) {
     // Redirect to default locale
-    const newUrl = new URL(request.url)
-    newUrl.pathname = `/${DEFAULT_LOCALE}${pathname}`
-    return NextResponse.redirect(newUrl)
+    const newUrl = new URL(request.url);
+    newUrl.pathname = `/${DEFAULT_LOCALE}${pathname}`;
+    return NextResponse.redirect(newUrl);
   }
-  
-  return NextResponse.next()
+
+  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next|api|favicon.ico).*)']
-}
+  matcher: ["/((?!_next|api|favicon.ico).*)"],
+};
 ```
 
 ### 7. Type-Safe Navigation Helper
 
 ```typescript
 // src/utils/navigation.ts
-import type { Locale } from '@/config/i18n'
+import type { Locale } from "@/config/i18n";
 
 export function localizedPath(path: string, locale: Locale): string {
   // Remove leading slash if present
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path
-  return `/${locale}/${cleanPath}`
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+  return `/${locale}/${cleanPath}`;
 }
 
 export function localizedRedirect(path: string, locale: Locale) {
-  return redirect(localizedPath(path, locale))
+  return redirect(localizedPath(path, locale));
 }
 
 // Usage
-import { useRouter } from 'next/navigation'
-import { useSafeLocale } from '@/hooks/use-safe-locale'
+import { useRouter } from "next/navigation";
+import { useSafeLocale } from "@/hooks/use-safe-locale";
 
 function MyComponent() {
-  const router = useRouter()
-  const locale = useSafeLocale()
-  
+  const router = useRouter();
+  const locale = useSafeLocale();
+
   const handleNavigate = () => {
-    router.push(localizedPath('dashboard', locale))
-  }
+    router.push(localizedPath("dashboard", locale));
+  };
 }
 ```
 
@@ -178,55 +177,55 @@ function MyComponent() {
 
 ```typescript
 // src/test/locale-helpers.ts
-import { getSafeLocale, ALLOWED_LOCALES } from '@/config/i18n'
+import { getSafeLocale, ALLOWED_LOCALES } from "@/config/i18n";
 
-describe('Locale Validation', () => {
-  test('accepts valid locales', () => {
-    ALLOWED_LOCALES.forEach(locale => {
-      expect(getSafeLocale(locale)).toBe(locale)
-    })
-  })
-  
-  test('rejects invalid locales', () => {
-    const invalid = ['xx', '123', null, undefined, '', 'en-XY']
-    invalid.forEach(value => {
-      expect(getSafeLocale(value)).toBe('en')
-    })
-  })
-})
+describe("Locale Validation", () => {
+  test("accepts valid locales", () => {
+    ALLOWED_LOCALES.forEach((locale) => {
+      expect(getSafeLocale(locale)).toBe(locale);
+    });
+  });
+
+  test("rejects invalid locales", () => {
+    const invalid = ["xx", "123", null, undefined, "", "en-XY"];
+    invalid.forEach((value) => {
+      expect(getSafeLocale(value)).toBe("en");
+    });
+  });
+});
 ```
 
 ### 9. Complete Implementation Example
 
 ```typescript
 // Updated auth error page with all best practices
-'use client'
+"use client";
 
-import { useSearchParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { useSafeLocale } from '@/hooks/use-safe-locale'
-import { localizedPath } from '@/utils/navigation'
+import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useSafeLocale } from "@/hooks/use-safe-locale";
+import { localizedPath } from "@/utils/navigation";
 
 export default function AuthErrorPage() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const locale = useSafeLocale() // Type-safe, validated locale
-  const t = useTranslations('Auth')
-  
-  const error = searchParams.get('error')
-  
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const locale = useSafeLocale(); // Type-safe, validated locale
+  const t = useTranslations("Auth");
+
+  const error = searchParams.get("error");
+
   const handleSignInWithEmail = () => {
-    router.push(localizedPath('', locale)) // Goes to /[locale]
-  }
-  
+    router.push(localizedPath("", locale)); // Goes to /[locale]
+  };
+
   const handleTryDifferentAccount = () => {
-    router.push(localizedPath('', locale))
-  }
-  
+    router.push(localizedPath("", locale));
+  };
+
   const handleGoBack = () => {
-    router.push(localizedPath('', locale))
-  }
-  
+    router.push(localizedPath("", locale));
+  };
+
   // Rest of component...
 }
 ```
@@ -273,24 +272,28 @@ export default function AuthErrorPage() {
 ## Common Patterns
 
 ### Pattern 1: Client Component with Locale
+
 ```typescript
-const locale = useSafeLocale()
+const locale = useSafeLocale();
 ```
 
 ### Pattern 2: Server Component with Locale
+
 ```typescript
-const { locale: rawLocale } = await params
-const locale = getSafeLocale(rawLocale)
+const { locale: rawLocale } = await params;
+const locale = getSafeLocale(rawLocale);
 ```
 
 ### Pattern 3: Navigation with Locale
+
 ```typescript
-router.push(localizedPath('dashboard', locale))
+router.push(localizedPath("dashboard", locale));
 ```
 
 ### Pattern 4: API Calls with Locale
+
 ```typescript
-const response = await fetch(`/api/data?locale=${locale}`)
+const response = await fetch(`/api/data?locale=${locale}`);
 ```
 
 This implementation ensures security, type safety, and maintainability across the entire application.
