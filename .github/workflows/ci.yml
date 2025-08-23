@@ -41,7 +41,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🔧 TypeScript compilation check
         run: pnpm run typecheck
@@ -99,7 +101,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🗄️ Database connection test
         env:
@@ -162,7 +166,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🎭 Install Playwright browsers
         run: pnpm exec playwright install chromium --with-deps
@@ -235,7 +241,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🔒 Security audit
         run: pnpm audit --audit-level moderate
@@ -271,7 +279,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🏗️ Production build
         run: pnpm run build

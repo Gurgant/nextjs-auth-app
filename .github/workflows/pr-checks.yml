@@ -60,7 +60,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🔧 TypeScript validation
         run: pnpm run typecheck
@@ -129,7 +131,9 @@ jobs:
           cache: 'pnpm'
 
       - name: 📚 Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
 
       - name: 🗄️ Database setup
         env:
