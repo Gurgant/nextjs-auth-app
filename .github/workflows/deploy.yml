@@ -61,14 +61,14 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres123
-          POSTGRES_DB: test_db
+          POSTGRES_DB: nextjs_auth_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432
+          - 5433:5432
 
     steps:
       - name: Checkout code
@@ -90,7 +90,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql://postgres:postgres123@localhost:5432/test_db
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
         run: |
           pnpm prisma:generate
           pnpm test:unit
