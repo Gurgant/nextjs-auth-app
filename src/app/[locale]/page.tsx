@@ -11,14 +11,48 @@ import Link from "next/link";
 export default function HomePage() {
   const t = useTranslations("Home");
   const tAuth = useTranslations("Auth");
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [showCredentials, setShowCredentials] = useState(false);
   const params = useParams();
   const currentLocale = (params.locale as string) || "en";
 
+  // Show loading state while session is being established
+  if (status === "loading") {
+    return (
+      <div
+        className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50"
+        data-testid="session-loading"
+      >
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto shadow-lg animate-pulse">
+              <svg
+                className="w-8 h-8 text-white animate-spin"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (session) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div
+        className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50"
+        data-testid="authenticated-home"
+      >
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
           <div className="text-center space-y-8 max-w-md">
             <div className="space-y-4">
@@ -48,6 +82,9 @@ export default function HomePage() {
               <Link
                 href={`/${currentLocale}/dashboard`}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                prefetch={false}
+                scroll={false}
+                data-testid="go-to-dashboard-button"
               >
                 <svg
                   className="w-5 h-5"
@@ -157,6 +194,7 @@ export default function HomePage() {
                 <button
                   onClick={() => setShowCredentials(true)}
                   className="w-full text-blue-600 hover:text-blue-700 font-medium py-3 px-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 border border-blue-200 hover:border-blue-300"
+                  data-testid="sign-in-with-email-toggle"
                 >
                   {tAuth("signInWithEmail")}
                 </button>

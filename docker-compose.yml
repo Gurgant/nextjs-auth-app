@@ -1,6 +1,30 @@
-version: '3.9'
+version: "3.9"
+
 services:
-  postgres:
+  # Development Database (Port 5432)
+  postgres_dev:
+    image: postgres:16-alpine
+    container_name: nextjs_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: nextjs_auth_db
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nextjs_network
+
+  # Test Database (Port 5433)
+  postgres_test:
     image: postgres:16-alpine
     container_name: nextjs_auth_postgres
     restart: unless-stopped
@@ -11,14 +35,29 @@ services:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_DB: nextjs_auth_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_test_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - nextjs_network
+
+  # Alias for backward compatibility
+  postgres:
+    extends:
+      service: postgres_test
 
 volumes:
-  postgres_data:
+  postgres_dev_data:
     driver: local
+  postgres_test_data:
+    driver: local
+  postgres_data: # Keep for backward compatibility
+    driver: local
+
+networks:
+  nextjs_network:
+    driver: bridge

@@ -1,86 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
-import { randomBytes } from 'crypto'
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated session
-    const session = await auth()
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
+        { error: "Authentication required" },
+        { status: 401 },
+      );
     }
 
-    const { password, provider } = await request.json()
+    const { password, provider } = await request.json();
 
     // Validate required fields
     if (!password || !provider) {
       return NextResponse.json(
-        { error: 'Password and provider are required' },
-        { status: 400 }
-      )
+        { error: "Password and provider are required" },
+        { status: 400 },
+      );
     }
 
     // Validate provider
-    if (!['google'].includes(provider)) {
+    if (!["google"].includes(provider)) {
       return NextResponse.json(
-        { error: 'Unsupported provider' },
-        { status: 400 }
-      )
+        { error: "Unsupported provider" },
+        { status: 400 },
+      );
     }
 
     // Get user with current accounts
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: { accounts: true }
-    })
+      include: { accounts: true },
+    });
 
     if (!user || !user.password) {
       return NextResponse.json(
-        { error: 'User not found or no password set' },
-        { status: 404 }
-      )
+        { error: "User not found or no password set" },
+        { status: 404 },
+      );
     }
 
     // Verify password
-    const passwordMatch = await bcrypt.compare(password, user.password)
+    const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       // Log security event for failed password verification
       await prisma.securityEvent.create({
         data: {
           userId: user.id,
-          eventType: 'account_link_failed',
-          details: 'Password verification failed during account linking',
+          eventType: "account_link_failed",
+          details: "Password verification failed during account linking",
           success: false,
-          ipAddress: request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
-                    'unknown',
-          userAgent: request.headers.get('user-agent') || 'unknown'
-        }
-      })
+          ipAddress:
+            request.headers.get("x-forwarded-for") ||
+            request.headers.get("x-real-ip") ||
+            "unknown",
+          userAgent: request.headers.get("user-agent") || "unknown",
+        },
+      });
 
-      return NextResponse.json(
-        { error: 'Invalid password' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
     // Check if account is already linked
-    const existingAccount = user.accounts.find(acc => acc.provider === provider)
+    const existingAccount = user.accounts.find(
+      (acc: any) => acc.provider === provider,
+    );
     if (existingAccount) {
       return NextResponse.json(
-        { error: 'Account already linked to this provider' },
-        { status: 400 }
-      )
+        { error: "Account already linked to this provider" },
+        { status: 400 },
+      );
     }
 
     // Generate secure linking token
-    const token = randomBytes(32).toString('hex')
-    const expires = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+    const token = randomBytes(32).toString("hex");
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     // Create account link request
     const linkRequest = await prisma.accountLinkRequest.create({
@@ -92,43 +92,44 @@ export async function POST(request: NextRequest) {
         metadata: {
           provider,
           initiatedAt: new Date().toISOString(),
-          ipAddress: request.headers.get('x-forwarded-for') || 
-                    request.headers.get('x-real-ip') || 
-                    'unknown'
-        }
-      }
-    })
+          ipAddress:
+            request.headers.get("x-forwarded-for") ||
+            request.headers.get("x-real-ip") ||
+            "unknown",
+        },
+      },
+    });
 
     // Log security event
     await prisma.securityEvent.create({
       data: {
         userId: user.id,
-        eventType: 'account_link_initiated',
+        eventType: "account_link_initiated",
         details: `Account linking initiated for provider: ${provider}`,
         success: true,
-        ipAddress: request.headers.get('x-forwarded-for') || 
-                  request.headers.get('x-real-ip') || 
-                  'unknown',
-        userAgent: request.headers.get('user-agent') || 'unknown',
+        ipAddress:
+          request.headers.get("x-forwarded-for") ||
+          request.headers.get("x-real-ip") ||
+          "unknown",
+        userAgent: request.headers.get("user-agent") || "unknown",
         metadata: {
           provider,
-          linkRequestId: linkRequest.id
-        }
-      }
-    })
+          linkRequestId: linkRequest.id,
+        },
+      },
+    });
 
     return NextResponse.json({
       success: true,
       linkToken: token,
       expiresAt: expires.toISOString(),
-      provider
-    })
-
+      provider,
+    });
   } catch (error) {
-    console.error('Account linking initiation error:', error)
+    console.error("Account linking initiation error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

@@ -1,25 +1,22 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
-import { AccountManagement } from '@/components/account/account-management'
+import { auth } from "@/lib/auth";
+import { AccountManagement } from "@/components/account/account-management";
+import { AuthGuard, DashboardLayout } from "@/components/layouts";
 
 interface Props {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }
 
 export default async function AccountPage({ params }: Props) {
-  const session = await auth()
-  const { locale } = await params
-  
-  // If user is not logged in, redirect to home
-  if (!session?.user) {
-    redirect(`/${locale}`)
-  }
+  const session = await auth();
+  const { locale } = await params;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <AccountManagement user={session.user} locale={locale} />
-      </div>
-    </div>
-  )
+    <AuthGuard locale={locale} requireAuth>
+      {session?.user ? (
+        <DashboardLayout gradient maxWidth="4xl">
+          <AccountManagement user={session.user} locale={locale} />
+        </DashboardLayout>
+      ) : null}
+    </AuthGuard>
+  );
 }

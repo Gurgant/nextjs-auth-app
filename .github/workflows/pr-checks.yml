@@ -1,0 +1,269 @@
+name: ⚡ PR Quick Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, develop]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "8"
+
+jobs:
+  # ==============================================================================
+  # QUICK VALIDATION: Essential checks for fast PR feedback
+  # ==============================================================================
+  quick-validation:
+    name: ⚡ Quick Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event.pull_request.draft == false
+
+    outputs:
+      should-run-full: ${{ steps.changes.outputs.should-run-full }}
+
+    steps:
+      - name: 📥 Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Detect significant changes
+        id: changes
+        run: |
+          # Check if this PR affects core functionality
+          CORE_CHANGES=$(git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx|js|jsx)$|package\.json|\.github/' | wc -l)
+
+          echo "Core file changes: $CORE_CHANGES"
+
+          if [ "$CORE_CHANGES" -gt 0 ]; then
+            echo "should-run-full=true" >> $GITHUB_OUTPUT
+            echo "🚨 Core changes detected - full validation recommended"
+          else
+            echo "should-run-full=false" >> $GITHUB_OUTPUT  
+            echo "📝 Documentation/config only changes"
+          fi
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 📚 Install dependencies
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
+
+      - name: 🗄️ Generate Prisma client
+        run: |
+          echo "Generating Prisma client for TypeScript validation..."
+          pnpm exec prisma generate
+
+      - name: 🔧 TypeScript validation
+        run: pnpm run typecheck
+
+      - name: 🎨 ESLint validation
+        run: pnpm run lint
+
+      - name: 🏗️ Build validation
+        run: pnpm run build
+
+      - name: ✅ Quick validation complete
+        run: |
+          echo "## ⚡ Quick PR Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Passed:" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔧 TypeScript compilation" >> $GITHUB_STEP_SUMMARY
+          echo "- 🎨 ESLint validation" >> $GITHUB_STEP_SUMMARY
+          echo "- 🏗️ Build validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.changes.outputs.should-run-full }}" == "true" ]; then
+            echo "### 🔄 Full CI Pipeline:" >> $GITHUB_STEP_SUMMARY
+            echo "Core changes detected - full CI pipeline will run automatically" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### 📝 Documentation Changes:" >> $GITHUB_STEP_SUMMARY
+            echo "No core code changes - full pipeline not required" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ==============================================================================
+  # CRITICAL PATH TESTING: Run only if core changes detected
+  # ==============================================================================
+  critical-tests:
+    name: 🧪 Critical Path Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quick-validation
+    if: needs.quick-validation.outputs.should-run-full == 'true'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+          POSTGRES_DB: nextjs_auth_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 Checkout PR
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: 📚 Install dependencies
+        run: |
+          # Try frozen lockfile first, fallback to regular install in CI
+          pnpm install --frozen-lockfile || pnpm install
+
+      - name: 🗄️ Database setup
+        env:
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma db push --skip-generate
+
+      - name: 🧪 Run critical unit tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
+          NEXTAUTH_SECRET: pr-test-secret-key
+          NEXTAUTH_URL: http://localhost:3000
+        run: |
+          echo "Running critical path tests..."
+          pnpm test -- --testPathIgnorePatterns=integration --maxWorkers=2 --ci
+
+      - name: 🎭 Install Playwright (chromium only)
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: 🎭 Run smoke E2E tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
+          NEXTAUTH_SECRET: pr-test-secret-key
+          NEXTAUTH_URL: http://localhost:3000
+          CI: true
+        run: |
+          echo "Running smoke E2E tests..."
+          pnpm exec playwright test e2e/tests/auth-simple.e2e.ts --workers=1 --reporter=line
+
+      - name: 📊 Upload critical test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pr-critical-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 3
+
+  # ==============================================================================
+  # PR STATUS SUMMARY
+  # ==============================================================================
+  pr-summary:
+    name: 📋 PR Validation Summary
+    runs-on: ubuntu-latest
+    needs: [quick-validation, critical-tests]
+    if: always()
+
+    steps:
+      - name: 📊 Generate PR summary
+        run: |
+          echo "## 📋 PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Quick validation status
+          if [ "${{ needs.quick-validation.result }}" == "success" ]; then
+            echo "### ✅ Quick Validation: PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "- TypeScript compilation ✅" >> $GITHUB_STEP_SUMMARY
+            echo "- ESLint validation ✅" >> $GITHUB_STEP_SUMMARY
+            echo "- Build validation ✅" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ❌ Quick Validation: FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "Please fix the basic validation issues before proceeding." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Critical tests status (if ran)
+          if [ "${{ needs.quick-validation.outputs.should-run-full }}" == "true" ]; then
+            if [ "${{ needs.critical-tests.result }}" == "success" ]; then
+              echo "### ✅ Critical Tests: PASSED" >> $GITHUB_STEP_SUMMARY
+              echo "- Database tests ✅" >> $GITHUB_STEP_SUMMARY
+              echo "- Core unit tests ✅" >> $GITHUB_STEP_SUMMARY
+              echo "- Smoke E2E tests ✅" >> $GITHUB_STEP_SUMMARY
+            elif [ "${{ needs.critical-tests.result }}" == "failure" ]; then
+              echo "### ❌ Critical Tests: FAILED" >> $GITHUB_STEP_SUMMARY
+              echo "Core functionality tests failed. Please review and fix." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "### ⏭️ Critical Tests: SKIPPED" >> $GITHUB_STEP_SUMMARY
+              echo "Critical tests were skipped due to previous failures." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "### 📝 Critical Tests: NOT REQUIRED" >> $GITHUB_STEP_SUMMARY
+            echo "No core code changes detected." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔄 Next Steps:" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.quick-validation.result }}" == "success" ] && ([ "${{ needs.critical-tests.result }}" == "success" ] || [ "${{ needs.quick-validation.outputs.should-run-full }}" == "false" ]); then
+            echo "- ✅ PR is ready for review!" >> $GITHUB_STEP_SUMMARY
+            echo "- 🚀 Full CI pipeline will run on merge" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ❌ Please address the failing checks" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔄 Push fixes to re-run validation" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ==============================================================================
+  # PR SUCCESS GATE
+  # ==============================================================================
+  pr-gate:
+    name: 🚪 PR Gate
+    runs-on: ubuntu-latest
+    needs: [quick-validation, critical-tests]
+    if: always()
+
+    steps:
+      - name: 🚪 Evaluate PR readiness
+        run: |
+          QUICK_STATUS="${{ needs.quick-validation.result }}"
+          CRITICAL_STATUS="${{ needs.critical-tests.result }}"
+          SHOULD_RUN_FULL="${{ needs.quick-validation.outputs.should-run-full }}"
+
+          echo "Quick validation: $QUICK_STATUS"
+          echo "Critical tests: $CRITICAL_STATUS" 
+          echo "Should run full: $SHOULD_RUN_FULL"
+
+          if [ "$QUICK_STATUS" != "success" ]; then
+            echo "❌ PR Gate: FAILED - Quick validation failed"
+            exit 1
+          fi
+
+          if [ "$SHOULD_RUN_FULL" == "true" ] && [ "$CRITICAL_STATUS" != "success" ]; then
+            echo "❌ PR Gate: FAILED - Critical tests failed"
+            exit 1
+          fi
+
+          echo "✅ PR Gate: PASSED - Ready for review!"

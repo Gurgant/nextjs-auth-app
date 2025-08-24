@@ -6,9 +6,10 @@ import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import {
   verifyTwoFactorCode,
-  complete2FAAuthentication,
   type ActionResult,
 } from "@/lib/actions/advanced-auth";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { AlertMessage } from "@/components/ui/alert-message";
 
 interface TwoFactorVerificationProps {
   userId: string;
@@ -27,7 +28,7 @@ export function TwoFactorVerification({
 }: TwoFactorVerificationProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const t = useTranslations('TwoFactor');
+  const t = useTranslations("TwoFactor");
 
   const [code, setCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
@@ -80,7 +81,7 @@ export function TwoFactorVerification({
 
           if (completionResult.success) {
             console.log(
-              "🔓 2FA completion successful, establishing session..."
+              "🔓 2FA completion successful, establishing session...",
             );
 
             // Force a full page reload to establish the new session
@@ -94,15 +95,14 @@ export function TwoFactorVerification({
           } else {
             setResult({
               success: false,
-              message:
-                completionResult.message || t('authFailure'),
+              message: completionResult.message || t("authFailure"),
             });
           }
         } catch (error) {
           console.error("Error completing 2FA authentication:", error);
           setResult({
             success: false,
-            message: t('signInFailure'),
+            message: t("signInFailure"),
           });
         }
       } else {
@@ -118,7 +118,7 @@ export function TwoFactorVerification({
       console.error("2FA verification error:", error);
       setResult({
         success: false,
-        message: t('unexpectedError'),
+        message: t("unexpectedError"),
       });
     } finally {
       setIsVerifying(false);
@@ -161,12 +161,12 @@ export function TwoFactorVerification({
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {t('title')}
+              {t("title")}
             </h1>
             <p className="text-gray-600">
               {useBackupCode
-                ? t('backupCodeInstructions')
-                : t('verificationCodeInstructions')}
+                ? t("backupCodeInstructions")
+                : t("verificationCodeInstructions")}
             </p>
             <p className="text-sm text-gray-500 mt-2">{email}</p>
           </div>
@@ -189,9 +189,9 @@ export function TwoFactorVerification({
                   />
                 </svg>
                 <p className="text-sm font-medium text-yellow-800">
-                  {t('attemptsRemaining', { 
-                    count: attemptsLeft, 
-                    plural: attemptsLeft !== 1 ? 's' : '' 
+                  {t("attemptsRemaining", {
+                    count: attemptsLeft,
+                    plural: attemptsLeft !== 1 ? "s" : "",
                   })}
                 </p>
               </div>
@@ -209,7 +209,9 @@ export function TwoFactorVerification({
                 htmlFor="code"
                 className="block text-sm font-semibold text-gray-700 mb-2"
               >
-                {useBackupCode ? t('backupCodeLabel') : t('verificationCodeLabel')}
+                {useBackupCode
+                  ? t("backupCodeLabel")
+                  : t("verificationCodeLabel")}
               </label>
               <input
                 ref={inputRef}
@@ -224,14 +226,18 @@ export function TwoFactorVerification({
                       value
                         .toUpperCase()
                         .replace(/[^A-Z0-9-]/g, "")
-                        .slice(0, 9)
+                        .slice(0, 9),
                     );
                   } else {
                     // TOTP: only numbers, max 6 digits
                     setCode(value.replace(/\D/g, "").slice(0, 6));
                   }
                 }}
-                placeholder={useBackupCode ? t('backupCodePlaceholder') : t('verificationCodePlaceholder')}
+                placeholder={
+                  useBackupCode
+                    ? t("backupCodePlaceholder")
+                    : t("verificationCodePlaceholder")
+                }
                 className="block w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 text-center text-2xl font-mono tracking-widest"
                 maxLength={useBackupCode ? 9 : 6}
                 required
@@ -240,93 +246,28 @@ export function TwoFactorVerification({
             </div>
 
             {/* Result Messages */}
-            {result && (
-              <div
-                className={`rounded-xl p-4 ${
-                  result.success
-                    ? "bg-green-50 border border-green-200"
-                    : "bg-red-50 border border-red-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  {result.success ? (
-                    <svg
-                      className="h-5 w-5 text-green-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="h-5 w-5 text-red-400 mr-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  )}
-                  <p
-                    className={`text-sm font-medium ${
-                      result.success ? "text-green-700" : "text-red-700"
-                    }`}
-                  >
-                    {result.message}
-                  </p>
-                </div>
-              </div>
+            {result?.message && (
+              <AlertMessage
+                type={result.success ? "success" : "error"}
+                message={result.message}
+              />
             )}
 
             {/* Action Buttons */}
             <div className="space-y-4">
-              <button
+              <GradientButton
                 type="submit"
+                variant="red"
+                fullWidth
                 disabled={
-                  isVerifying ||
                   !code.trim() ||
                   (useBackupCode ? code.length < 8 : code.length !== 6)
                 }
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                loading={isVerifying}
+                loadingText={t("verifying")}
               >
-                {isVerifying ? (
-                  <>
-                    <svg
-                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    {t('verifying')}
-                  </>
-                ) : (
-                  t('verifyButton')
-                )}
-              </button>
+                {t("verifyButton")}
+              </GradientButton>
 
               {/* Toggle Backup Code */}
               <button
@@ -335,8 +276,8 @@ export function TwoFactorVerification({
                 className="w-full text-sm text-gray-600 hover:text-gray-800 py-2"
               >
                 {useBackupCode
-                  ? t('useAuthenticatorInstead')
-                  : t('useBackupCodeInstead')}
+                  ? t("useAuthenticatorInstead")
+                  : t("useBackupCodeInstead")}
               </button>
 
               {/* Cancel */}
@@ -345,7 +286,7 @@ export function TwoFactorVerification({
                 onClick={handleCancel}
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
               >
-                {t('cancel')}
+                {t("cancel")}
               </button>
             </div>
           </form>
@@ -353,9 +294,7 @@ export function TwoFactorVerification({
           {/* Help Text */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              {useBackupCode
-                ? t('backupCodeNote')
-                : t('codeRefreshNote')}
+              {useBackupCode ? t("backupCodeNote") : t("codeRefreshNote")}
             </p>
           </div>
         </div>

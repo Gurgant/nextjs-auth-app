@@ -18,7 +18,7 @@ export function createEmailVerificationTemplate(
   userEmail: string,
   userName: string,
   verificationLink: string,
-  locale: string = "en"
+  locale: string = "en",
 ): EmailTemplate {
   const translations = {
     en: {
@@ -153,7 +153,7 @@ export function createAccountLinkTemplate(
   userName: string,
   linkType: "google" | "email",
   confirmationLink: string,
-  locale: string = "en"
+  locale: string = "en",
 ): EmailTemplate {
   const translations = {
     en: {
@@ -218,7 +218,7 @@ export function createSecurityAlertTemplate(
     | "2fa_enabled"
     | "account_linked",
   details: string,
-  locale: string = "en"
+  locale: string = "en",
 ): EmailTemplate {
   const translations = {
     en: {
@@ -305,7 +305,7 @@ export async function sendVerificationEmail(
   userEmail: string,
   userName: string,
   token: string,
-  locale: string = "en"
+  locale: string = "en",
 ): Promise<boolean> {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const verificationLink = `${baseUrl}/${locale}/verify-email/${token}`;
@@ -314,7 +314,7 @@ export async function sendVerificationEmail(
     userEmail,
     userName,
     verificationLink,
-    locale
+    locale,
   );
   return await sendEmail(template);
 }
@@ -325,7 +325,7 @@ export async function sendAccountLinkConfirmation(
   userName: string,
   linkType: "google" | "email",
   token: string,
-  locale: string = "en"
+  locale: string = "en",
 ): Promise<boolean> {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const confirmationLink = `${baseUrl}/${locale}/link-account/confirm/${token}`;
@@ -335,7 +335,7 @@ export async function sendAccountLinkConfirmation(
     userName,
     linkType,
     confirmationLink,
-    locale
+    locale,
   );
   return await sendEmail(template);
 }
@@ -350,14 +350,14 @@ export async function sendSecurityAlert(
     | "2fa_enabled"
     | "account_linked",
   details: string,
-  locale: string = "en"
+  locale: string = "en",
 ): Promise<boolean> {
   const template = createSecurityAlertTemplate(
     userEmail,
     userName,
     alertType,
     details,
-    locale
+    locale,
   );
   return await sendEmail(template);
 }

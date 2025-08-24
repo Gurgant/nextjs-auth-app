@@ -1,0 +1,182 @@
+# 🤖 Dependabot Configuration
+# Automated dependency updates for security and maintenance
+
+version: 2
+updates:
+  # ==============================================================================
+  # NPM DEPENDENCIES (Main Package Management)
+  # ==============================================================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+
+    # Security updates (immediate)
+    open-pull-requests-limit: 10
+
+    # Update strategies
+    versioning-strategy: "increase"
+
+    # Grouping strategy for related dependencies
+    groups:
+      # Framework core updates
+      nextjs:
+        patterns:
+          - "next"
+          - "@next/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Authentication & Security
+      auth-security:
+        patterns:
+          - "next-auth"
+          - "@auth/*"
+          - "bcryptjs"
+          - "jsonwebtoken"
+          - "crypto-*"
+        update-types:
+          - "patch"
+          - "minor"
+
+      # Database & ORM
+      database:
+        patterns:
+          - "prisma"
+          - "@prisma/*"
+          - "pg"
+          - "@types/pg"
+        update-types:
+          - "patch"
+          - "minor"
+
+      # Testing frameworks
+      testing:
+        patterns:
+          - "jest"
+          - "@jest/*"
+          - "@testing-library/*"
+          - "playwright"
+          - "@playwright/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Linting & Code Quality
+      linting:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-*"
+          - "typescript"
+          - "@typescript-eslint/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # UI & Styling
+      ui-styling:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+          - "postcss"
+          - "autoprefixer"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Internationalization
+      i18n:
+        patterns:
+          - "next-intl"
+          - "intl-*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Development tools
+      dev-tools:
+        patterns:
+          - "@types/*"
+          - "tsx"
+          - "nodemon"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Custom commit messages
+    commit-message:
+      prefix: "🔄"
+      prefix-development: "🔧"
+      include: "scope"
+
+    # Reviewers and assignees
+    reviewers:
+      - "@me"
+
+    # Labels for categorization
+    labels:
+      - "dependencies"
+      - "automated"
+
+    # Ignore specific updates that require manual attention
+    ignore:
+      # Major version updates require manual review
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+      # Specific packages that need careful manual updates
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+  # ==============================================================================
+  # GITHUB ACTIONS DEPENDENCIES
+  # ==============================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "10:00"
+      timezone: "UTC"
+
+    open-pull-requests-limit: 5
+
+    commit-message:
+      prefix: "🚀"
+      include: "scope"
+
+    labels:
+      - "github-actions"
+      - "ci-cd"
+      - "automated"
+
+  # ==============================================================================
+  # DOCKER DEPENDENCIES (if Dockerfile exists)
+  # ==============================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "11:00"
+      timezone: "UTC"
+
+    open-pull-requests-limit: 3
+
+    commit-message:
+      prefix: "🐳"
+      include: "scope"
+
+    labels:
+      - "docker"
+      - "infrastructure"
+      - "automated"

@@ -1,0 +1,75 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Aggressive stress test
+    - duration: 10
+      arrivalRate: 5
+      name: "Initial Load"
+
+    - duration: 30
+      arrivalRate: 20
+      name: "Ramp to High Load"
+
+    - duration: 60
+      arrivalRate: 50
+      name: "Sustained High Load"
+
+    - duration: 30
+      arrivalRate: 100
+      name: "Peak Stress"
+
+    - duration: 10
+      arrivalRate: 10
+      name: "Recovery"
+
+  processor: "./performance-tests/scenarios/auth-processor.js"
+
+  # Aggressive thresholds for stress testing
+  ensure:
+    - http.response_time.p95: 2000
+    - http.response_time.p99: 5000
+    - http.codes.5xx: 0 # No server errors allowed
+
+scenarios:
+  # Heavy login scenario
+  - name: "Stress Login"
+    weight: 70
+    flow:
+      - post:
+          url: "/api/auth/callback/credentials"
+          json:
+            email: "test@example.com"
+            password: "Test123!"
+          expect:
+            - statusCode:
+                - 200
+                - 302
+
+      - loop:
+          - get:
+              url: "/api/auth/session"
+          - think: 0.5
+        count: 5
+
+      - post:
+          url: "/api/auth/signout"
+          expect:
+            - statusCode:
+                - 200
+                - 302
+
+  # Concurrent registration stress
+  - name: "Stress Registration"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/register"
+          json:
+            name: "Stress User {{ $randomNumber() }}"
+            email: "stress{{ $randomNumber() }}@example.com"
+            password: "Stress123!"
+          expect:
+            - statusCode:
+                - 200
+                - 201
+                - 409 # Conflict for duplicate emails

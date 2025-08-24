@@ -1,137 +1,167 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, Shield, AlertCircle, CheckCircle, Link as LinkIcon, Unlink } from 'lucide-react'
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Shield,
+  AlertCircle,
+  CheckCircle,
+  Link as LinkIcon,
+  Unlink,
+} from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useSafeLocale } from "@/hooks/use-safe-locale";
 
 interface AccountLinkingProps {
   accountInfo: {
-    hasGoogleAccount: boolean
-    hasEmailAccount: boolean
-    primaryAuthMethod?: string
-  }
-  onAccountLinked: () => void
+    hasGoogleAccount: boolean;
+    hasEmailAccount: boolean;
+    primaryAuthMethod?: string;
+  };
+  onAccountLinked: () => void;
 }
 
-export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLinkingProps) {
-  const [isLinking, setIsLinking] = useState(false)
-  const [isUnlinking, setIsUnlinking] = useState(false)
-  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false)
-  const [linkingProvider, setLinkingProvider] = useState<'google' | null>(null)
-  const [unlinkingProvider, setUnlinkingProvider] = useState<'google' | null>(null)
-  const [password, setPassword] = useState('')
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+export function OAuthAccountLinking({
+  accountInfo,
+  onAccountLinked,
+}: AccountLinkingProps) {
+  const locale = useSafeLocale();
+  const t = useTranslations("Account");
+  const tCommon = useTranslations("Common");
+  const [isLinking, setIsLinking] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [linkingProvider, setLinkingProvider] = useState<"google" | null>(null);
+  const [unlinkingProvider, setUnlinkingProvider] = useState<"google" | null>(
+    null,
+  );
+  const [password, setPassword] = useState("");
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
-  const handleLinkAccount = async (provider: 'google') => {
+  const handleLinkAccount = async (provider: "google") => {
     if (!password.trim()) {
-      setResult({ success: false, message: 'Password is required' })
-      return
+      setResult({ success: false, message: t("passwordRequired") });
+      return;
     }
 
-    setIsLinking(true)
-    setResult(null)
+    setIsLinking(true);
+    setResult(null);
 
     try {
       // Step 1: Initiate account linking
-      const response = await fetch('/api/auth/link-account/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, provider })
-      })
+      const response = await fetch("/api/auth/link-account/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, provider }),
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setResult({ success: false, message: data.error || 'Failed to initiate account linking' })
-        return
+        setResult({
+          success: false,
+          message: data.error || t("failedToInitiateAccountLinking"),
+        });
+        return;
       }
 
       // Step 2: Store the link token and redirect to OAuth
-      sessionStorage.setItem('accountLinkToken', data.linkToken)
-      
+      sessionStorage.setItem("accountLinkToken", data.linkToken);
+
       // Step 3: Redirect to OAuth provider with special state
-      const result = await signIn(provider, { 
+      const result = await signIn(provider, {
         redirect: false,
-        callbackUrl: `/en/account?linked=${provider}`
-      })
+        callbackUrl: `/${locale}/account?linked=${provider}`,
+      });
 
       if (result?.error) {
-        setResult({ success: false, message: 'OAuth authentication failed' })
+        setResult({ success: false, message: t("oauthAuthenticationFailed") });
       } else if (result?.url) {
         // OAuth succeeded - the callback will handle account linking
-        window.location.href = result.url
+        window.location.href = result.url;
       }
-
     } catch (error) {
-      console.error('Account linking error:', error)
-      setResult({ success: false, message: 'Failed to link account' })
+      console.error("Account linking error:", error);
+      setResult({ success: false, message: t("failedToLinkAccount") });
     } finally {
-      setIsLinking(false)
+      setIsLinking(false);
     }
-  }
+  };
 
-  const handleUnlinkAccount = async (provider: 'google') => {
+  const handleUnlinkAccount = async (provider: "google") => {
     if (!password.trim()) {
-      setResult({ success: false, message: 'Password is required' })
-      return
+      setResult({ success: false, message: t("passwordRequired") });
+      return;
     }
 
-    setIsUnlinking(true)
-    setResult(null)
+    setIsUnlinking(true);
+    setResult(null);
 
     try {
-      const response = await fetch('/api/auth/link-account/unlink', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, provider })
-      })
+      const response = await fetch("/api/auth/link-account/unlink", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, provider }),
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
-        setResult({ success: false, message: data.error || 'Failed to unlink account' })
-        return
+        setResult({
+          success: false,
+          message: data.error || t("failedToUnlinkAccount"),
+        });
+        return;
       }
 
-      setResult({ success: true, message: 'Account unlinked successfully' })
-      setShowPasswordPrompt(false)
-      setPassword('')
-      onAccountLinked() // Refresh account info
-
+      setResult({ success: true, message: t("accountUnlinkedSuccessfully") });
+      setShowPasswordPrompt(false);
+      setPassword("");
+      onAccountLinked(); // Refresh account info
     } catch (error) {
-      console.error('Account unlinking error:', error)
-      setResult({ success: false, message: 'Failed to unlink account' })
+      console.error("Account unlinking error:", error);
+      setResult({ success: false, message: t("failedToUnlinkAccount") });
     } finally {
-      setIsUnlinking(false)
+      setIsUnlinking(false);
     }
-  }
+  };
 
-  const startLinkProcess = (provider: 'google') => {
-    setLinkingProvider(provider)
-    setShowPasswordPrompt(true)
-    setResult(null)
-  }
+  const startLinkProcess = (provider: "google") => {
+    setLinkingProvider(provider);
+    setShowPasswordPrompt(true);
+    setResult(null);
+  };
 
-  const startUnlinkProcess = (provider: 'google') => {
-    setUnlinkingProvider(provider)
-    setShowPasswordPrompt(true)
-    setResult(null)
-  }
+  const startUnlinkProcess = (provider: "google") => {
+    setUnlinkingProvider(provider);
+    setShowPasswordPrompt(true);
+    setResult(null);
+  };
 
   const cancelProcess = () => {
-    setShowPasswordPrompt(false)
-    setLinkingProvider(null)
-    setUnlinkingProvider(null)
-    setPassword('')
-    setResult(null)
-  }
+    setShowPasswordPrompt(false);
+    setLinkingProvider(null);
+    setUnlinkingProvider(null);
+    setPassword("");
+    setResult(null);
+  };
 
-  const isProcessing = isLinking || isUnlinking
+  const isProcessing = isLinking || isUnlinking;
 
   return (
     <div className="space-y-6">
@@ -157,22 +187,23 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <CardTitle>Google Account</CardTitle>
+            <CardTitle>{t("googleAccountTitle")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${accountInfo.hasGoogleAccount ? 'bg-green-500' : 'bg-gray-300'}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${accountInfo.hasGoogleAccount ? "bg-green-500" : "bg-gray-300"}`}
+              />
               <div>
                 <p className="font-medium">
-                  {accountInfo.hasGoogleAccount ? 'Linked' : 'Not Linked'}
+                  {accountInfo.hasGoogleAccount ? t("linked") : t("notLinked")}
                 </p>
                 <p className="text-sm text-gray-600">
-                  {accountInfo.hasGoogleAccount 
-                    ? 'You can sign in with your Google account'
-                    : 'Link your Google account for easier sign-in'
-                  }
+                  {accountInfo.hasGoogleAccount
+                    ? t("googleSignInDescription")
+                    : t("googleLinkDescription")}
                 </p>
               </div>
             </div>
@@ -181,19 +212,19 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => startUnlinkProcess('google')}
+                  onClick={() => startUnlinkProcess("google")}
                   disabled={isProcessing}
                 >
                   <Unlink className="w-4 h-4 mr-2" />
-                  Unlink
+                  {t("unlink")}
                 </Button>
               ) : (
                 <Button
-                  onClick={() => startLinkProcess('google')}
+                  onClick={() => startLinkProcess("google")}
                   disabled={isProcessing}
                 >
                   <LinkIcon className="w-4 h-4 mr-2" />
-                  Link Account
+                  {t("linkAccount")}
                 </Button>
               )}
             </div>
@@ -207,31 +238,42 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-blue-600" />
-              Verify Your Identity
+              {t("verifyIdentity")}
             </CardTitle>
             <CardDescription>
-              {linkingProvider 
-                ? `Enter your password to link your ${linkingProvider} account`
-                : `Enter your password to unlink your ${unlinkingProvider} account`
-              }
+              {linkingProvider
+                ? t("enterPasswordToLink", { provider: linkingProvider })
+                : t("enterPasswordToUnlink", {
+                    provider: unlinkingProvider || "",
+                  })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="password">Current Password</Label>
+              <Label htmlFor="password">{t("currentPassword")}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your current password"
+                placeholder={t("enterCurrentPasswordPlaceholder")}
                 disabled={isProcessing}
               />
             </div>
 
             {result && (
-              <Alert className={result.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-                {result.success ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <Alert
+                className={
+                  result.success
+                    ? "border-green-200 bg-green-50"
+                    : "border-red-200 bg-red-50"
+                }
+              >
+                {result.success ? (
+                  <CheckCircle className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
                 <AlertDescription>{result.message}</AlertDescription>
               </Alert>
             )}
@@ -243,8 +285,10 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
                   disabled={isProcessing || !password.trim()}
                   className="flex-1"
                 >
-                  {isLinking && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Link Account
+                  {isLinking && (
+                    <LoadingSpinner size="sm" color="white" className="mr-2" />
+                  )}
+                  {t("linkAccount")}
                 </Button>
               )}
               {unlinkingProvider && (
@@ -254,8 +298,10 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
                   variant="destructive"
                   className="flex-1"
                 >
-                  {isUnlinking && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Unlink Account
+                  {isUnlinking && (
+                    <LoadingSpinner size="sm" color="white" className="mr-2" />
+                  )}
+                  {t("unlinkAccount")}
                 </Button>
               )}
               <Button
@@ -263,12 +309,12 @@ export function OAuthAccountLinking({ accountInfo, onAccountLinked }: AccountLin
                 onClick={cancelProcess}
                 disabled={isProcessing}
               >
-                Cancel
+                {tCommon("cancel")}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
     </div>
-  )
+  );
 }

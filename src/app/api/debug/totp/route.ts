@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     console.error("TOTP debug error:", error);
     return NextResponse.json(
       { error: error?.message || "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!secret || !code) {
       return NextResponse.json(
         { error: "Missing secret or code" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     console.error("TOTP debug error:", error);
     return NextResponse.json(
       { error: error?.message || "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

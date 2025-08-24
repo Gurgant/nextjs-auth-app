@@ -1,27 +1,20 @@
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
-import { RegistrationForm } from '@/components/auth/registration-form'
+import { RegistrationForm } from "@/components/auth/registration-form";
+import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { type Locale } from "@/config/i18n";
 
 interface Props {
-  params: Promise<{ locale: string }>
+  params: Promise<{ locale: string }>;
 }
 
 export default async function RegisterPage({ params }: Props) {
-  const session = await auth()
-  const { locale } = await params
-  
-  // If user is already logged in, redirect to dashboard
-  if (session?.user) {
-    redirect(`/${locale}/dashboard`)
-  }
+  const { locale: localeParam } = await params;
+  const locale = localeParam as Locale;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4 py-8">
-        <div className="w-full max-w-md">
-          <RegistrationForm locale={locale} />
-        </div>
-      </div>
-    </div>
-  )
+    <AuthGuard locale={locale} requireAuth={false}>
+      <FormPageLayout>
+        <RegistrationForm locale={locale} />
+      </FormPageLayout>
+    </AuthGuard>
+  );
 }

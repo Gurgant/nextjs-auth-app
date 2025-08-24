@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { TwoFactorVerification } from "@/components/auth/two-factor-verification";
 import { getEnhancedUserAccountInfo } from "@/lib/actions/advanced-auth";
 import { getTranslations } from "next-intl/server";
+import { AlertMessage } from "@/components/ui/alert-message";
 
 interface TwoFactorPageProps {
   params: Promise<{
@@ -22,7 +23,7 @@ export default async function TwoFactorPage({
 }: TwoFactorPageProps) {
   const { locale } = await params;
   const { userId, email, callbackUrl, error } = await searchParams;
-  const t = await getTranslations('TwoFactor');
+  const t = await getTranslations("TwoFactor");
 
   // Check if user is already fully authenticated
   const session = await auth();
@@ -61,30 +62,19 @@ export default async function TwoFactorPage({
       {/* Error Message */}
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 shadow-lg">
-            <div className="flex items-center">
-              <svg
-                className="h-5 w-5 text-red-400 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="text-sm font-medium text-red-700">
-                {error === "2fa_failed" && t('tooManyAttempts')}
-                {error === "invalid_code" && t('invalidCode')}
-                {error === "expired" && t('sessionExpired')}
-                {!["2fa_failed", "invalid_code", "expired"].includes(error) &&
-                  t('authError')}
-              </p>
-            </div>
-          </div>
+          <AlertMessage
+            type="error"
+            message={
+              error === "2fa_failed"
+                ? t("tooManyAttempts")
+                : error === "invalid_code"
+                  ? t("invalidCode")
+                  : error === "expired"
+                    ? t("sessionExpired")
+                    : t("authError")
+            }
+            className="shadow-lg"
+          />
         </div>
       )}
 
@@ -103,11 +93,11 @@ export async function generateMetadata({
 }: {
   params: Promise<{ locale: string }>;
 }) {
-  const t = await getTranslations('TwoFactor');
-  
+  const t = await getTranslations("TwoFactor");
+
   return {
-    title: t('metaTitle'),
-    description: t('metaDescription'),
+    title: t("metaTitle"),
+    description: t("metaDescription"),
     robots: "noindex, nofollow", // Don't index auth pages
   };
 }
