@@ -39,13 +39,16 @@
 ## 🌟 **Visual Feature Showcase**
 
 ### 🔐 **Modern Authentication Interface**
+
 <div align="center">
 <img src="docs/screenshots/signin-page.png" alt="Modern Sign-In Interface" width="80%" style="border-radius: 8px; margin: 10px;">
 
-*Sleek, responsive sign-in interface with Google OAuth and email/password options*
+_Sleek, responsive sign-in interface with Google OAuth and email/password options_
+
 </div>
 
 ### 🌍 **Multi-Language Support (5 Languages)**
+
 <table align="center">
   <tr>
     <td align="center">
@@ -79,7 +82,7 @@
   </tr>
 </table>
 
-*Seamless internationalization with server-side rendering and SEO optimization*
+_Seamless internationalization with server-side rendering and SEO optimization_
 
 ---
 
@@ -91,21 +94,22 @@ This is not just another authentication boilerplate. It's an enterprise-grade au
 
 <div align="center">
 
-| **Metric** | **Achievement** | **Status** |
-|------------|----------------|------------|
-| **🧪 E2E Tests** | **87/87 Passing** | ![✅](https://img.shields.io/badge/✅-100%25-success) |
-| **⚡ CI/CD Pipeline** | **All Phases Passing** | ![✅](https://img.shields.io/badge/✅-Active-brightgreen) |
-| **📝 TypeScript** | **0 Errors (Strict Mode)** | ![✅](https://img.shields.io/badge/✅-Compliant-blue) |
-| **🎨 ESLint** | **0 Warnings** | ![✅](https://img.shields.io/badge/✅-Clean-green) |
-| **🚀 Production Deployment** | **Automated & Working** | ![✅](https://img.shields.io/badge/✅-Live-success) |
-| **🌍 Languages** | **5 Supported** | ![✅](https://img.shields.io/badge/✅-i18n-orange) |
-| **📊 Code Quality** | **Enterprise Grade** | ![✅](https://img.shields.io/badge/✅-A+-gold) |
+| **Metric**                   | **Achievement**            | **Status**                                                |
+| ---------------------------- | -------------------------- | --------------------------------------------------------- |
+| **🧪 E2E Tests**             | **87/87 Passing**          | ![✅](https://img.shields.io/badge/✅-100%25-success)     |
+| **⚡ CI/CD Pipeline**        | **All Phases Passing**     | ![✅](https://img.shields.io/badge/✅-Active-brightgreen) |
+| **📝 TypeScript**            | **0 Errors (Strict Mode)** | ![✅](https://img.shields.io/badge/✅-Compliant-blue)     |
+| **🎨 ESLint**                | **0 Warnings**             | ![✅](https://img.shields.io/badge/✅-Clean-green)        |
+| **🚀 Production Deployment** | **Automated & Working**    | ![✅](https://img.shields.io/badge/✅-Live-success)       |
+| **🌍 Languages**             | **5 Supported**            | ![✅](https://img.shields.io/badge/✅-i18n-orange)        |
+| **📊 Code Quality**          | **Enterprise Grade**       | ![✅](https://img.shields.io/badge/✅-A+-gold)            |
 
 </div>
 
 ### 🏆 **Recent Achievements**
+
 - ✅ **100% CI/CD Success Rate** - All deployment pipelines working flawlessly
-- ✅ **87/87 E2E Tests Passing** - Complete user journey validation  
+- ✅ **87/87 E2E Tests Passing** - Complete user journey validation
 - ✅ **Zero Technical Debt** - Clean codebase with strict TypeScript compliance
 - ✅ **Production Ready** - Automated deployments with release management
 - ✅ **Enterprise Patterns** - Command/Event architecture with full testing coverage
@@ -233,6 +237,7 @@ const user = await userRepository.findByEmail(email);
 ## 🔄 **CI/CD Pipeline Success Dashboard**
 
 ### 🎯 **Complete Pipeline Overview**
+
 <div align="center">
 
 ```mermaid
@@ -244,19 +249,19 @@ flowchart TD
     E --> F[🔥 Production Deploy]
     F --> G[📦 Release Creation]
     G --> H[✅ Success!]
-    
+
     B --> B1[TypeScript ✅]
     B --> B2[ESLint ✅]
     B --> B3[Prettier ✅]
-    
+
     C --> C1[Unit Tests ✅]
     C --> C2[Integration ✅]
     C --> C3[E2E Tests ✅]
     C --> C4[Security Audit ✅]
-    
+
     D --> D1[Next.js Build ✅]
     D --> D2[Asset Optimization ✅]
-    
+
     style A fill:#e1f5fe
     style H fill:#e8f5e8
     style B1,B2,B3,C1,C2,C3,C4,D1,D2 fill:#f0f0f0
@@ -265,19 +270,21 @@ flowchart TD
 </div>
 
 ### 📊 **Pipeline Performance Metrics**
+
 <div align="center">
 
-| **Stage** | **Duration** | **Status** | **Success Rate** | **Last Run** |
-|-----------|--------------|------------|------------------|-------------|
-| **🔍 Code Quality** | ~2min | ![✅](https://img.shields.io/badge/✅-Passed-success) | **100%** | ⏰ 3 hours ago |
-| **🧪 Test Suite** | ~15min | ![✅](https://img.shields.io/badge/✅-87/87-success) | **100%** | ⏰ 3 hours ago |
-| **🏗️ Build & Deploy** | ~3min | ![✅](https://img.shields.io/badge/✅-Passed-success) | **100%** | ⏰ 3 hours ago |
-| **🚀 Production** | ~30sec | ![✅](https://img.shields.io/badge/✅-Live-brightgreen) | **100%** | ⏰ 3 hours ago |
-| **📦 Release** | ~10sec | ![✅](https://img.shields.io/badge/✅-v3-blue) | **100%** | ⏰ 3 hours ago |
+| **Stage**             | **Duration** | **Status**                                              | **Success Rate** | **Last Run**   |
+| --------------------- | ------------ | ------------------------------------------------------- | ---------------- | -------------- |
+| **🔍 Code Quality**   | ~2min        | ![✅](https://img.shields.io/badge/✅-Passed-success)   | **100%**         | ⏰ 3 hours ago |
+| **🧪 Test Suite**     | ~15min       | ![✅](https://img.shields.io/badge/✅-87/87-success)    | **100%**         | ⏰ 3 hours ago |
+| **🏗️ Build & Deploy** | ~3min        | ![✅](https://img.shields.io/badge/✅-Passed-success)   | **100%**         | ⏰ 3 hours ago |
+| **🚀 Production**     | ~30sec       | ![✅](https://img.shields.io/badge/✅-Live-brightgreen) | **100%**         | ⏰ 3 hours ago |
+| **📦 Release**        | ~10sec       | ![✅](https://img.shields.io/badge/✅-v3-blue)          | **100%**         | ⏰ 3 hours ago |
 
 </div>
 
 ### 🏆 **Key Achievements**
+
 - 🎯 **100% Pipeline Success Rate** - No failed deployments
 - ⚡ **Fast Deployment** - Complete pipeline in under 20 minutes
 - 🔒 **Security First** - Automated security audits and vulnerability checks
@@ -339,21 +346,23 @@ pnpm test
 ## 🌐 **Live Demo & Interactive Features**
 
 ### 🎮 **Try It Yourself**
+
 <div align="center">
 
-**🔗 [Live Production Demo](https://your-demo-url.com)** *(Coming Soon)*
+**🔗 [Live Production Demo](https://your-demo-url.com)** _(Coming Soon)_
 
-| **Feature** | **Demo Link** | **What You'll See** |
-|-------------|---------------|---------------------|
-| 🏠 **Home Page** | [Multi-Language](https://your-demo-url.com) | 5 language options with dynamic switching |
-| 🔐 **Authentication** | [Sign In/Up](https://your-demo-url.com/auth/signin) | Google OAuth + Email/Password flows |
-| 👤 **User Dashboard** | [Dashboard](https://your-demo-url.com/dashboard) | Role-based interface (USER/PRO/ADMIN) |
-| 🛡️ **Admin Panel** | [Admin](https://your-demo-url.com/admin) | Comprehensive admin tools and metrics |
-| 🔒 **2FA Setup** | [Two-Factor](https://your-demo-url.com/auth/2fa) | TOTP-based two-factor authentication |
+| **Feature**           | **Demo Link**                                       | **What You'll See**                       |
+| --------------------- | --------------------------------------------------- | ----------------------------------------- |
+| 🏠 **Home Page**      | [Multi-Language](https://your-demo-url.com)         | 5 language options with dynamic switching |
+| 🔐 **Authentication** | [Sign In/Up](https://your-demo-url.com/auth/signin) | Google OAuth + Email/Password flows       |
+| 👤 **User Dashboard** | [Dashboard](https://your-demo-url.com/dashboard)    | Role-based interface (USER/PRO/ADMIN)     |
+| 🛡️ **Admin Panel**    | [Admin](https://your-demo-url.com/admin)            | Comprehensive admin tools and metrics     |
+| 🔒 **2FA Setup**      | [Two-Factor](https://your-demo-url.com/auth/2fa)    | TOTP-based two-factor authentication      |
 
 </div>
 
 ### 🎯 **Key Interactive Elements**
+
 - **🌍 Language Switching**: Real-time locale changes with URL persistence
 - **🔐 Dual Authentication**: Seamless Google OAuth and email/password flows
 - **🎭 Role-Based UI**: Interface adapts based on user permissions (USER/PRO_USER/ADMIN)
@@ -362,6 +371,7 @@ pnpm test
 - **🔄 State Persistence**: Secure session management with automatic refresh
 
 ### 📊 **Live Performance Metrics**
+
 - **⚡ Page Load**: < 2 seconds (optimized with Next.js)
 - **🎨 Lighthouse Score**: 95+ across all metrics
 - **📱 Mobile Performance**: Fully responsive and PWA-ready
@@ -375,18 +385,19 @@ pnpm test
 
 <div align="center">
 
-| **Test Type** | **Count** | **Status** | **Coverage Area** | **Performance** |
-|---------------|-----------|------------|-------------------|-----------------|
-| **🧪 E2E Tests** | **87/87** | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **User Journeys** | ![⚡ Fast](https://img.shields.io/badge/⚡-Fast-blue) |
-| **🔧 Unit Tests** | **All** | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Business Logic** | ![⚡ Instant](https://img.shields.io/badge/⚡-Instant-green) |
-| **🔗 Integration** | **All** | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Database Ops** | ![⚡ Quick](https://img.shields.io/badge/⚡-Quick-blue) |
-| **🔀 Hybrid** | **All** | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Mock/Real Modes** | ![⚡ Flexible](https://img.shields.io/badge/⚡-Flexible-orange) |
+| **Test Type**      | **Count** | **Status**                                                     | **Coverage Area**   | **Performance**                                                 |
+| ------------------ | --------- | -------------------------------------------------------------- | ------------------- | --------------------------------------------------------------- |
+| **🧪 E2E Tests**   | **87/87** | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **User Journeys**   | ![⚡ Fast](https://img.shields.io/badge/⚡-Fast-blue)           |
+| **🔧 Unit Tests**  | **All**   | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Business Logic**  | ![⚡ Instant](https://img.shields.io/badge/⚡-Instant-green)    |
+| **🔗 Integration** | **All**   | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Database Ops**    | ![⚡ Quick](https://img.shields.io/badge/⚡-Quick-blue)         |
+| **🔀 Hybrid**      | **All**   | ![✅ 100%](https://img.shields.io/badge/✅-100%25-brightgreen) | **Mock/Real Modes** | ![⚡ Flexible](https://img.shields.io/badge/⚡-Flexible-orange) |
 
 </div>
 
 ### 🎭 **E2E Test Coverage Highlights**
+
 - ✅ **Authentication Flow**: Login, registration, password reset
-- ✅ **Role-Based Access**: USER, PRO_USER, ADMIN role validation  
+- ✅ **Role-Based Access**: USER, PRO_USER, ADMIN role validation
 - ✅ **Multi-Language**: Tests across all 5 supported languages
 - ✅ **Dashboard Features**: All user dashboard functionality
 - ✅ **Error Handling**: Comprehensive error state testing
@@ -598,16 +609,18 @@ const error = ErrorFactory.business.alreadyExists("User");
 ## 🚢 **Production Deployment (100% Automated)**
 
 ### ✅ **Deployment Status Dashboard**
+
 <div align="center">
 
-| **Environment** | **Status** | **Last Deploy** | **Version** | **Uptime** |
-|-----------------|------------|----------------|-------------|------------|
-| **🚀 Production** | ![✅ Live](https://img.shields.io/badge/✅-Live-brightgreen) | ⏰ 3 hours ago | **v3** | **99.9%** |
-| **🔧 Staging** | ![✅ Live](https://img.shields.io/badge/✅-Live-blue) | ⏰ 3 hours ago | **v3** | **100%** |
+| **Environment**   | **Status**                                                   | **Last Deploy** | **Version** | **Uptime** |
+| ----------------- | ------------------------------------------------------------ | --------------- | ----------- | ---------- |
+| **🚀 Production** | ![✅ Live](https://img.shields.io/badge/✅-Live-brightgreen) | ⏰ 3 hours ago  | **v3**      | **99.9%**  |
+| **🔧 Staging**    | ![✅ Live](https://img.shields.io/badge/✅-Live-blue)        | ⏰ 3 hours ago  | **v3**      | **100%**   |
 
 </div>
 
 ### 🎯 **Automated Deployment Features**
+
 - ✅ **Zero-Downtime Deployments** - Rolling updates with health checks
 - ✅ **Automatic Rollback** - Instant reversion on deployment failures
 - ✅ **Environment Promotion** - Staging → Production pipeline
@@ -696,19 +709,21 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 ## 📚 **Comprehensive Best Practices Guide**
 
 ### 🎯 **Development Workflow Excellence**
+
 <div align="center">
 
-| **Practice** | **Implementation** | **Benefit** | **Status** |
-|-------------|-------------------|------------|------------|
-| **🧪 Test-Driven Development** | Jest + Playwright + 87 E2E tests | **100% Coverage** | ![✅](https://img.shields.io/badge/✅-Active-success) |
-| **📝 TypeScript Strict Mode** | Zero `any` types, strict compliance | **Type Safety** | ![✅](https://img.shields.io/badge/✅-Enforced-blue) |
-| **🔄 CI/CD Automation** | GitHub Actions pipeline | **Zero-touch Deploy** | ![✅](https://img.shields.io/badge/✅-100%25-brightgreen) |
-| **🌍 Internationalization** | 5 languages, server-side rendering | **Global Ready** | ![✅](https://img.shields.io/badge/✅-Live-orange) |
-| **🏗️ Enterprise Architecture** | Command/Event patterns, DDD | **Scalable Design** | ![✅](https://img.shields.io/badge/✅-Implemented-gold) |
+| **Practice**                   | **Implementation**                  | **Benefit**           | **Status**                                                |
+| ------------------------------ | ----------------------------------- | --------------------- | --------------------------------------------------------- |
+| **🧪 Test-Driven Development** | Jest + Playwright + 87 E2E tests    | **100% Coverage**     | ![✅](https://img.shields.io/badge/✅-Active-success)     |
+| **📝 TypeScript Strict Mode**  | Zero `any` types, strict compliance | **Type Safety**       | ![✅](https://img.shields.io/badge/✅-Enforced-blue)      |
+| **🔄 CI/CD Automation**        | GitHub Actions pipeline             | **Zero-touch Deploy** | ![✅](https://img.shields.io/badge/✅-100%25-brightgreen) |
+| **🌍 Internationalization**    | 5 languages, server-side rendering  | **Global Ready**      | ![✅](https://img.shields.io/badge/✅-Live-orange)        |
+| **🏗️ Enterprise Architecture** | Command/Event patterns, DDD         | **Scalable Design**   | ![✅](https://img.shields.io/badge/✅-Implemented-gold)   |
 
 </div>
 
 ### 🔒 **Security Best Practices Implemented**
+
 - ✅ **Authentication**: NextAuth.js with JWT + secure session management
 - ✅ **Authorization**: Role-based access control (RBAC) with type safety
 - ✅ **Input Validation**: Zod schemas with server-side validation
@@ -719,6 +734,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - ✅ **Secure Headers**: CSP, HSTS, and security headers configured
 
 ### ⚡ **Performance Optimization Strategies**
+
 - ✅ **Next.js 15**: App Router with server-side rendering
 - ✅ **Image Optimization**: Next.js automatic image optimization
 - ✅ **Code Splitting**: Dynamic imports and route-based splitting
@@ -728,16 +744,18 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - ✅ **CDN Ready**: Static asset optimization
 
 ### 🧪 **Testing Strategy Framework**
+
 ```
 🎯 Testing Pyramid Implementation
 ├── 🧪 E2E Tests (87/87) - User Journey Validation
-├── 🔗 Integration Tests - Database & API Testing  
+├── 🔗 Integration Tests - Database & API Testing
 ├── 🔧 Unit Tests - Business Logic Coverage
 ├── 🔀 Hybrid Tests - Mock/Real Mode Flexibility
 └── 📊 Performance Tests - Load & Stress Testing
 ```
 
 ### 🌟 **Code Quality Standards**
+
 - **ESLint**: 0 warnings with strict configuration
 - **Prettier**: Consistent code formatting across team
 - **TypeScript**: Strict mode with zero `any` types
@@ -745,6 +763,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - **Pre-commit Hooks**: Automated quality checks
 
 ### 🚀 **Deployment Excellence**
+
 - **Environment Strategy**: Development → Staging → Production
 - **Zero-Downtime Deployments**: Rolling updates with health checks
 - **Automated Testing**: Full test suite before each deployment
@@ -784,18 +803,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ using enterprise-grade practices and 100% CI/CD success**
 
-| **What Makes This Special** |
-|:---------------------------:|
-| ✅ **87/87 E2E Tests Passing** |
+|       **What Makes This Special**        |
+| :--------------------------------------: |
+|      ✅ **87/87 E2E Tests Passing**      |
 | ✅ **100% TypeScript Strict Compliance** |
-| ✅ **Zero Technical Debt** |
-| ✅ **Production-Proven Architecture** |
-| ✅ **Complete CI/CD Automation** |
+|        ✅ **Zero Technical Debt**        |
+|  ✅ **Production-Proven Architecture**   |
+|     ✅ **Complete CI/CD Automation**     |
 
 ---
 
 ### 🚀 **Ready to Deploy?**
+
 This isn't just another authentication template—it's a **production-ready enterprise solution** with:
+
 - **Real-world testing** (87 comprehensive E2E tests)
 - **Zero-downtime deployments** (automated staging → production)
 - **Enterprise security** (RBAC, 2FA, audit logs)

@@ -199,18 +199,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🏷️ Creating production release v${{ github.run_number }}"
-          
+
           # Create release using GitHub CLI (more reliable than deprecated action)
           gh release create "v${{ github.run_number }}" \
             --title "Release v${{ github.run_number }}" \
             --notes "## Changes in this release
           - Automated deployment from commit ${{ github.sha }}
           - View [commit history](https://github.com/${{ github.repository }}/commits/${{ github.sha }})
-          
+
           🚀 Production deployment completed successfully!" \
             --target main \
             --latest
-          
+
           echo "✅ Release v${{ github.run_number }} created successfully"
 
   # ========== Post-deployment ==========

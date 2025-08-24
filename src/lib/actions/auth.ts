@@ -411,7 +411,8 @@ export async function getUserAccountInfo(userId: string) {
           hasEmailAccount: (updatedUserWithAccounts as any).hasEmailAccount,
           primaryAuthMethod: (updatedUserWithAccounts as any).primaryAuthMethod,
           passwordSetAt: (updatedUserWithAccounts as any).passwordSetAt,
-          lastPasswordChange: (updatedUserWithAccounts as any).lastPasswordChange,
+          lastPasswordChange: (updatedUserWithAccounts as any)
+            .lastPasswordChange,
           lastLoginAt: updatedUserWithAccounts.lastLoginAt,
           accounts: updatedUserWithAccounts.accounts || [],
           createdAt: updatedUserWithAccounts.createdAt,
