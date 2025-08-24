@@ -14,6 +14,12 @@ on:
           - production
           - staging
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
+
 env:
   NODE_VERSION: "20"
   PNPM_VERSION: "10.12.1"
@@ -189,18 +195,23 @@ jobs:
           # curl -f https://example.com/api/health || exit 1
 
       - name: Create release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            ## Changes in this release
-            - Automated deployment from commit ${{ github.sha }}
-            - View [commit history](https://github.com/${{ github.repository }}/commits/${{ github.sha }})
-          draft: false
-          prerelease: false
+        run: |
+          echo "🏷️ Creating production release v${{ github.run_number }}"
+          
+          # Create release using GitHub CLI (more reliable than deprecated action)
+          gh release create "v${{ github.run_number }}" \
+            --title "Release v${{ github.run_number }}" \
+            --notes "## Changes in this release
+          - Automated deployment from commit ${{ github.sha }}
+          - View [commit history](https://github.com/${{ github.repository }}/commits/${{ github.sha }})
+          
+          🚀 Production deployment completed successfully!" \
+            --target main \
+            --latest
+          
+          echo "✅ Release v${{ github.run_number }} created successfully"
 
   # ========== Post-deployment ==========
   post-deployment:
