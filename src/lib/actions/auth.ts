@@ -385,12 +385,12 @@ export async function getUserAccountInfo(userId: string) {
       userWithAccounts.accounts?.some(
         (account) => account.provider === "google",
       ) || false;
-    const hasPassword = !!userWithAccounts.password;
+    const hasPassword = !!(userWithAccounts as any).password;
 
     // Auto-migrate if metadata is missing
     if (
-      userWithAccounts.hasGoogleAccount === null ||
-      userWithAccounts.hasEmailAccount === null
+      (userWithAccounts as any).hasGoogleAccount === null ||
+      (userWithAccounts as any).hasEmailAccount === null
     ) {
       console.log("Auto-migrating user metadata for:", userId);
       await migrateUserAccountMetadata(userId);
@@ -403,15 +403,15 @@ export async function getUserAccountInfo(userId: string) {
 
       if (updatedUserWithAccounts) {
         return {
-          id: updatedUserWithAccounts.id,
-          email: updatedUserWithAccounts.email,
-          name: updatedUserWithAccounts.name,
-          hasGoogleAccount: updatedUserWithAccounts.hasGoogleAccount,
-          hasPassword: !!updatedUserWithAccounts.password,
-          hasEmailAccount: updatedUserWithAccounts.hasEmailAccount,
-          primaryAuthMethod: updatedUserWithAccounts.primaryAuthMethod,
-          passwordSetAt: updatedUserWithAccounts.passwordSetAt,
-          lastPasswordChange: updatedUserWithAccounts.lastPasswordChange,
+          id: (updatedUserWithAccounts as any).id,
+          email: (updatedUserWithAccounts as any).email,
+          name: (updatedUserWithAccounts as any).name,
+          hasGoogleAccount: (updatedUserWithAccounts as any).hasGoogleAccount,
+          hasPassword: !!(updatedUserWithAccounts as any).password,
+          hasEmailAccount: (updatedUserWithAccounts as any).hasEmailAccount,
+          primaryAuthMethod: (updatedUserWithAccounts as any).primaryAuthMethod,
+          passwordSetAt: (updatedUserWithAccounts as any).passwordSetAt,
+          lastPasswordChange: (updatedUserWithAccounts as any).lastPasswordChange,
           lastLoginAt: updatedUserWithAccounts.lastLoginAt,
           accounts: updatedUserWithAccounts.accounts || [],
           createdAt: updatedUserWithAccounts.createdAt,
