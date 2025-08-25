@@ -473,6 +473,9 @@ export class RegisterUserCommand extends BaseCommand {
 
 #### 📡 **Event-Driven Architecture**
 
+<details>
+<summary>🚀 <strong>View Complete Event-Driven Architecture Implementation</strong> (104 lines - Click to expand)</summary>
+
 ```typescript
 // Event Base Class with Type Safety
 export abstract class BaseEvent {
@@ -578,7 +581,12 @@ eventBus.subscribe(UserRegisteredEvent, async (event) => {
 });
 ```
 
+</details>
+
 #### 🏛️ **Repository Pattern with Advanced Features**
+
+<details>
+<summary>🏛️ <strong>View Complete Repository Pattern Implementation</strong> (102 lines - Click to expand)</summary>
 
 ```typescript
 // Repository Interface with Generic Constraints
@@ -683,6 +691,8 @@ export class UserRepository implements IUserRepository {
 }
 ```
 
+</details>
+
 ---
 
 ## 🔄 **CI/CD Pipeline Success Dashboard**
@@ -779,7 +789,7 @@ flowchart TD
 
 ```bash
 # 📥 1. Clone & Navigate
-git clone https://github.com/yourusername/nextjs-auth-app.git
+git clone https://github.com/Gurgant/nextjs-auth-app.git
 cd nextjs-auth-app
 
 # 📦 2. Install Dependencies (ALWAYS use pnpm!)
@@ -1005,6 +1015,9 @@ pnpm perf:memory          # Memory usage analysis
 
 ### 🏗️ **Test Architecture Patterns**
 
+<details>
+<summary>📋 <strong>View Complete Test Architecture Implementation</strong> (107 lines - Click to expand)</summary>
+
 ```typescript
 // 🏗️ Test Builders - Consistent Data Creation
 export class UserBuilder {
@@ -1112,6 +1125,8 @@ describe("User Registration", () => {
   });
 });
 ```
+
+</details>
 
 ---
 
@@ -1882,7 +1897,7 @@ npx vercel --prod
 ```bash
 # Production server setup
 # 1. Clone repository
-git clone https://github.com/yourusername/nextjs-auth-app.git
+git clone https://github.com/Gurgant/nextjs-auth-app.git
 cd nextjs-auth-app
 
 # 2. Install dependencies
@@ -1966,7 +1981,7 @@ We welcome contributions from developers of all skill levels! This project follo
 
 ```bash
 # 1. Fork & Clone
-git clone https://github.com/yourusername/nextjs-auth-app.git
+git clone https://github.com/Gurgant/nextjs-auth-app.git
 cd nextjs-auth-app
 
 # 2. Install dependencies
@@ -2110,9 +2125,9 @@ Closes #(issue number)
 
 ### 📞 **Getting Help**
 
-- **💬 Discussions**: [GitHub Discussions](https://github.com/yourusername/nextjs-auth-app/discussions)
-- **🐛 Issues**: [Bug Reports & Feature Requests](https://github.com/yourusername/nextjs-auth-app/issues)
-- **📧 Email**: contributors@yourdomain.com
+- **💬 Discussions**: [GitHub Discussions](https://github.com/Gurgant/nextjs-auth-app/discussions)
+- **🐛 Issues**: [Bug Reports & Feature Requests](https://github.com/Gurgant/nextjs-auth-app/issues)
+- **📧 Email**: vladislavaleshaev@gmail.com
 - **🔗 Discord**: [Join our developer community](https://discord.gg/yourinvite)
 
 ---
@@ -2867,7 +2882,7 @@ copies or substantial portions of the Software.
         <br><br>
         <em>Technical questions & bug reports</em>
         <br><br>
-        <a href="mailto:support@yourdomain.com" style="color: white; text-decoration: underline;">support@yourdomain.com</a>
+        <a href="mailto:vladislavaleshaev@gmail.com" style="color: white; text-decoration: underline;">vladislavaleshaev@gmail.com</a>
       </div>
     </td>
     <td align="center" width="25%">
@@ -2885,7 +2900,7 @@ copies or substantial portions of the Software.
         <br><br>
         <em>Bug reports & feature requests</em>
         <br><br>
-        <a href="https://github.com/yourusername/nextjs-auth-app/issues" style="color: white; text-decoration: underline;">Report Issue →</a>
+        <a href="https://github.com/Gurgant/nextjs-auth-app/issues" style="color: white; text-decoration: underline;">Report Issue →</a>
       </div>
     </td>
     <td align="center" width="25%">
@@ -2945,10 +2960,10 @@ This isn't just another authentication template—it's a **production-ready ente
 
 **⭐ If this project helped you, please consider giving it a star on GitHub!**
 
-[⬆ Back to top](#-nextjs-enterprise-authentication-platform) • [🌟 Star this repo](https://github.com/yourusername/nextjs-auth-app) • [🚀 Deploy now](#-quick-start)
+[⬆ Back to top](#-nextjs-enterprise-authentication-platform) • [🌟 Star this repo](https://github.com/Gurgant/nextjs-auth-app) • [🚀 Deploy now](#-quick-start)
 
 ---
 
-**🔄 Last Updated**: January 2024 | **📊 Status**: Production Ready | **🎯 Version**: 3.1
+**🔄 Last Updated**: August 2025 | **📊 Status**: Production Ready | **🎯 Version**: 2.0
 
 </div>

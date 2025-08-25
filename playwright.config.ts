@@ -73,7 +73,6 @@ export default defineConfig({
         ignoreHTTPSErrors: true,
         locale: "en-US",
         timezoneId: "America/New_York",
-        reducedMotion: "reduce", // Disable animations for stable screenshots
         colorScheme: "light", // Consistent light theme
       },
       expect: { timeout: 10000 },
