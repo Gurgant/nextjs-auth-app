@@ -48,7 +48,7 @@ export default async function VerifyEmailPage({ params }: Props) {
 
             <div className="space-y-4">
               <Link
-                href={`/${locale}/dashboard`}
+                href={`/${locale}/account`}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
               >
                 {t("goToDashboard")}

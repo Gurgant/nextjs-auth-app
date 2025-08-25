@@ -35,7 +35,7 @@ export function CredentialsForm() {
       if (result?.error) {
         setError(t("invalidCredentials"));
       } else {
-        router.push(`/${locale}/dashboard`);
+        router.push(`/${locale}/account`);
         router.refresh();
       }
     } catch {

@@ -62,7 +62,7 @@ export default async function ConfirmAccountLinkingPage({ params }: Props) {
               </Link>
 
               <Link
-                href={`/${locale}/dashboard`}
+                href={`/${locale}/account`}
                 className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
                 {t("goToDashboard")}

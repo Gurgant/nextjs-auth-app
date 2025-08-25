@@ -63,29 +63,66 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    // Documentation screenshots project with stable configuration
+    {
+      name: "chromium-docs",
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
+        viewport: { width: 1440, height: 900 }, // Optimized for GitHub README
+        ignoreHTTPSErrors: true,
+        locale: "en-US",
+        timezoneId: "America/New_York",
+        reducedMotion: "reduce", // Disable animations for stable screenshots
+        colorScheme: "light", // Consistent light theme
+      },
+      expect: { timeout: 10000 },
+      retries: 0, // No retries for deterministic screenshots
+      fullyParallel: false, // Sequential for stable captures
+    },
   ],
 
   // Web server for development and CI
-  webServer: {
-    command:
-      'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm run dev',
-    url: "http://localhost:3000",
-    reuseExistingServer: true, // Always reuse to prevent port conflicts
-    timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
-    stdout: "pipe",
-    stderr: "pipe",
-    env: {
-      DATABASE_URL:
-        "postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db",
-      NODE_ENV: "test",
-      // CI-specific optimizations
-      ...(process.env.CI && {
-        NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
-        NEXTAUTH_URL: "http://localhost:3000",
-        PORT: "3000",
-      }),
-    },
-  },
+  webServer: process.env.DOCS_SCREENSHOTS
+    ? // Production build for stable documentation screenshots
+      {
+        command:
+          'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm build && pnpm start',
+        url: "http://localhost:3000",
+        reuseExistingServer: true,
+        timeout: 120000, // 2 minutes for build + start
+        stdout: "pipe",
+        stderr: "pipe",
+        env: {
+          DATABASE_URL:
+            "postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db",
+          NODE_ENV: "production",
+          NEXTAUTH_SECRET: "docs-screenshot-secret-key",
+          NEXTAUTH_URL: "http://localhost:3000",
+          PORT: "3000",
+        },
+      }
+    : // Development server for regular tests
+      {
+        command:
+          'DATABASE_URL="postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db" pnpm run dev',
+        url: "http://localhost:3000",
+        reuseExistingServer: true, // Always reuse to prevent port conflicts
+        timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
+        stdout: "pipe",
+        stderr: "pipe",
+        env: {
+          DATABASE_URL:
+            "postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db",
+          NODE_ENV: "test",
+          // CI-specific optimizations
+          ...(process.env.CI && {
+            NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
+            NEXTAUTH_URL: "http://localhost:3000",
+            PORT: "3000",
+          }),
+        },
+      },
 
   // Output directory
   outputDir: "test-results/",

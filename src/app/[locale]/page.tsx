@@ -80,7 +80,7 @@ export default function HomePage() {
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 space-y-4">
               <Link
-                href={`/${currentLocale}/dashboard`}
+                href={`/${currentLocale}/account`}
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 prefetch={false}
                 scroll={false}

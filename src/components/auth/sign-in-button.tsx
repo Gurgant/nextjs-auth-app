@@ -47,7 +47,7 @@ export function SignInButton() {
   return (
     <button
       onClick={() =>
-        signIn("google", { callbackUrl: `/${currentLocale}/dashboard` })
+        signIn("google", { callbackUrl: `/${currentLocale}/account` })
       }
       className="w-full flex justify-center items-center py-3 px-4 border border-gray-200 rounded-xl shadow-sm text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] hover:shadow-md"
       data-testid="sign-in-with-google-button"

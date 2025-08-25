@@ -12,3 +12,25 @@ src/generated/
 /generated/prisma
 .env.development
 .env.test
+
+# Generated artifacts and test output
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Claude Code generated files
+.claude/
+
+# Playwright MCP working directory (temp/scratch files)
+.playwright-mcp/
+
+# Build caches
+.next/
+.turbo/
+dist/
+
+# Additional generated files
+*.generated.*
+
+# NOTE: docs/screenshots/ is NOT ignored - these are tracked for README rendering
