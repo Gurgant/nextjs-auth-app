@@ -34,3 +34,4 @@ dist/
 *.generated.*
 
 # NOTE: docs/screenshots/ is NOT ignored - these are tracked for README rendering
+/home/gurgant/CursorProjects/2/backup/

@@ -7,6 +7,7 @@ import {
   CreateUserWithAccountDTO,
   UpdateUserDTO,
   UserWithAccounts,
+  UserWithAccountDetails,
 } from "./user.repository.interface";
 
 export class UserRepository
@@ -156,5 +157,23 @@ export class UserRepository
       where: { id },
       data: updateData,
     });
+  }
+
+  async findByIdWithAccountDetails(
+    userId: string,
+  ): Promise<UserWithAccountDetails | null> {
+    return (await this.model.findUnique({
+      where: { id: userId },
+      include: {
+        accounts: {
+          select: {
+            id: true,
+            provider: true,
+            providerAccountId: true,
+            type: true,
+          },
+        },
+      },
+    })) as UserWithAccountDetails | null;
   }
 }

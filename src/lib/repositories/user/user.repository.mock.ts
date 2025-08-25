@@ -5,6 +5,7 @@ import {
   CreateUserWithAccountDTO,
   UpdateUserDTO,
   UserWithAccounts,
+  UserWithAccountDetails,
 } from "./user.repository.interface";
 import { PaginatedResult, PaginationOptions, QueryOptions } from "../types";
 
@@ -246,6 +247,18 @@ export class InMemoryUserRepository implements IUserRepository {
     providerAccountId: string,
   ): Promise<User | null> {
     return null;
+  }
+
+  async findByIdWithAccountDetails(
+    userId: string,
+  ): Promise<UserWithAccountDetails | null> {
+    const user = await this.findById(userId);
+    if (!user) return null;
+
+    return {
+      ...user,
+      accounts: [],
+    };
   }
 
   clear(): void {

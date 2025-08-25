@@ -27,6 +27,10 @@ export interface UserWithAccounts extends User {
   accounts?: Account[];
 }
 
+export interface UserWithAccountDetails extends User {
+  accounts: Account[];
+}
+
 export interface IUserRepository extends IRepository<User> {
   findByEmail(email: string): Promise<User | null>;
   findByEmailWithAccounts(email: string): Promise<UserWithAccounts | null>;
@@ -41,4 +45,7 @@ export interface IUserRepository extends IRepository<User> {
     provider: string,
     providerAccountId: string,
   ): Promise<User | null>;
+  findByIdWithAccountDetails(
+    userId: string,
+  ): Promise<UserWithAccountDetails | null>;
 }
