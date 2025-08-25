@@ -2909,7 +2909,7 @@ copies or substantial portions of the Software.
         <br><br>
         <em>Comprehensive guides & tutorials</em>
         <br><br>
-        <a href="https://docs.yourdomain.com" style="color: white; text-decoration: underline;">View Docs →</a>
+        <a href="https://github.com/Gurgant/nextjs-auth-app#-table-of-contents" style="color: white; text-decoration: underline;">View Docs →</a>
       </div>
     </td>
   </tr>
