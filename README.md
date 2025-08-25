@@ -89,7 +89,7 @@ _Sleek, responsive sign-in interface with Google OAuth and email/password option
 </details>
 
 <details>
-<summary><strong>🇮🇹 Italiano - Stile e Funzionalità</strong></summary>
+<summary><strong>🇮🇹 Italiano - Stile e Funzionalit� </strong></summary>
 <br>
 <img src="docs/screenshots/locale-it.png" alt="Italian Interface" width="500">
 <br><em>Interfaccia italiana completa con localizzazione culturale, messaggi contestuali e design elegante per utenti italiani.</em>
@@ -112,7 +112,7 @@ _Sleek, responsive sign-in interface with Google OAuth and email/password option
 <div align="center">
 <img src="docs/screenshots/dashboard-main.png" alt="Main Dashboard - Account Management" width="90%" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);">
 
-**🏠 Main Dashboard (`/account`)** - _Your comprehensive account management hub with gradient design, authentication methods, profile settings, 2FA setup, and security features_
+**� Main Dashboard (`/account`)** - _Your comprehensive account management hub with gradient design, authentication methods, profile settings, 2FA setup, and security features_
 
 </div>
 
@@ -168,19 +168,19 @@ _Sleek, responsive sign-in interface with Google OAuth and email/password option
 
 **🎢 User Experience Flow:**
 
-```
-🌟 Journey Progression
-├── 👤 New User → Beautiful Main Dashboard (/account)
+```text
+User Journey Progression
+├── New User → Main Dashboard (/account)
 │   ├── Account setup and profile management
 │   ├── Basic feature access and tutorials
 │   └── Clear upgrade path to PRO features
 │
-├── ⭐ PRO Upgrade → Enhanced PRO Dashboard
+├── PRO Upgrade → Enhanced PRO Dashboard
 │   ├── Advanced analytics and data insights
 │   ├── API access and integration tools
 │   └── Priority support and exclusive features
 │
-└── 🛡️ Admin Access → Complete System Control
+└── Admin Access → Complete System Control
     ├── User management and system oversight
     ├── Security monitoring and audit logs
     └── Configuration and system administration
@@ -313,27 +313,27 @@ const users = await userRepository.findByRole("PRO_USER");
 
 <div align="center">
 
-```
-🎯 Testing Pyramid - 100% Coverage Strategy
-├── 🎭 87/87 E2E Tests (Playwright)
+```text
+Testing Pyramid - 100% Coverage Strategy
+├── E2E Tests (Playwright) — 87/87 passing
 │   ├── Multi-language user journeys
 │   ├── Role-based access validation
 │   ├── Authentication flows
 │   └── Cross-browser compatibility
 │
-├── 🔗 Integration Tests (Jest + Real DB)
+├── Integration Tests (Jest + Real DB)
 │   ├── Database operations
 │   ├── API endpoint validation
 │   ├── Command pattern execution
 │   └── Event system testing
 │
-├── 🧪 Unit Tests (Jest)
+├── Unit Tests (Jest)
 │   ├── Business logic validation
 │   ├── Utility functions
 │   ├── Component behavior
 │   └── Error handling
 │
-└── 🔀 Hybrid Tests (Mock/Real Modes)
+└── Hybrid Tests (Mock/Real Modes)
     ├── Flexible test environments
     ├── CI/CD optimization
     ├── Development speed
@@ -857,7 +857,7 @@ pnpm test:integration   # Includes USER, PRO_USER, ADMIN flows
   <tr>
     <td align="center" width="20%">
       <div style="padding: 15px; background: linear-gradient(45deg, #3b82f6, #1e40af); color: white; border-radius: 8px; margin: 5px;">
-        <strong>🏠 Home Page</strong>
+        <strong>�  Home Page</strong>
         <br><br>
         <em>Multi-language support with dynamic switching</em>
         <br><br>
@@ -947,36 +947,36 @@ pnpm test:integration   # Includes USER, PRO_USER, ADMIN flows
 
 <div align="center">
 
-```
-🎭 E2E Test Categories (87 Total Tests)
-├── 🔐 Authentication Flows (25 tests)
+```text
+E2E Test Categories (87 Total Tests)
+├── Authentication Flows (25 tests)
 │   ├── Email/password registration and login
 │   ├── Google OAuth integration
 │   ├── Password reset workflows
 │   ├── Email verification processes
 │   └── Session management and security
 │
-├── 🎭 Role-Based Access Control (18 tests)
+├── Role-Based Access Control (18 tests)
 │   ├── USER role permissions and restrictions
 │   ├── PRO_USER advanced feature access
 │   ├── ADMIN system control validation
 │   └── Role upgrade/downgrade flows
 │
-├── 🌍 Multi-Language Support (15 tests)
+├── Multi-Language Support (15 tests)
 │   ├── Interface translation accuracy
 │   ├── Dynamic language switching
 │   ├── URL localization persistence
 │   ├── Form validation in each language
 │   └── Cultural formatting (dates, numbers)
 │
-├── 🏢 Dashboard Functionality (20 tests)
+├── Dashboard Functionality (20 tests)
 │   ├── Main dashboard (/account) features
 │   ├── Role-specific dashboard access
 │   ├── Profile management and settings
 │   ├── Navigation between dashboard areas
 │   └── Data display and interaction
 │
-└── 🔒 Security & Error Handling (9 tests)
+└── Security & Error Handling (9 tests)
     ├── Input validation and sanitization
     ├── CSRF protection verification
     ├── Rate limiting enforcement
@@ -986,7 +986,7 @@ pnpm test:integration   # Includes USER, PRO_USER, ADMIN flows
 
 </div>
 
-### 🛠️ **Advanced Testing Commands**
+### � ️ **Advanced Testing Commands**
 
 ```bash
 # 🎯 Targeted Test Execution
@@ -1455,6 +1455,9 @@ Content-Type: application/json
 
 #### **PRO User Features**
 
+<details>
+<summary>⭐ <strong>View Complete PRO User Features API</strong> (45+ lines - Click to expand)</summary>
+
 ```typescript
 GET /api/pro/analytics
 Authorization: Bearer <session-token>
@@ -1500,7 +1503,12 @@ Content-Type: application/json
 }
 ```
 
+</details>
+
 #### **Admin Management**
+
+<details>
+<summary>🛡️ <strong>View Complete Admin Management API</strong> (50+ lines - Click to expand)</summary>
 
 ```typescript
 GET /api/admin/users
@@ -1554,6 +1562,8 @@ Content-Type: application/json
   }
 }
 ```
+
+</details>
 
 ### ⚡ **Command System API**
 
@@ -1720,7 +1730,10 @@ graph LR
 
 ### 🛡️ **Production Deployment Features**
 
-#### **🚀 Zero-Downtime Deployment**
+<details>
+<summary>🚀 <strong>View Zero-Downtime Deployment Implementation</strong> (77+ lines - Click to expand)</summary>
+
+#### **Zero-Downtime Deployment**
 
 ```yaml
 # GitHub Actions Workflow (.github/workflows/deploy.yml)
@@ -1798,7 +1811,12 @@ jobs:
             - Zero downtime deployment ✅
 ```
 
-#### **🔍 Health Monitoring & Alerts**
+</details>
+
+<details>
+<summary>🔍 <strong>View Health Monitoring & Alerts Implementation</strong> (45+ lines - Click to expand)</summary>
+
+#### **Health Monitoring & Alerts**
 
 ```typescript
 // Health Check Endpoint (/api/health)
@@ -1844,6 +1862,8 @@ export async function GET() {
   );
 }
 ```
+
+</details>
 
 ### 🌍 **Multi-Platform Deployment Options**
 
@@ -2098,7 +2118,7 @@ Closes #(issue number)
 3. **Repository Pattern**: Review `/src/lib/repositories/` for data access abstraction
 4. **Testing Strategies**: Examine `/src/test/` for comprehensive testing approaches
 
-#### **🛠️ Development Areas**
+#### **� ️ Development Areas**
 
 - **🌍 Internationalization**: Add support for new languages
 - **🎨 UI Components**: Create reusable design system components
@@ -2257,6 +2277,9 @@ export function sanitizeHtml(input: string): string {
 
 #### **🚀 Next.js Optimization Techniques**
 
+<details>
+<summary>🚀 <strong>View Complete Next.js Optimization Techniques</strong> (45+ lines - Click to expand)</summary>
+
 ```typescript
 // Image optimization with next/image
 import Image from 'next/image';
@@ -2304,7 +2327,12 @@ module.exports = withBundleAnalyzer({
 });
 ```
 
+</details>
+
 #### **🗃️ Database Performance**
+
+<details>
+<summary>🗃️ <strong>View Complete Database Performance Optimization</strong> (75+ lines - Click to expand)</summary>
 
 ```typescript
 // Connection pooling optimization
@@ -2383,9 +2411,14 @@ export class CachedUserRepository {
 }
 ```
 
+</details>
+
 ### 🧪 **Advanced Testing Strategies**
 
 #### **🎭 E2E Testing Excellence**
+
+<details>
+<summary>🎭 <strong>View Complete E2E Testing Implementation</strong> (70+ lines - Click to expand)</summary>
 
 ```typescript
 // Page Object Model with advanced patterns
@@ -2458,7 +2491,12 @@ describe("Authentication Flow - Multi-Language", () => {
 });
 ```
 
+</details>
+
 #### **🔄 Test Data Management**
+
+<details>
+<summary>🔄 <strong>View Complete Test Data Management System</strong> (85+ lines - Click to expand)</summary>
 
 ```typescript
 // Builder pattern for consistent test data
@@ -2546,9 +2584,14 @@ export class TestDatabaseSeeder {
 }
 ```
 
+</details>
+
 ### 🚀 **Deployment & DevOps Best Practices**
 
 #### **🔄 CI/CD Pipeline Optimization**
+
+<details>
+<summary>🔄 <strong>View Complete CI/CD Pipeline Configuration</strong> (160+ lines - Click to expand)</summary>
 
 ```yaml
 # Advanced GitHub Actions workflow
@@ -2709,9 +2752,14 @@ jobs:
             - Deploy time: ${{ steps.deployment.outputs.deploy-time }}
 ```
 
+</details>
+
 ### 🎯 **Production Monitoring & Observability**
 
 #### **📊 Application Monitoring**
+
+<details>
+<summary>📊 <strong>View Complete Application Monitoring Implementation</strong> (90+ lines - Click to expand)</summary>
 
 ```typescript
 // Comprehensive health monitoring
@@ -2804,6 +2852,8 @@ export class PerformanceMonitor {
 }
 ```
 
+</details>
+
 ---
 
 ## 📄 License
@@ -2847,7 +2897,7 @@ copies or substantial portions of the Software.
 - **[Prisma](https://prisma.io/)** - For the amazing database ORM
 - **[TypeScript Team](https://www.typescriptlang.org/)** - For type safety and developer experience
 
-### 🛠️ **Development Tools**
+### � ️ **Development Tools**
 
 - **[Jest](https://jestjs.io/)** & **[Playwright](https://playwright.dev/)** - For comprehensive testing
 - **[ESLint](https://eslint.org/)** & **[Prettier](https://prettier.io/)** - For code quality and formatting
