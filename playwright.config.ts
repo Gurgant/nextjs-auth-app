@@ -63,22 +63,6 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    // Documentation screenshots project with stable configuration
-    {
-      name: "chromium-docs",
-      use: {
-        ...devices["Desktop Chrome"],
-        baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
-        viewport: { width: 1440, height: 900 }, // Optimized for GitHub README
-        ignoreHTTPSErrors: true,
-        locale: "en-US",
-        timezoneId: "America/New_York",
-        colorScheme: "light", // Consistent light theme
-      },
-      expect: { timeout: 10000 },
-      retries: 0, // No retries for deterministic screenshots
-      fullyParallel: false, // Sequential for stable captures
-    },
   ],
 
   // Web server for development and CI

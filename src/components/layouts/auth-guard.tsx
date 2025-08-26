@@ -40,7 +40,7 @@ export async function AuthGuard({
 
   // Handle public routes (redirect authenticated users)
   if (!requireAuth && isAuthenticated) {
-    const defaultRedirect = `/${locale}/account`;
+    const defaultRedirect = `/${locale}/dashboard`;
     redirect(redirectTo || defaultRedirect);
   }
 
