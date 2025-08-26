@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -173,7 +173,7 @@ jobs:
     if: github.event_name == 'schedule'
     steps:
       - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 📦 Setup pnpm
         uses: pnpm/action-setup@v2
