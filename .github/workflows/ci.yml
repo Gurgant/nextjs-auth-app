@@ -126,7 +126,7 @@ jobs:
           CI: true
         run: |
           echo "🧪 Running Jest unit tests with CI optimizations..."
-          pnpm test -- --ci --maxWorkers=2 --coverage=false --silent
+          pnpm test:unit -- --ci --maxWorkers=2 --coverage=false --silent
 
       - name: 📊 Upload test coverage
         uses: actions/upload-artifact@v4
