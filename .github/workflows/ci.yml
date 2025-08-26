@@ -12,7 +12,7 @@ concurrency:
 
 env:
   NODE_VERSION: "20"
-  PNPM_VERSION: "8"
+  PNPM_VERSION: "10.12.1"
 
 jobs:
   # ==============================================================================
@@ -206,8 +206,13 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
           NEXTAUTH_SECRET: ci-test-secret-key-for-testing-only
           NEXTAUTH_URL: http://localhost:3000
+          GOOGLE_CLIENT_ID: fake-client-id-for-ci
+          GOOGLE_CLIENT_SECRET: fake-client-secret-for-ci
           CI: true
-        run: pnpm exec playwright test --workers=1 --reporter=github
+        run: |
+          echo "🎭 Running E2E tests with global setup..."
+          # Global setup handles server startup and database seeding
+          pnpm exec playwright test --workers=1 --reporter=github
 
       - name: 📊 Upload E2E test results
         uses: actions/upload-artifact@v4

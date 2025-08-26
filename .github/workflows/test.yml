@@ -133,7 +133,7 @@ jobs:
           pnpm prisma:push
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium
+        run: pnpm exec playwright install chromium --with-deps
 
       - name: Build application
         run: pnpm build
@@ -143,11 +143,13 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret-for-ci
+          GOOGLE_CLIENT_ID: fake-client-id-for-ci
+          GOOGLE_CLIENT_SECRET: fake-client-secret-for-ci
           CI: true
         run: |
-          pnpm start &
-          sleep 10
-          pnpm test:e2e:chromium
+          echo "🎭 Running E2E tests with proper setup..."
+          # Use standard E2E command - global setup handles everything
+          pnpm exec playwright test --workers=1 --reporter=github
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
