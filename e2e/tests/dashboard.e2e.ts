@@ -17,7 +17,10 @@ test.describe("Dashboard Functionality", () => {
 
     // Check for dashboard button and navigate if needed
     const currentUrl = page.url();
-    if (!currentUrl.includes("/account") && !currentUrl.includes("/dashboard")) {
+    if (
+      !currentUrl.includes("/account") &&
+      !currentUrl.includes("/dashboard")
+    ) {
       // Wait for authenticated state to be established
       await page.waitForSelector('[data-testid="authenticated-home"]', {
         timeout: 15000,
@@ -37,7 +40,8 @@ test.describe("Dashboard Functionality", () => {
   test("should display dashboard after login", async ({ page }) => {
     // Check if we're on authenticated area (account, dashboard) or showing welcome
     const url = page.url();
-    const isAuthenticated = url.includes("account") || url.includes("dashboard");
+    const isAuthenticated =
+      url.includes("account") || url.includes("dashboard");
     const hasWelcome = (await page.locator("text=/Welcome/i").count()) > 0;
 
     expect(isAuthenticated || hasWelcome).toBeTruthy();
@@ -146,18 +150,25 @@ test.describe("Dashboard Functionality", () => {
 
     // Wait for session to be restored after refresh - NextAuth needs time
     await page.waitForTimeout(5000);
-    
+
     // Wait for page to fully load and session to be established
     await page.waitForLoadState("networkidle");
 
     // Check if still logged in with more reliable detection
     const url = page.url();
-    const hasSignOutButton = (await page.locator('button:has-text("Sign out")').count()) > 0;
+    const hasSignOutButton =
+      (await page.locator('button:has-text("Sign out")').count()) > 0;
     const hasWelcomeText = (await page.locator("text=/Welcome/i").count()) > 0;
-    const hasAuthenticatedHome = (await page.locator('[data-testid="authenticated-home"]').count()) > 0;
-    const isOnAccountPage = url.includes("/account") || url.includes("/dashboard");
-    
-    const isStillLoggedIn = hasSignOutButton || hasWelcomeText || hasAuthenticatedHome || isOnAccountPage;
+    const hasAuthenticatedHome =
+      (await page.locator('[data-testid="authenticated-home"]').count()) > 0;
+    const isOnAccountPage =
+      url.includes("/account") || url.includes("/dashboard");
+
+    const isStillLoggedIn =
+      hasSignOutButton ||
+      hasWelcomeText ||
+      hasAuthenticatedHome ||
+      isOnAccountPage;
 
     // Debug logging
     console.log("Session refresh debug:", {
@@ -166,7 +177,7 @@ test.describe("Dashboard Functionality", () => {
       hasWelcomeText,
       hasAuthenticatedHome,
       isOnAccountPage,
-      isStillLoggedIn
+      isStillLoggedIn,
     });
 
     expect(isStillLoggedIn).toBeTruthy();

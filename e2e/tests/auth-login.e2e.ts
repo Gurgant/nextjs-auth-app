@@ -21,11 +21,13 @@ test.describe("User Login/Logout Flow", () => {
 
     // Wait for any potential redirects to settle
     await loginPage.page.waitForTimeout(2000);
-    
+
     // Verify successful login by checking we're redirected to authenticated area
     const currentUrl = loginPage.page.url();
     console.log(`🔍 Current URL after login: ${currentUrl}`);
-    expect(currentUrl).toMatch(/\/(en|es|fr|de|it)(\/account.*|\/dashboard.*)?$/); // Should be on home page, account, or dashboard
+    expect(currentUrl).toMatch(
+      /\/(en|es|fr|de|it)(\/account.*|\/dashboard.*)?$/,
+    ); // Should be on home page, account, or dashboard
 
     // Check authentication success - either dashboard button visible OR already on dashboard/account
     if (currentUrl.includes("/dashboard") || currentUrl.includes("/account")) {
@@ -34,7 +36,7 @@ test.describe("User Login/Logout Flow", () => {
     } else {
       // On home page - wait for authenticated state to be established
       console.log("🔍 Waiting for authenticated home element...");
-      
+
       try {
         await loginPage.page.waitForSelector(
           '[data-testid="authenticated-home"]',
@@ -42,12 +44,19 @@ test.describe("User Login/Logout Flow", () => {
         );
         console.log("✅ Found authenticated-home element");
       } catch (error) {
-        console.log("❌ Authenticated-home element not found, checking page content...");
-        const pageContent = await loginPage.page.textContent('body');
-        console.log(`Page content preview: ${pageContent?.substring(0, 200)}...`);
-        
+        console.log(
+          "❌ Authenticated-home element not found, checking page content...",
+        );
+        const pageContent = await loginPage.page.textContent("body");
+        console.log(
+          `Page content preview: ${pageContent?.substring(0, 200)}...`,
+        );
+
         // Check if user is actually authenticated by looking for welcome message
-        const hasWelcome = await loginPage.page.locator('text=Welcome back').isVisible().catch(() => false);
+        const hasWelcome = await loginPage.page
+          .locator("text=Welcome back")
+          .isVisible()
+          .catch(() => false);
         if (hasWelcome) {
           console.log("✅ Found welcome message - user is authenticated");
         } else {
@@ -59,13 +68,17 @@ test.describe("User Login/Logout Flow", () => {
       const dashboardButton = loginPage.page.locator(
         '[data-testid="go-to-dashboard-button"]',
       );
-      const hasDashboardButton = await dashboardButton.isVisible().catch(() => false);
-      
+      const hasDashboardButton = await dashboardButton
+        .isVisible()
+        .catch(() => false);
+
       if (hasDashboardButton) {
         console.log("✅ Found dashboard button, clicking...");
         await dashboardButton.click();
       } else {
-        console.log("ℹ️ No dashboard button found - user might already be on authenticated page");
+        console.log(
+          "ℹ️ No dashboard button found - user might already be on authenticated page",
+        );
       }
     }
 
@@ -384,13 +397,15 @@ test.describe("User Login/Logout Flow", () => {
     // Business logic allows unverified users to login successfully
     // They are redirected to account management (not blocked)
     await loginPage.page.waitForTimeout(3000);
-    
+
     const currentUrl = loginPage.page.url();
-    const isLoggedIn = 
+    const isLoggedIn =
       currentUrl.includes("/account") ||
       currentUrl.includes("/dashboard") ||
-      (await loginPage.page.locator('[data-testid="authenticated-home"]').count()) > 0;
-    
+      (await loginPage.page
+        .locator('[data-testid="authenticated-home"]')
+        .count()) > 0;
+
     // Unverified users should be able to login (business logic allows it)
     expect(isLoggedIn).toBeTruthy();
   });

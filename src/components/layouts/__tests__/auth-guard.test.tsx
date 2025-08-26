@@ -96,7 +96,7 @@ describe("AuthGuard", () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    it("redirects to dashboard when user is authenticated", async () => {
+    it("redirects to account when user is authenticated", async () => {
       // Mock authenticated user
       mockAuth.mockResolvedValue({
         user: { id: "1", email: "test@example.com" },
@@ -109,7 +109,7 @@ describe("AuthGuard", () => {
         requireAuth: false,
       });
 
-      expect(mockRedirect).toHaveBeenCalledWith("/en/dashboard");
+      expect(mockRedirect).toHaveBeenCalledWith("/en/account");
     });
 
     it("redirects to custom path when authenticated", async () => {
@@ -129,7 +129,7 @@ describe("AuthGuard", () => {
       expect(mockRedirect).toHaveBeenCalledWith("/en/profile");
     });
 
-    it("uses correct locale in dashboard redirect", async () => {
+    it("uses correct locale in account redirect", async () => {
       // Mock authenticated user
       mockAuth.mockResolvedValue({
         user: { id: "1", email: "test@example.com" },
@@ -142,7 +142,7 @@ describe("AuthGuard", () => {
         requireAuth: false,
       });
 
-      expect(mockRedirect).toHaveBeenCalledWith("/de/dashboard");
+      expect(mockRedirect).toHaveBeenCalledWith("/de/account");
     });
   });
 

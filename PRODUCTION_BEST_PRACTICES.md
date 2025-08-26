@@ -9,25 +9,33 @@
 ## 🎯 **CORE PRINCIPLES**
 
 ### **1. Business Logic First**
+
 ✅ **Tests must match actual application behavior, not test expectations**
+
 - Always validate business logic before writing tests
 - Update tests when business rules change, don't force application changes
 - Example: Unverified users CAN login (update test to expect success, not failure)
 
 ### **2. Infrastructure Reliability**
+
 ✅ **Stable foundation enables consistent test success**
+
 - Database connections must be verified before each test run
 - Zombie processes must be cleaned up proactively
 - Environment health checks are mandatory
 
-### **3. Optimization Balance** 
+### **3. Optimization Balance**
+
 ✅ **Quality over quantity, reliability over coverage**
+
 - 77 reliable tests > 182 flaky tests
 - Remove redundant tests aggressively
 - Focus on critical path coverage
 
 ### **4. Maintainability Focus**
+
 ✅ **Tests should be easy to understand, modify, and debug**
+
 - Use data-testid attributes over fragile text selectors
 - Implement progressive wait strategies
 - Document all business logic decisions in tests
@@ -37,6 +45,7 @@
 ## 🔧 **DAILY OPERATION PROCEDURES**
 
 ### **Pre-Test Execution Checklist** ⚡
+
 ```bash
 # 1. Check for zombie processes (CRITICAL)
 netstat -tulnp 2>/dev/null | grep -E ":(3000|3001|3002|3003|3004|3005)"
@@ -52,6 +61,7 @@ DATABASE_URL='postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db' p
 ```
 
 ### **Test Execution Standards** 📋
+
 ```bash
 # Single worker execution (REQUIRED for reliability)
 pnpm exec playwright test --workers=1 --reporter=line
@@ -64,6 +74,7 @@ pnpm exec playwright test --workers=1 -g "test name" --reporter=line
 ```
 
 ### **Post-Execution Validation** ✅
+
 1. **Verify 100% success rate** - Any failure requires immediate investigation
 2. **Check execution time** - Should be <15 minutes for full suite
 3. **Review performance** - Flag any tests taking >60 seconds
@@ -74,6 +85,7 @@ pnpm exec playwright test --workers=1 -g "test name" --reporter=line
 ## 🏗️ **INFRASTRUCTURE MANAGEMENT**
 
 ### **Database Management** 🗄️
+
 ```bash
 # E2E Database (Port 5433) - NEVER use port 5432 for E2E
 # Startup procedure:
@@ -89,6 +101,7 @@ DATABASE_URL='postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db' p
 ```
 
 ### **Process Management** ⚙️
+
 ```bash
 # Zombie process detection:
 ps aux | grep -E "(next|node|playwright)" | grep -v grep
@@ -101,6 +114,7 @@ lsof -ti:3000 | xargs kill -9
 ```
 
 ### **Environment Variables** 🌍
+
 ```bash
 # Required for E2E tests:
 DATABASE_URL='postgresql://postgres:postgres123@localhost:5433/nextjs_auth_db'
@@ -115,18 +129,20 @@ GOOGLE_CLIENT_SECRET='[your-secret]'
 ## 📝 **TEST WRITING STANDARDS**
 
 ### **Selector Strategy** 🎯
+
 ```typescript
 // ✅ PREFERRED: Use data-testid attributes
-await page.locator('[data-testid="authenticated-home"]')
+await page.locator('[data-testid="authenticated-home"]');
 
-// ✅ ACCEPTABLE: Stable form selectors  
-await page.locator('input[id="email"]')
+// ✅ ACCEPTABLE: Stable form selectors
+await page.locator('input[id="email"]');
 
 // ❌ AVOID: Fragile text-based selectors
-await page.locator('text=Welcome back') // Language dependent, fragile
+await page.locator("text=Welcome back"); // Language dependent, fragile
 ```
 
 ### **Wait Strategies** ⏱️
+
 ```typescript
 // ✅ PREFERRED: Progressive waits
 await page.waitForTimeout(3000); // Session establishment
@@ -141,6 +157,7 @@ await page.waitForTimeout(10000); // Too long, slows tests
 ```
 
 ### **Error Handling** 🚨
+
 ```typescript
 // ✅ PREFERRED: Comprehensive error context
 try {
@@ -152,7 +169,7 @@ try {
 }
 
 // ✅ ACCEPTABLE: Business logic validation
-const isLoggedIn = 
+const isLoggedIn =
   currentUrl.includes("/account") ||
   currentUrl.includes("/dashboard") ||
   (await page.locator('[data-testid="authenticated-home"]').count()) > 0;
@@ -165,6 +182,7 @@ expect(isLoggedIn).toBeTruthy();
 ## 🔍 **DEBUGGING PROCEDURES**
 
 ### **Test Failure Investigation** 🕵️
+
 1. **Check screenshots**: `test-results/[test-name]/test-failed-1.png`
 2. **Review video**: `test-results/[test-name]/video.webm`
 3. **Analyze logs**: Look for authentication errors, timeouts, selector failures
@@ -172,12 +190,13 @@ expect(isLoggedIn).toBeTruthy();
 5. **Reproduce manually**: Use MCP Playwright for manual verification
 
 ### **Common Failure Patterns** ⚠️
+
 ```typescript
 // Pattern 1: Timing Issues
 // Symptom: Element not found, random failures
 // Solution: Increase waits, improve element detection
 
-// Pattern 2: Session Issues  
+// Pattern 2: Session Issues
 // Symptom: Login appears successful but tests fail
 // Solution: Add session validation, increase wait times
 
@@ -191,6 +210,7 @@ expect(isLoggedIn).toBeTruthy();
 ```
 
 ### **Performance Issues** 🐌
+
 ```bash
 # Identify slow tests:
 pnpm exec playwright test --reporter=html
@@ -198,7 +218,7 @@ pnpm exec playwright test --reporter=html
 
 # Common causes:
 # - Excessive waits (reduce fixed timeouts)
-# - Database operations (optimize queries)  
+# - Database operations (optimize queries)
 # - Page compilation (first run always slower)
 # - Network issues (check Docker networking)
 ```
@@ -208,18 +228,21 @@ pnpm exec playwright test --reporter=html
 ## 📊 **MONITORING & METRICS**
 
 ### **Success Rate Tracking** 📈
+
 - **Target**: 100% success rate for production readiness
 - **Acceptable**: >95% success rate for development
 - **Alert Level**: <90% success rate requires immediate attention
 - **Critical**: <80% success rate indicates systemic issues
 
 ### **Performance Benchmarks** ⚡
+
 - **Full Suite**: <15 minutes (target: <10 minutes)
-- **Individual Test**: <60 seconds (target: <30 seconds)  
+- **Individual Test**: <60 seconds (target: <30 seconds)
 - **Authentication Tests**: <45 seconds (target: <30 seconds)
 - **Database Operations**: <5 seconds per operation
 
 ### **Quality Metrics** ✨
+
 - **Flaky Test Rate**: <2% (tests failing inconsistently)
 - **False Positive Rate**: <1% (tests failing for wrong reasons)
 - **Coverage**: >90% of critical authentication paths
@@ -230,6 +253,7 @@ pnpm exec playwright test --reporter=html
 ## 🚀 **DEPLOYMENT INTEGRATION**
 
 ### **CI/CD Pipeline Standards** 🔄
+
 ```yaml
 # GitHub Actions example:
 name: E2E Tests
@@ -242,7 +266,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18'
+          node-version: "18"
       - name: Install dependencies
         run: pnpm install
       - name: Start database
@@ -259,8 +283,9 @@ jobs:
 ```
 
 ### **Quality Gates** 🚪
+
 - **Pre-merge**: All E2E tests must pass
-- **Pre-deployment**: Full test suite success required  
+- **Pre-deployment**: Full test suite success required
 - **Post-deployment**: Smoke tests must validate production
 - **Performance**: No >10% regression in test execution time
 
@@ -269,6 +294,7 @@ jobs:
 ## 🔧 **MAINTENANCE PROCEDURES**
 
 ### **Weekly Tasks** 📅
+
 - [ ] Run full test suite 3x and verify 100% consistency
 - [ ] Review test execution times and identify slow tests
 - [ ] Check for flaky tests (tests that fail occasionally)
@@ -276,6 +302,7 @@ jobs:
 - [ ] Verify backup procedures and database health
 
 ### **Monthly Tasks** 🗓️
+
 - [ ] Review and update test data as needed
 - [ ] Analyze test coverage and identify gaps
 - [ ] Update dependencies and verify compatibility
@@ -283,6 +310,7 @@ jobs:
 - [ ] Team training on any new procedures
 
 ### **Quarterly Tasks** 📊
+
 - [ ] Comprehensive test suite architecture review
 - [ ] Infrastructure optimization and scaling evaluation
 - [ ] Tool and framework update assessment
@@ -294,6 +322,7 @@ jobs:
 ## 🚨 **EMERGENCY PROCEDURES**
 
 ### **Complete Test Failure** 🆘
+
 ```bash
 # Step 1: Environment Reset
 docker stop nextjs_auth_postgres
@@ -309,6 +338,7 @@ ls /home/gurgant/CursorProjects/2/backup/disabled-e2e-tests/
 ```
 
 ### **Database Corruption** 💾
+
 ```bash
 # Restore from known good state:
 docker stop nextjs_auth_postgres
@@ -318,6 +348,7 @@ docker rm nextjs_auth_postgres
 ```
 
 ### **Performance Degradation** 📉
+
 ```bash
 # Quick performance check:
 time pnpm exec playwright test --workers=1 -g "should login with valid credentials" --reporter=line
@@ -334,10 +365,11 @@ time pnpm exec playwright test --workers=1 -g "should login with valid credentia
 ## 🏆 **SUCCESS VALIDATION**
 
 ### **Confidence Checklist** ✅
+
 Before considering E2E tests "production ready", verify:
 
 - [ ] **100% Success Rate**: 5 consecutive full test runs with 77/77 passing
-- [ ] **Performance**: Full suite completes in <15 minutes consistently  
+- [ ] **Performance**: Full suite completes in <15 minutes consistently
 - [ ] **Reliability**: No flaky tests (inconsistent pass/fail)
 - [ ] **Environment**: Automated health checks and recovery procedures
 - [ ] **Documentation**: All procedures documented and tested
@@ -346,6 +378,7 @@ Before considering E2E tests "production ready", verify:
 - [ ] **Monitoring**: Success rate and performance tracking operational
 
 ### **Production Readiness Criteria** 🎯
+
 - ✅ **Stability**: >99% success rate over 30 days
 - ✅ **Speed**: <10 minute execution time
 - ✅ **Coverage**: All critical authentication paths tested
