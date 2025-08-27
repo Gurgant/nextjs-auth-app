@@ -115,7 +115,7 @@ jobs:
 
       - name: 🚀 Create documentation update PR
         if: github.event_name == 'schedule' || github.event.inputs.force_screenshot_update == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
