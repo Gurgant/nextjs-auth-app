@@ -141,7 +141,7 @@ jobs:
 
       - name: 🚀 Create dependency update PR
         if: steps.outdated.outputs.has_updates == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
@@ -196,7 +196,7 @@ jobs:
 
       - name: 🚨 Create emergency security fix PR
         if: env.emergency_fix_needed == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: |
