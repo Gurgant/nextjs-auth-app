@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { isValidLocale, type Locale } from "@/config/i18n";
+import { SafeNavigation, RouteValidator } from "@/types/routes";
 
 export function LanguageSelector({ locale }: { locale: Locale }) {
   const pathname = usePathname();
@@ -60,8 +61,22 @@ export function LanguageSelector({ locale }: { locale: Locale }) {
     const pathAfterLocale = segments.slice(2).join("/");
 
     // Construct the new path with validated locale
-    const newPath = `/${newLocale}${pathAfterLocale ? `/${pathAfterLocale}` : ""}`;
-    router.push(newPath as any);
+    const basePath = pathAfterLocale ? `/${pathAfterLocale}` : "";
+    const newPath = `/${newLocale}${basePath}`;
+
+    // Validate the constructed route before navigation
+    if (RouteValidator.isValidRoute(newPath)) {
+      SafeNavigation.push(router, newPath, "/");
+    } else {
+      // Fallback to safe route construction for locale
+      const fallbackPath = `/${newLocale}`;
+      SafeNavigation.push(router, fallbackPath, "/");
+      console.warn(
+        "[Navigation] Invalid route constructed, using fallback:",
+        fallbackPath,
+      );
+    }
+
     setIsOpen(false);
   };
 

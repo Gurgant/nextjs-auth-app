@@ -3,6 +3,16 @@ import { Session } from "next-auth";
 import { testAuth } from "../utils/test-auth";
 import { generate } from "../utils/test-utils";
 
+// API response type constraints
+export type ApiResponseData =
+  | Record<string, unknown>
+  | string
+  | number
+  | boolean
+  | null;
+export type RequestBody = Record<string, unknown> | FormData | string | null;
+export type QueryParams = Record<string, string | number | boolean>;
+
 /**
  * API test client for integration testing
  */
@@ -64,55 +74,66 @@ export class ApiTestClient {
   }
 
   /**
-   * Make GET request
+   * Make GET request with type safety
    */
-  async get<T = any>(
+  async get<T extends ApiResponseData = ApiResponseData>(
     path: string,
-    params?: Record<string, any>,
+    params?: QueryParams,
   ): Promise<ApiTestResponse<T>> {
     const url = this.buildUrl(path, params);
     return this.request<T>("GET", url);
   }
 
   /**
-   * Make POST request
+   * Make POST request with type safety
    */
-  async post<T = any>(path: string, body?: any): Promise<ApiTestResponse<T>> {
+  async post<T extends ApiResponseData = ApiResponseData>(
+    path: string,
+    body?: RequestBody,
+  ): Promise<ApiTestResponse<T>> {
     const url = this.buildUrl(path);
     return this.request<T>("POST", url, body);
   }
 
   /**
-   * Make PUT request
+   * Make PUT request with type safety
    */
-  async put<T = any>(path: string, body?: any): Promise<ApiTestResponse<T>> {
+  async put<T extends ApiResponseData = ApiResponseData>(
+    path: string,
+    body?: RequestBody,
+  ): Promise<ApiTestResponse<T>> {
     const url = this.buildUrl(path);
     return this.request<T>("PUT", url, body);
   }
 
   /**
-   * Make PATCH request
+   * Make PATCH request with type safety
    */
-  async patch<T = any>(path: string, body?: any): Promise<ApiTestResponse<T>> {
+  async patch<T extends ApiResponseData = ApiResponseData>(
+    path: string,
+    body?: RequestBody,
+  ): Promise<ApiTestResponse<T>> {
     const url = this.buildUrl(path);
     return this.request<T>("PATCH", url, body);
   }
 
   /**
-   * Make DELETE request
+   * Make DELETE request with type safety
    */
-  async delete<T = any>(path: string): Promise<ApiTestResponse<T>> {
+  async delete<T extends ApiResponseData = ApiResponseData>(
+    path: string,
+  ): Promise<ApiTestResponse<T>> {
     const url = this.buildUrl(path);
     return this.request<T>("DELETE", url);
   }
 
   /**
-   * Make raw request
+   * Make raw request with proper type safety
    */
-  private async request<T>(
+  private async request<T extends ApiResponseData>(
     method: string,
     url: string,
-    body?: any,
+    body?: RequestBody,
   ): Promise<ApiTestResponse<T>> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -136,13 +157,13 @@ export class ApiTestClient {
     const response = await fetch(url, requestInit);
     const duration = Date.now() - startTime;
 
-    let data: any;
+    let data: T;
     const contentType = response.headers.get("content-type");
 
     if (contentType?.includes("application/json")) {
-      data = await response.json();
+      data = (await response.json()) as T;
     } else {
-      data = await response.text();
+      data = (await response.text()) as T;
     }
 
     return new ApiTestResponse<T>(
@@ -154,9 +175,9 @@ export class ApiTestClient {
   }
 
   /**
-   * Build full URL
+   * Build full URL with type-safe parameters
    */
-  private buildUrl(path: string, params?: Record<string, any>): string {
+  private buildUrl(path: string, params?: QueryParams): string {
     const url = new URL(path, this.baseUrl);
 
     if (params) {
@@ -181,9 +202,9 @@ export class ApiTestClient {
 }
 
 /**
- * API test response wrapper
+ * API test response wrapper with type safety
  */
-export class ApiTestResponse<T = any> {
+export class ApiTestResponse<T extends ApiResponseData = ApiResponseData> {
   constructor(
     public readonly status: number,
     public readonly data: T,
@@ -243,13 +264,18 @@ export class ApiTestResponse<T = any> {
   }
 
   /**
-   * Assert response body shape
+   * Assert response body shape with type safety
    */
   assertBody(expected: Partial<T>): this {
+    if (typeof this.data !== "object" || this.data === null) {
+      throw new Error("Response data is not an object");
+    }
+
     for (const [key, value] of Object.entries(expected)) {
-      if ((this.data as any)[key] !== value) {
+      const dataRecord = this.data as Record<string, unknown>;
+      if (dataRecord[key] !== value) {
         throw new Error(
-          `Expected ${key} to be ${value}, got ${(this.data as any)[key]}`,
+          `Expected ${key} to be ${value}, got ${dataRecord[key]}`,
         );
       }
     }
@@ -257,10 +283,14 @@ export class ApiTestResponse<T = any> {
   }
 
   /**
-   * Assert response has property
+   * Assert response has property with type safety
    */
   assertHasProperty(property: keyof T): this {
-    if (!(property in (this.data as any))) {
+    if (typeof this.data !== "object" || this.data === null) {
+      throw new Error("Response data is not an object");
+    }
+
+    if (!(property in (this.data as Record<string, unknown>))) {
       throw new Error(`Expected response to have property ${String(property)}`);
     }
     return this;
@@ -324,13 +354,13 @@ export class MockApiHandler {
   }
 
   /**
-   * Create test request
+   * Create test request with type safety
    */
   createRequest(
     method: string,
     path: string,
     options?: {
-      body?: any;
+      body?: RequestBody;
       headers?: HeadersInit;
       params?: Record<string, string>;
     },
@@ -440,9 +470,9 @@ export const apiAssert = {
   },
 
   /**
-   * Assert successful response
+   * Assert successful response with type safety
    */
-  async success<T>(
+  async success<T extends ApiResponseData>(
     response: ApiTestResponse<T>,
     expectedData?: Partial<T>,
   ): Promise<void> {
@@ -453,22 +483,29 @@ export const apiAssert = {
   },
 
   /**
-   * Assert validation error
+   * Assert validation error with type safety
    */
   async validationError(
-    response: ApiTestResponse,
-    expectedErrors?: Record<string, any>,
+    response: ApiTestResponse<Record<string, unknown>>,
+    expectedErrors?: Record<string, unknown>,
   ): Promise<void> {
     response.assertStatus(400);
-    response.assertHasProperty("errors" as any);
+    response.assertHasProperty("errors" as keyof Record<string, unknown>);
 
     if (expectedErrors) {
-      const errors = (response.data as any).errors;
-      for (const [field, message] of Object.entries(expectedErrors)) {
-        if (errors[field] !== message) {
-          throw new Error(
-            `Expected error for ${field}: ${message}, got ${errors[field]}`,
-          );
+      const responseData = response.data;
+      if (
+        typeof responseData === "object" &&
+        responseData !== null &&
+        "errors" in responseData
+      ) {
+        const errors = responseData.errors as Record<string, unknown>;
+        for (const [field, message] of Object.entries(expectedErrors)) {
+          if (errors[field] !== message) {
+            throw new Error(
+              `Expected error for ${field}: ${message}, got ${errors[field]}`,
+            );
+          }
         }
       }
     }

@@ -7,6 +7,14 @@ import { z } from "zod";
 import { LRUCache } from "lru-cache";
 import { loginEmailSchema, loginPasswordSchema } from "@/lib/validation";
 import type { User, Account } from "next-auth";
+import type {
+  JWTCallbackParams,
+  SessionCallbackParams,
+  SignInEventMessage,
+  // Note: Additional event message types available for future use:
+  // SignOutEventMessage, CreateUserEventMessage, LinkAccountEventMessage, SessionEventMessage
+  // These can be imported from "@/types/next-auth" when implementing comprehensive auth event handling
+} from "@/types/next-auth";
 
 // This file contains the core auth configuration without environment variable checks
 // to prevent client-side import errors
@@ -78,12 +86,21 @@ export const authOptions = {
 
           // Find user in database using repository
           const userRepo = repositories.getUserRepository();
+
+          // Debug: Check if user exists first (removed for cleaner output)
+          const userExists = await userRepo.findByEmail(email);
+
           const user = await userRepo.findByCredentials(email, password);
 
           if (!user) {
             // Increment rate limit counter on failed attempt
             authRateLimiter.set(email, attempts + 1);
-            console.log("Invalid credentials for:", email);
+            console.log("❌ Invalid credentials for:", email);
+            if (userExists && userExists.password) {
+              console.log(
+                "❌ User exists with password, but credential validation failed",
+              );
+            }
             return result;
           }
 
@@ -200,6 +217,11 @@ export const authOptions = {
                 existingUser.primaryAuthMethod ||
                 (account.provider === "google" ? "google" : "email"),
               lastLoginAt: new Date(),
+              // Auto-verify email for Google login (Google OAuth ensures email verification)
+              emailVerified:
+                account.provider === "google"
+                  ? new Date()
+                  : existingUser.emailVerified,
               // Set password timestamps for existing password users
               passwordSetAt:
                 existingUser.password && !existingUser.passwordSetAt
@@ -217,6 +239,8 @@ export const authOptions = {
               hasGoogleAccount,
               hasPassword,
               twoFactorEnabled: existingUser.twoFactorEnabled,
+              emailAutoVerified:
+                account.provider === "google" && !existingUser.emailVerified,
             });
           }
         } catch (error) {
@@ -227,7 +251,7 @@ export const authOptions = {
 
       return result;
     },
-    async jwt({ token, user }: { token: any; user?: any }) {
+    async jwt({ token, user }: JWTCallbackParams) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
@@ -236,25 +260,33 @@ export const authOptions = {
         token.emailVerified = user.emailVerified;
         token.twoFactorEnabled = user.twoFactorEnabled;
         token.role = user.role || "USER";
+        token.hasGoogleAccount = user.hasGoogleAccount;
+        token.lastLoginAt = user.lastLoginAt;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
+    async session({ session, token }: SessionCallbackParams) {
       if (token && session.user) {
         session.user.id = token.id;
+        session.user.email = token.email;
+        session.user.name = token.name;
+        session.user.image = token.image;
         session.user.emailVerified = token.emailVerified;
         session.user.twoFactorEnabled = token.twoFactorEnabled;
         session.user.role = token.role || "USER";
+        session.user.hasGoogleAccount = token.hasGoogleAccount;
+        session.user.lastLoginAt = token.lastLoginAt;
       }
       return session;
     },
   },
   events: {
-    async signIn(message: any) {
+    async signIn(message: SignInEventMessage) {
       console.log("✅ User signed in:", {
-        userId: message.user?.id,
-        email: message.user?.email,
+        userId: message.user.id,
+        email: message.user.email,
         provider: message.account?.provider || "credentials",
+        isNewUser: message.isNewUser,
       });
     },
     async signOut(message: any) {
@@ -266,7 +298,28 @@ export const authOptions = {
       console.log("🆕 New user created:", {
         userId: message.user?.id,
         email: message.user?.email,
+        provider: message.account?.provider,
+        emailVerified: message.user?.emailVerified,
       });
+
+      // Auto-verify email for new Google users
+      if (message.account?.provider === "google" && message.user?.id) {
+        try {
+          const userRepo = repositories.getUserRepository();
+          await userRepo.update(message.user.id, {
+            emailVerified: new Date(),
+          } as any);
+          console.log(
+            "✅ Auto-verified email for new Google user:",
+            message.user.email,
+          );
+        } catch (error) {
+          console.error(
+            "❌ Failed to auto-verify email for new Google user:",
+            error,
+          );
+        }
+      }
     },
     async linkAccount(message: any) {
       console.log("🔗 Account linked:", {

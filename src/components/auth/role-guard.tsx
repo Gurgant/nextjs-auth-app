@@ -10,12 +10,13 @@ import { Role } from "@/lib/types/prisma";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { SafeNavigation } from "@/types/routes";
 
 interface RoleGuardProps {
   children: ReactNode;
   requiredRole: Role;
   fallback?: ReactNode;
-  redirectTo?: string;
+  redirectTo?: string; // Keep as string for backward compatibility, validate internally
   showLoading?: boolean;
 }
 
@@ -26,18 +27,34 @@ export function RoleGuard({
   redirectTo,
   showLoading = true,
 }: RoleGuardProps) {
-  const { hasRole, isLoading, isAuthenticated } = useRole();
+  const { hasRole, isLoading, isAuthenticated, role } = useRole();
   const router = useRouter();
 
   const hasAccess = hasRole(requiredRole);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && redirectTo) {
-      router.push(redirectTo as any);
-    } else if (!isLoading && isAuthenticated && !hasAccess && redirectTo) {
-      router.push(redirectTo as any);
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      // User is not authenticated - redirect to login or specified route
+      if (redirectTo) {
+        SafeNavigation.push(router, redirectTo, "/auth/signin");
+      } else {
+        SafeNavigation.push(router, "/auth/signin");
+      }
+    } else if (!hasAccess) {
+      // User is authenticated but lacks required role
+      if (redirectTo) {
+        SafeNavigation.push(router, redirectTo, "/dashboard");
+      } else {
+        // Redirect to appropriate dashboard based on their role
+        const dashboardRedirect = SafeNavigation.getDashboardRedirect(
+          role || "USER",
+        );
+        SafeNavigation.push(router, dashboardRedirect);
+      }
     }
-  }, [isLoading, isAuthenticated, hasAccess, redirectTo, router]);
+  }, [isLoading, isAuthenticated, hasAccess, redirectTo, router, role]);
 
   if (isLoading) {
     return showLoading ? <LoadingSpinner /> : null;

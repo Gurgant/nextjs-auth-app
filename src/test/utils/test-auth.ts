@@ -20,10 +20,13 @@ export class TestAuth {
    */
   createSessionToken(payload: Partial<JWT> = {}): string {
     const token: JWT = {
+      id: generate.uuid(),
       sub: generate.uuid(),
       email: generate.email(),
       name: "Test User",
-      picture: null,
+      image: null,
+      role: "USER",
+      twoFactorEnabled: false,
       iat: Math.floor(Date.now() / 1000),
       exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
       ...payload,
@@ -65,6 +68,8 @@ export class TestAuth {
       email: generate.email(),
       name: "Test User",
       image: null,
+      role: "USER" as const,
+      twoFactorEnabled: false,
     };
 
     return {

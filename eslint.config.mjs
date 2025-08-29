@@ -114,6 +114,9 @@ const eslintConfig = [
       "@typescript-eslint/ban-ts-comment": "off",
       "import/no-extraneous-dependencies": "off",
       "import/order": "off",
+      // Disable React hooks rules for E2E tests (Playwright fixtures use 'use' parameter names)
+      "react-hooks/rules-of-hooks": "off",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
 

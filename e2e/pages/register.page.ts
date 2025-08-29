@@ -473,8 +473,8 @@ export class RegisterPage extends BasePage {
     return {
       name: `Test User ${timestamp}`,
       email: `test${timestamp}@example.com`,
-      password: "Test123!@#",
-      confirmPassword: "Test123!@#",
+      password: "Test123!", // Use project standard password
+      confirmPassword: "Test123!", // Use project standard password
     };
   }
 }

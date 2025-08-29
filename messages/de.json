@@ -114,6 +114,9 @@
   "Account": {
     "title": "Kontoeinstellungen",
     "subtitle": "Verwalten Sie Ihr Konto und Ihre Einstellungen",
+    "dashboard": "Dashboard",
+    "dashboardDescription": "Zugriff auf Ihr Haupt-Dashboard und Anwendungsfunktionen",
+    "goToDashboard": "Zum Dashboard gehen",
     "profile": "Profilinformationen",
     "security": "Sicherheitseinstellungen",
     "dangerZone": "Gefahrenbereich",
@@ -343,6 +346,7 @@
     "verifying": "Verifizierung läuft...",
     "processing": "Wird verarbeitet...",
     "loading": "Wird geladen...",
+    "loadingAccountData": "Kontodaten werden geladen...",
     "deleting": "Wird gelöscht...",
     "updating": "Wird aktualisiert...",
     "saving": "Wird gespeichert...",

@@ -114,6 +114,9 @@
   "Account": {
     "title": "Impostazioni Account",
     "subtitle": "Gestisci il tuo account e le preferenze",
+    "dashboard": "Dashboard",
+    "dashboardDescription": "Accedi alla tua dashboard principale e alle funzionalità dell'applicazione",
+    "goToDashboard": "Vai alla Dashboard",
     "profile": "Informazioni Profilo",
     "security": "Impostazioni Sicurezza",
     "dangerZone": "Zona Pericolosa",
@@ -353,6 +356,7 @@
     "verifying": "Verifica in corso...",
     "processing": "Elaborazione in corso...",
     "loading": "Caricamento...",
+    "loadingAccountData": "Caricamento dati account...",
     "deleting": "Eliminazione in corso...",
     "updating": "Aggiornamento in corso...",
     "saving": "Salvataggio in corso...",

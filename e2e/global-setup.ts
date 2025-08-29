@@ -71,12 +71,20 @@ async function cleanDatabase(prisma: PrismaClient) {
  * Seed test data for E2E tests
  */
 async function seedTestData(prisma: PrismaClient) {
-  // Create test users
+  // Create test users with verified password hashing
+  console.log("🔐 Creating password hash for test@example.com...");
+  const testPassword = "Test123!";
+  const testPasswordHash = await bcrypt.hash(testPassword, 12);
+  console.log(`🔐 Generated hash: ${testPasswordHash}`);
+  console.log(
+    `🔐 Verification test: ${bcrypt.compareSync(testPassword, testPasswordHash)}`,
+  );
+
   const testUsers = [
     {
       email: "test@example.com",
       name: "Test User",
-      password: await bcrypt.hash("Test123!", 10),
+      password: testPasswordHash,
       emailVerified: new Date(),
       role: "USER" as const,
       twoFactorEnabled: false, // Explicitly disable 2FA for regular test user
@@ -84,7 +92,7 @@ async function seedTestData(prisma: PrismaClient) {
     {
       email: "admin@example.com",
       name: "Admin User",
-      password: await bcrypt.hash("Admin123!", 10),
+      password: await bcrypt.hash("Admin123!", 12),
       emailVerified: new Date(),
       role: "ADMIN" as const,
       twoFactorEnabled: false, // Explicitly disable 2FA for admin test user
@@ -92,7 +100,7 @@ async function seedTestData(prisma: PrismaClient) {
     {
       email: "prouser@example.com",
       name: "Pro User",
-      password: await bcrypt.hash("Pro123!", 10),
+      password: await bcrypt.hash("Pro123!", 12),
       emailVerified: new Date(),
       role: "PRO_USER" as const,
       twoFactorEnabled: false, // Explicitly disable 2FA for pro test user
@@ -100,7 +108,7 @@ async function seedTestData(prisma: PrismaClient) {
     {
       email: "unverified@example.com",
       name: "Unverified User",
-      password: await bcrypt.hash("Unverified123!", 10),
+      password: await bcrypt.hash("Unverified123!", 12),
       emailVerified: null,
       role: "USER" as const,
       twoFactorEnabled: false, // Explicitly disable 2FA for unverified test user
@@ -108,7 +116,7 @@ async function seedTestData(prisma: PrismaClient) {
     {
       email: "2fa@example.com",
       name: "2FA User",
-      password: await bcrypt.hash("2FA123!", 10),
+      password: await bcrypt.hash("2FA123!", 12),
       emailVerified: new Date(),
       twoFactorEnabled: true,
       twoFactorSecret: "JBSWY3DPEHPK3PXP", // Test secret
@@ -117,9 +125,10 @@ async function seedTestData(prisma: PrismaClient) {
   ];
 
   for (const userData of testUsers) {
-    const user = await prisma.user.create({
-      data: userData,
-    });
+    console.log(`🔄 Creating user: ${userData.email}`);
+    // Create fresh user for clean test isolation
+    const user = await prisma.user.create({ data: userData });
+    console.log(`✅ Created user: ${userData.email}`);
 
     // Create account for each user
     await prisma.account.create({
@@ -130,6 +139,7 @@ async function seedTestData(prisma: PrismaClient) {
         providerAccountId: user.email,
       },
     });
+    console.log(`✅ Created account for: ${userData.email}`);
   }
 
   // Create OAuth test user

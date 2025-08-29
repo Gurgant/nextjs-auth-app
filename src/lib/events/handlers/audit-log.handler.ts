@@ -17,6 +17,16 @@ import {
   ErrorOccurredEvent,
 } from "../domain/system.events";
 
+// Union type for all possible audit log severity levels
+type AuditSeverity =
+  | "info"
+  | "warning"
+  | "error"
+  | "critical"
+  | "low"
+  | "medium"
+  | "high";
+
 interface AuditLogEntry {
   id: string;
   timestamp: Date;
@@ -25,7 +35,7 @@ interface AuditLogEntry {
   userId?: string;
   action: string;
   details: Record<string, any>;
-  severity: "info" | "warning" | "error" | "critical";
+  severity: AuditSeverity;
   ipAddress?: string;
   userAgent?: string;
 }
@@ -138,7 +148,7 @@ export class AuditLogHandler implements IEventHandler {
             activityType: suspicious.payload.activityType,
             details: suspicious.payload.details,
           },
-          severity: suspicious.payload.severity as any,
+          severity: suspicious.payload.severity,
         };
 
       case "security.alert":
@@ -151,7 +161,7 @@ export class AuditLogHandler implements IEventHandler {
             message: alert.payload.message,
             affectedUsers: alert.payload.affectedUsers,
           },
-          severity: alert.payload.severity as any,
+          severity: alert.payload.severity,
         };
 
       case "system.command_executed":
@@ -187,7 +197,7 @@ export class AuditLogHandler implements IEventHandler {
             message: error.payload.message,
             context: error.payload.context,
           },
-          severity: error.payload.severity as any,
+          severity: error.payload.severity,
         };
 
       default:

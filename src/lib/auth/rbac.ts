@@ -158,3 +158,19 @@ export function getRoleFeatures(role: Role): string[] {
 
   return features[role] || [];
 }
+
+/**
+ * Get default dashboard path for user role
+ */
+export function getRoleDashboardPath(
+  role: Role,
+  locale: string = "en",
+): string {
+  const dashboardPaths: Record<Role, string> = {
+    USER: `/${locale}/dashboard/user`,
+    PRO_USER: `/${locale}/dashboard/pro`,
+    ADMIN: `/${locale}/admin`,
+  };
+
+  return dashboardPaths[role] || `/${locale}/dashboard/user`;
+}

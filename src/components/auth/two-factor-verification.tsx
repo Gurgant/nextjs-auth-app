@@ -10,6 +10,7 @@ import {
 } from "@/lib/actions/advanced-auth";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { AlertMessage } from "@/components/ui/alert-message";
+import { SafeNavigation } from "@/types/routes";
 
 interface TwoFactorVerificationProps {
   userId: string;
@@ -109,7 +110,11 @@ export function TwoFactorVerification({
         setAttemptsLeft((prev) => prev - 1);
         if (attemptsLeft <= 1) {
           // Too many failed attempts - redirect to login
-          router.push("/auth/signin?error=2fa_failed" as any);
+          SafeNavigation.push(
+            router,
+            "/auth/signin?error=2fa_failed",
+            "/auth/signin",
+          );
         }
         // Clear the code for retry
         setCode("");
@@ -129,7 +134,7 @@ export function TwoFactorVerification({
     if (onCancel) {
       onCancel();
     } else {
-      router.push("/auth/signin" as any);
+      SafeNavigation.push(router, "/auth/signin", "/auth/signin");
     }
   };
 

@@ -37,7 +37,10 @@ export default async function ProUserDashboardPage({
   const badgeColor = getRoleBadgeColor(userRole);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-purple-50 via-white to-gold-50 py-8">
+    <div
+      className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-purple-50 via-white to-gold-50 py-8"
+      data-testid="pro-dashboard"
+    >
       <div className="max-w-6xl mx-auto px-4">
         {/* Navigation Back to Main Dashboard */}
         <div className="mb-6">

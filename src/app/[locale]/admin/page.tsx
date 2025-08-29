@@ -68,7 +68,7 @@ export default async function AdminDashboardPage({
   });
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8" data-testid="admin-panel">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-gradient-to-r from-red-600 to-red-800 rounded-lg shadow-md p-6 mb-6 text-white">

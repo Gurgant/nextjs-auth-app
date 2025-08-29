@@ -235,6 +235,8 @@ export class NextAuthSessionFactory extends Factory<NextAuthSession> {
         email: user.email,
         name: user.name,
         image: user.image,
+        role: "USER" as const,
+        twoFactorEnabled: false,
       },
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       ...this.defaults,
@@ -252,6 +254,8 @@ export class NextAuthSessionFactory extends Factory<NextAuthSession> {
         email: user.email || generate.email(),
         name: user.name || "Test User",
         image: user.image || null,
+        role: user.role || "USER",
+        twoFactorEnabled: user.twoFactorEnabled || false,
       },
     });
   }
@@ -266,6 +270,8 @@ export class NextAuthSessionFactory extends Factory<NextAuthSession> {
         email: "admin@test.com",
         name: "Admin User",
         image: null,
+        role: "ADMIN" as const,
+        twoFactorEnabled: false,
       },
     });
   }

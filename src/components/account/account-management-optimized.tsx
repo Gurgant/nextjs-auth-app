@@ -26,6 +26,8 @@ import { PasswordManagement } from "./sections/password-management";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { AlertMessage } from "@/components/ui/alert-message";
 import type { ActionResponse } from "@/lib/utils/form-responses";
+import { routes } from "@/utils/navigation";
+import type { Locale } from "@/config/i18n";
 
 interface AccountManagementProps {
   user: {
@@ -278,6 +280,59 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
           {t("title")}
         </h1>
         <p className="text-gray-600 text-lg">{t("subtitle")}</p>
+      </div>
+
+      {/* Dashboard Navigation */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+              <svg
+                className="w-6 h-6 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {t("dashboard")}
+              </h2>
+              <p className="text-sm text-gray-600">
+                {t("dashboardDescription")}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const dashboardPath = routes.dashboard(locale as Locale);
+              router.push(dashboardPath as any);
+            }}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 7l5 5m0 0l-5 5m5-5H6"
+              />
+            </svg>
+            {t("goToDashboard")}
+          </button>
+        </div>
       </div>
 
       {/* Account Providers Section */}

@@ -3,7 +3,21 @@ import { InMemoryEventStore } from "./store/in-memory-event-store";
 import { AuditLogHandler } from "./handlers/audit-log.handler";
 import { AnalyticsHandler } from "./handlers/analytics.handler";
 import { NotificationHandler } from "./handlers/notification.handler";
-import { IEventBus, IEventStore } from "./base/event.interface";
+import {
+  IEventBus,
+  IEventStore,
+  IEvent,
+  EventFilter,
+} from "./base/event.interface";
+
+// Type definitions for better type safety
+interface AuditLogFilter {
+  userId?: string;
+  severity?: string;
+  startDate?: Date;
+  endDate?: Date;
+  limit?: number;
+}
 
 // Singleton instances
 let eventBusInstance: IEventBus | null = null;
@@ -79,13 +93,15 @@ export function getNotificationHandler(): NotificationHandler {
   return notificationHandlerInstance!;
 }
 
-// Utility function to emit events easily
-export async function emitEvent(event: any): Promise<void> {
+// Utility function to emit events with type safety
+export async function emitEvent(event: IEvent): Promise<void> {
   await eventBus.publish(event);
 }
 
-// Utility function to get event history
-export async function getEventHistory(filters?: any): Promise<any[]> {
+// Utility function to get event history with type safety
+export async function getEventHistory(
+  filters?: EventFilter,
+): Promise<IEvent[]> {
   return await eventStore.getEvents(filters);
 }
 
@@ -94,8 +110,8 @@ export function getAnalyticsSummary() {
   return getAnalyticsHandler().getSummary();
 }
 
-// Utility function to get audit logs
-export function getAuditLogs(filters?: any) {
+// Utility function to get audit logs with type safety
+export function getAuditLogs(filters?: AuditLogFilter) {
   return getAuditHandler().getAuditLogs(filters);
 }
 

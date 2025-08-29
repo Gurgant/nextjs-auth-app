@@ -120,11 +120,11 @@ test.describe("User Registration Flow", () => {
   });
 
   test("should prevent duplicate email registration", async ({ page }) => {
-    // Use existing test user email
+    // Use existing pro user email to test duplicate prevention without contaminating main test user
     await registerPage.register({
       name: "Duplicate User",
-      email: "test@example.com", // This email exists in seed data
-      password: "Test123!@#",
+      email: "prouser@example.com", // Use pro user email for duplicate test
+      password: "Pro123!", // Use correct password for pro user
       acceptTerms: true,
     });
 
@@ -228,9 +228,9 @@ test.describe("User Registration Flow", () => {
   test("should validate password confirmation match", async () => {
     await registerPage.fillRegistrationForm({
       name: "Test User",
-      email: "test@example.com",
-      password: "Test123!@#",
-      confirmPassword: "Different123!@#", // Doesn't match password
+      email: "validation-test@example.com", // Use different email to prevent contamination
+      password: "Test123!",
+      confirmPassword: "Different123!", // Doesn't match password
     });
 
     // Accept terms to enable submit button

@@ -8,7 +8,7 @@ import type { ActionResponse } from "@/lib/utils/form-responses";
  * A wrapper around useActionState that automatically appends locale to FormData
  * This ensures locale is preserved in all form submissions
  */
-export function useLocalizedAction<T extends any[]>(
+export function useLocalizedAction<T extends readonly [FormData, ...unknown[]]>(
   action: (...args: T) => Promise<ActionResponse>,
   locale: string,
   options?: UseActionStateOptions,

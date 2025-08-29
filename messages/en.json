@@ -114,6 +114,9 @@
   "Account": {
     "title": "Account Settings",
     "subtitle": "Manage your account and preferences",
+    "dashboard": "Dashboard",
+    "dashboardDescription": "Access your main dashboard and application features",
+    "goToDashboard": "Go to Dashboard",
     "profile": "Profile Information",
     "security": "Security Settings",
     "dangerZone": "Danger Zone",
@@ -353,6 +356,7 @@
     "verifying": "Verifying...",
     "processing": "Processing...",
     "loading": "Loading...",
+    "loadingAccountData": "Loading account data...",
     "deleting": "Deleting...",
     "updating": "Updating...",
     "saving": "Saving...",

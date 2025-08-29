@@ -3,6 +3,7 @@ import { BaseError } from "../base/base-error";
 import { ErrorCode, ErrorSeverity } from "../base/error-codes";
 import { ErrorFactory } from "../error-factory";
 import { z } from "zod";
+import { PrismaError, isPrismaError } from "../types/prisma-errors";
 
 /**
  * Error response format
@@ -91,14 +92,14 @@ export class ErrorHandler {
   /**
    * Check if error is from Prisma
    */
-  private isPrismaError(error: any): boolean {
-    return error?.code?.startsWith("P");
+  private isPrismaError(error: unknown): error is PrismaError {
+    return isPrismaError(error);
   }
 
   /**
    * Handle Prisma-specific errors
    */
-  private handlePrismaError(error: any): BaseError {
+  private handlePrismaError(error: PrismaError): BaseError {
     switch (error.code) {
       case "P2002": // Unique constraint violation
         const field = error.meta?.target?.[0] || "field";
@@ -118,7 +119,11 @@ export class ErrorHandler {
         return ErrorFactory.system.timeout("Database operation", 10000);
 
       default:
-        return ErrorFactory.system.database("query", error.message, error);
+        return ErrorFactory.system.database(
+          "query",
+          error.message,
+          error as Error,
+        );
     }
   }
 
@@ -211,8 +216,8 @@ export class ErrorHandler {
 
     // Add retry headers for rate limit errors
     if (error.code === ErrorCode.RATE_LIMIT_EXCEEDED) {
-      const resetAt = error.details?.resetAt;
-      if (resetAt) {
+      const resetAt = error.details?.resetTime;
+      if (resetAt instanceof Date) {
         headers["X-RateLimit-Reset"] = resetAt.toISOString();
         headers["Retry-After"] = Math.ceil(
           (resetAt.getTime() - Date.now()) / 1000,

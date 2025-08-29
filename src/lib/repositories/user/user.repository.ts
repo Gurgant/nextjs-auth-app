@@ -147,7 +147,8 @@ export class UserRepository
   }
 
   async update(id: string, data: UpdateUserDTO): Promise<User> {
-    const updateData: any = { ...data };
+    // Create update data with proper typing, allowing password to be hashed
+    const updateData: Record<string, any> = { ...data };
 
     if (data.password) {
       updateData.password = await bcrypt.hash(data.password, 12);

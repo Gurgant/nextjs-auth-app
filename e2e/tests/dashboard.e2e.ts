@@ -31,8 +31,28 @@ test.describe("Dashboard Functionality", () => {
         '[data-testid="go-to-dashboard-button"]',
       );
       if ((await dashboardButton.count()) > 0) {
+        const urlBeforeClick = page.url();
+        console.log("🔗 URL before dashboard button click:", urlBeforeClick);
+
         await dashboardButton.click();
-        await page.waitForURL(/(account|dashboard)/, { timeout: 10000 });
+
+        // Wait a bit for navigation to start
+        await page.waitForTimeout(2000);
+
+        const urlAfterClick = page.url();
+        console.log("🔗 URL after dashboard button click:", urlAfterClick);
+        console.log(
+          "🔍 Checking if URL matches /(account|dashboard)/ pattern:",
+          /(account|dashboard)/.test(urlAfterClick),
+        );
+
+        // Check if we're already on an account/dashboard page
+        if (/(account|dashboard)/.test(urlAfterClick)) {
+          console.log("✅ Already on correct page, no need to wait");
+        } else {
+          console.log("⏳ Waiting for URL to match /(account|dashboard)/");
+          await page.waitForURL(/(account|dashboard)/, { timeout: 15000 });
+        }
       }
     }
   });
@@ -145,14 +165,43 @@ test.describe("Dashboard Functionality", () => {
   });
 
   test("should maintain session on refresh", async ({ page }) => {
+    // First navigate back to home page to test session persistence there
+    await page.goto("/en", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
+
     // Refresh the page
     await page.reload();
 
-    // Wait for session to be restored after refresh - NextAuth needs time
+    // Wait for session to be restored after refresh - NextAuth needs more time in CI
     await page.waitForTimeout(5000);
 
     // Wait for page to fully load and session to be established
     await page.waitForLoadState("networkidle");
+
+    // Wait for any pending session API calls to complete
+    await page.waitForTimeout(2000);
+
+    // Ensure authenticated-home element is present after refresh (critical for next tests)
+    console.log("🔄 Waiting for authenticated-home element after refresh...");
+    try {
+      await page.waitForSelector('[data-testid="authenticated-home"]', {
+        timeout: 20000, // Increased timeout for session restoration
+      });
+      console.log("✅ Found authenticated-home element after refresh");
+    } catch (error) {
+      const currentUrl = page.url();
+      const hasLoginForm =
+        (await page.locator('input[name="email"]').count()) > 0;
+      const hasLoadingState =
+        (await page.locator('[data-testid="session-loading"]').count()) > 0;
+      console.log("❌ Failed to find authenticated-home after refresh:", {
+        currentUrl,
+        hasLoginForm,
+        hasLoadingState,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
 
     // Check if still logged in with more reliable detection
     const url = page.url();

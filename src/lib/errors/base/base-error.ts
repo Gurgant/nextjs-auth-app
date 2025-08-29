@@ -23,7 +23,7 @@ export interface ErrorContext {
 export interface ErrorDetails {
   code: ErrorCode;
   message: string;
-  details?: any;
+  details?: import("../types/error-details").ErrorDetails;
   context?: ErrorContext;
   cause?: Error;
   stack?: string;
@@ -36,14 +36,14 @@ export abstract class BaseError extends Error {
   readonly severity: ErrorSeverity;
   readonly statusCode: number;
   readonly timestamp: Date;
-  readonly details?: any;
+  readonly details?: import("../types/error-details").ErrorDetails;
   readonly context?: ErrorContext;
   readonly cause?: Error;
 
   constructor(
     code: ErrorCode,
     message: string,
-    details?: any,
+    details?: import("../types/error-details").ErrorDetails,
     context?: ErrorContext,
     cause?: Error,
   ) {

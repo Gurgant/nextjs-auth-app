@@ -31,7 +31,7 @@ export interface UseActionStateOptions {
 /**
  * State and handlers returned by useActionState
  */
-export interface UseActionStateReturn<T extends any[]> {
+export interface UseActionStateReturn<T extends readonly unknown[]> {
   /**
    * Current loading state
    */
@@ -82,7 +82,7 @@ export interface UseActionStateReturn<T extends any[]> {
  * }
  * ```
  */
-export function useActionState<T extends any[]>(
+export function useActionState<T extends readonly unknown[]>(
   action: (...args: T) => Promise<ActionResponse>,
   options: UseActionStateOptions = {},
 ): UseActionStateReturn<T> {
@@ -185,7 +185,7 @@ export function useActionState<T extends any[]>(
 /**
  * Helper hook for actions that need FormData with locale
  */
-export function useLocalizedAction<T extends [FormData, ...any[]]>(
+export function useLocalizedAction<T extends readonly [FormData, ...unknown[]]>(
   action: (...args: T) => Promise<ActionResponse>,
   locale: string,
   options: UseActionStateOptions = {},

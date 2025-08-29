@@ -22,8 +22,22 @@ export default async function UserDashboardPage({
   const { locale } = await params;
   const session = await auth();
 
+  // Enhanced session validation for E2E tests
   if (!session?.user) {
+    // In E2E test environment, provide more graceful handling
+    if (process.env.NODE_ENV === "test") {
+      console.log("🔍 User dashboard: No session found, redirecting to signin");
+    }
     redirect(`/${locale}/auth/signin`);
+  }
+
+  // E2E Test debugging
+  if (process.env.NODE_ENV === "test") {
+    console.log("📊 User dashboard loaded:", {
+      hasSession: !!session,
+      userEmail: session.user?.email,
+      userRole: session.user?.role,
+    });
   }
 
   const t = await getTranslations();
@@ -32,7 +46,13 @@ export default async function UserDashboardPage({
   const badgeColor = getRoleBadgeColor(userRole);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
+    <div
+      className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8"
+      data-testid="user-dashboard"
+      data-user-role={userRole}
+      data-user-email={session.user.email}
+      data-dashboard-type="user"
+    >
       <div className="max-w-4xl mx-auto px-4">
         {/* Navigation Back to Main Dashboard */}
         <div className="mb-6">

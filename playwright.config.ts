@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as os from "os";
 
 /**
  * Modern Playwright Configuration - Latest Version Compatible
@@ -10,21 +11,27 @@ export default defineConfig({
   testDir: "./e2e/tests",
   testMatch: "**/*.e2e.ts",
 
-  // Global timeout settings
-  timeout: 60 * 1000,
+  // Optimized timeout settings for performance
+  timeout: process.env.CI ? 90 * 1000 : 45 * 1000, // Shorter timeouts for faster failure detection
 
   // Expect timeout
   expect: {
-    timeout: 15 * 1000,
+    timeout: process.env.CI ? 15 * 1000 : 10 * 1000, // Faster expectations in local dev
   },
 
-  // Run tests in parallel
+  // Intelligent parallel execution
   fullyParallel: true,
 
   // CI specific settings
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1, // Always use 1 worker to prevent port conflicts
+
+  // Optimized worker configuration for performance
+  workers: process.env.CI
+    ? 1 // Single worker in CI for stability
+    : process.env.PLAYWRIGHT_WORKERS
+      ? parseInt(process.env.PLAYWRIGHT_WORKERS)
+      : Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))), // Smart worker count based on CPU cores
 
   // Reporter configuration
   reporter: process.env.CI
@@ -36,6 +43,9 @@ export default defineConfig({
 
   // Global setup for database seeding and test environment
   globalSetup: require.resolve("./e2e/global-setup.ts"),
+
+  // Global teardown for database cleanup after all tests
+  globalTeardown: require.resolve("./e2e/global-teardown.ts"),
 
   // Shared settings
   use: {

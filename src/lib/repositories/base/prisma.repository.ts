@@ -2,12 +2,37 @@ import { PrismaClient } from "@/generated/prisma";
 import { IRepository } from "./repository.interface";
 import { PaginatedResult, PaginationOptions, QueryOptions } from "../types";
 
+/**
+ * Type for Prisma transaction client
+ */
+export type PrismaTransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
+
+/**
+ * Base type for Prisma model delegates
+ */
+export type PrismaModelDelegate = {
+  findUnique: (args: any) => Promise<any>;
+  findFirst: (args: any) => Promise<any>;
+  findMany: (args: any) => Promise<any[]>;
+  create: (args: any) => Promise<any>;
+  createMany: (args: any) => Promise<any>;
+  update: (args: any) => Promise<any>;
+  delete: (args: any) => Promise<any>;
+  count: (args: any) => Promise<number>;
+  upsert: (args: any) => Promise<any>;
+  updateMany: (args: any) => Promise<any>;
+  deleteMany: (args: any) => Promise<any>;
+};
+
 export abstract class PrismaRepository<T, ID = string>
   implements IRepository<T, ID>
 {
   constructor(protected readonly prisma: PrismaClient) {}
 
-  abstract get model(): any;
+  abstract get model(): PrismaModelDelegate;
 
   async findById(id: ID): Promise<T | null> {
     return await this.model.findUnique({
@@ -124,7 +149,9 @@ export abstract class PrismaRepository<T, ID = string>
     });
   }
 
-  protected async transaction<R>(fn: (tx: any) => Promise<R>): Promise<R> {
-    return (await this.prisma.$transaction(fn as any)) as R;
+  protected async transaction<R>(
+    fn: (tx: PrismaTransactionClient) => Promise<R>,
+  ): Promise<R> {
+    return await this.prisma.$transaction(fn);
   }
 }

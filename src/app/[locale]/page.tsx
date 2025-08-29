@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { CredentialsForm } from "@/components/auth/credentials-form";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
+import { getRoleDashboardPath } from "@/lib/auth/rbac";
+import { Role } from "@/lib/types/prisma";
 import Link from "next/link";
 
 export default function HomePage() {
@@ -13,11 +15,57 @@ export default function HomePage() {
   const tAuth = useTranslations("Auth");
   const { data: session, status } = useSession();
   const [showCredentials, setShowCredentials] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [sessionEstablished, setSessionEstablished] = useState(false);
   const params = useParams();
   const currentLocale = (params.locale as string) || "en";
 
-  // Show loading state while session is being established
-  if (status === "loading") {
+  // Simplified session establishment for E2E tests
+  useEffect(() => {
+    if (status !== "loading") {
+      const delay = process.env.NODE_ENV === "test" ? 1000 : 300;
+      const timer = setTimeout(() => {
+        setIsInitialLoad(false);
+        if (process.env.NODE_ENV === "test") {
+          setSessionEstablished(true);
+          console.log("🔐 E2E Session timing completed:", {
+            hasSession: !!session,
+            userEmail: session?.user?.email,
+            status,
+          });
+        }
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [status, session]);
+
+  // Immediate session validation for authenticated users in E2E
+  useEffect(() => {
+    if (process.env.NODE_ENV === "test" && session?.user?.email) {
+      setSessionEstablished(true);
+      console.log(
+        "🎯 E2E Session immediately established for:",
+        session.user.email,
+      );
+    }
+  }, [session]);
+
+  // Show loading only when we have a session but it's still loading
+  // isInitialLoad provides timing buffer for session restoration after page refreshes
+  // If no session exists, show login form immediately (critical for E2E tests)
+  const shouldShowLoading = status === "loading" && session;
+
+  // Use isInitialLoad for debugging timing issues
+  if (process.env.NODE_ENV === "test" && isInitialLoad) {
+    console.log("🔄 Initial load state:", {
+      status,
+      hasSession: !!session,
+      isInitialLoad,
+    });
+  }
+
+  if (shouldShowLoading) {
     return (
       <div
         className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50"
@@ -41,6 +89,12 @@ export default function HomePage() {
               </svg>
             </div>
             <p className="text-gray-600">Loading...</p>
+            {/* Debug info for E2E tests */}
+            {process.env.NODE_ENV === "test" && (
+              <div className="text-xs text-gray-500 mt-4">
+                Session Status: {status} | Session: {JSON.stringify(!!session)}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -48,10 +102,24 @@ export default function HomePage() {
   }
 
   if (session) {
+    // Enhanced debug logging for E2E tests
+    if (process.env.NODE_ENV === "test") {
+      console.log("🏠 Authenticated home page rendering", {
+        hasSession: !!session,
+        userEmail: session.user?.email,
+        userRole: session.user?.role,
+        status,
+        sessionEstablished,
+      });
+    }
+
     return (
       <div
         className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50"
         data-testid="authenticated-home"
+        data-session-email={session.user?.email}
+        data-user-role={session.user?.role}
+        data-session-status={status}
       >
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
           <div className="text-center space-y-8 max-w-md">
@@ -79,8 +147,21 @@ export default function HomePage() {
               <p className="text-gray-600">{t("successfullySignedIn")}</p>
             </div>
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 space-y-4">
+              {/* Enhanced debug info for E2E tests */}
+              {process.env.NODE_ENV === "test" && (
+                <div className="text-xs text-green-600 mb-2 p-2 bg-green-50 rounded">
+                  ✅ Authenticated State Confirmed | User: {session.user?.email}{" "}
+                  | Role: {session.user?.role} | Status: {status} | Established:{" "}
+                  {sessionEstablished ? "Yes" : "No"}
+                </div>
+              )}
               <Link
-                href={`/${currentLocale}/account`}
+                href={
+                  getRoleDashboardPath(
+                    (session?.user?.role as Role) || "USER",
+                    currentLocale,
+                  ) as any
+                }
                 className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                 prefetch={false}
                 scroll={false}

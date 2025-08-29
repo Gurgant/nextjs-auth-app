@@ -38,10 +38,10 @@ export async function AuthGuard({
     redirect(redirectTo || defaultRedirect);
   }
 
-  // Handle public routes (redirect authenticated users)
-  if (!requireAuth && isAuthenticated) {
-    const defaultRedirect = `/${locale}/dashboard`;
-    redirect(redirectTo || defaultRedirect);
+  // Handle public routes (allow authenticated users to see home page with auth state)
+  // Only redirect if explicitly requested via redirectTo parameter
+  if (!requireAuth && isAuthenticated && redirectTo) {
+    redirect(redirectTo);
   }
 
   return <>{children}</>;

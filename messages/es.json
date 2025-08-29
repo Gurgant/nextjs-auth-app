@@ -114,6 +114,9 @@
   "Account": {
     "title": "Configuración de Cuenta",
     "subtitle": "Gestiona tu cuenta y preferencias",
+    "dashboard": "Panel de Control",
+    "dashboardDescription": "Accede a tu panel principal y funciones de la aplicación",
+    "goToDashboard": "Ir al Panel de Control",
     "profile": "Información del Perfil",
     "security": "Configuración de Seguridad",
     "dangerZone": "Zona de Peligro",
@@ -343,6 +346,7 @@
     "verifying": "Verificando...",
     "processing": "Procesando...",
     "loading": "Cargando...",
+    "loadingAccountData": "Cargando datos de la cuenta...",
     "deleting": "Eliminando...",
     "updating": "Actualizando...",
     "saving": "Guardando...",

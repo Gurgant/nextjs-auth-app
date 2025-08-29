@@ -142,6 +142,8 @@ export class NextAuthSessionBuilder extends ChainableBuilder<
         email: generate.email(),
         name: "Test User",
         image: null,
+        role: "USER" as const,
+        twoFactorEnabled: false,
       },
       expires: expires.toISOString(),
     };

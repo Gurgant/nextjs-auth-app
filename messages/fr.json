@@ -114,6 +114,9 @@
   "Account": {
     "title": "Paramètres du Compte",
     "subtitle": "Gérez votre compte et vos préférences",
+    "dashboard": "Tableau de Bord",
+    "dashboardDescription": "Accédez à votre tableau de bord principal et aux fonctionnalités de l'application",
+    "goToDashboard": "Aller au Tableau de Bord",
     "profile": "Informations du Profil",
     "security": "Paramètres de Sécurité",
     "dangerZone": "Zone de Danger",
@@ -342,6 +345,7 @@
     "verifying": "Vérification en cours...",
     "processing": "Traitement en cours...",
     "loading": "Chargement en cours...",
+    "loadingAccountData": "Chargement des données du compte...",
     "deleting": "Suppression en cours...",
     "updating": "Mise à jour en cours...",
     "saving": "Sauvegarde en cours...",

@@ -4,7 +4,18 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
+
+    // Enhanced strict type checking - production ready
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    // Note: noUncheckedIndexedAccess, exactOptionalPropertyTypes, and
+    // noPropertyAccessFromIndexSignature require extensive codebase updates
+    // and are best applied incrementally in future iterations
+
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,

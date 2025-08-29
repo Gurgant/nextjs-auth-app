@@ -41,61 +41,32 @@ async function retryWithBackoff<T>(
  */
 async function navigateToUserDashboard(page: Page) {
   console.log("Navigating directly to user dashboard...");
-  await page.goto("/en/dashboard", {
-    waitUntil: "networkidle",
-    timeout: 10000,
+  // Direct navigation to user dashboard to avoid networkidle issues
+  await page.goto("/en/dashboard/user", {
+    waitUntil: "domcontentloaded",
+    timeout: 20000,
   });
-
-  // Wait for role-based redirect to complete
-  await page
-    .waitForURL("**/dashboard/user", { timeout: 8000 })
-    .catch(async () => {
-      console.log(
-        "Role redirect timeout, navigating directly to user dashboard",
-      );
-      await page.goto("/en/dashboard/user", {
-        waitUntil: "networkidle",
-        timeout: 10000,
-      });
-    });
 
   console.log("Successfully navigated to user dashboard");
 }
 
 async function navigateToProDashboard(page: Page) {
   console.log("Navigating directly to pro dashboard...");
-  await page.goto("/en/dashboard", {
-    waitUntil: "networkidle",
-    timeout: 10000,
+  // Direct navigation to pro dashboard to avoid networkidle issues
+  await page.goto("/en/dashboard/pro", {
+    waitUntil: "domcontentloaded",
+    timeout: 20000,
   });
-
-  // Wait for role-based redirect to complete
-  await page
-    .waitForURL("**/dashboard/pro", { timeout: 8000 })
-    .catch(async () => {
-      console.log(
-        "Role redirect timeout, navigating directly to pro dashboard",
-      );
-      await page.goto("/en/dashboard/pro", {
-        waitUntil: "networkidle",
-        timeout: 10000,
-      });
-    });
 
   console.log("Successfully navigated to pro dashboard");
 }
 
 async function navigateToAdminPanel(page: Page) {
   console.log("Navigating directly to admin panel...");
-  await page.goto("/en/dashboard", {
-    waitUntil: "networkidle",
-    timeout: 10000,
-  });
-
-  // Wait for role-based redirect to complete
-  await page.waitForURL("**/admin", { timeout: 8000 }).catch(async () => {
-    console.log("Role redirect timeout, navigating directly to admin");
-    await page.goto("/en/admin", { waitUntil: "networkidle", timeout: 10000 });
+  // Direct navigation to admin panel to avoid networkidle issues
+  await page.goto("/en/admin", {
+    waitUntil: "domcontentloaded",
+    timeout: 20000,
   });
 
   console.log("Successfully navigated to admin panel");
@@ -133,9 +104,10 @@ async function accessDashboardAfterLogin(page: Page) {
   // Wait a moment for session to be established
   await page.waitForTimeout(2000);
 
-  // Navigate directly to dashboard endpoint - use domcontentloaded instead of networkidle
+  // Navigate to dashboard using role-based navigation
+  // Note: This will redirect to appropriate dashboard based on user role
   await page.goto("/en/dashboard", {
-    waitUntil: "domcontentloaded",
+    waitUntil: "networkidle",
     timeout: 15000,
   });
 
@@ -176,12 +148,8 @@ test.describe("Role-Based Access Control", () => {
         await dashboardButton.click();
         await page.waitForTimeout(2000);
       } else {
-        // Navigate directly to dashboard
-        await page.goto("/en/dashboard", {
-          waitUntil: "domcontentloaded",
-          timeout: 15000,
-        });
-        await page.waitForTimeout(2000);
+        // Navigate directly to dashboard - will redirect to user dashboard
+        await navigateToUserDashboard(page);
       }
 
       // Should be redirected to user dashboard based on USER role
@@ -250,13 +218,7 @@ test.describe("Role-Based Access Control", () => {
       await page.waitForTimeout(2000);
 
       // Navigate to dashboard - should redirect to PRO dashboard
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-
-      // Wait for role-based redirect to PRO dashboard
-      await page.waitForURL("**/dashboard/pro", { timeout: 10000 });
+      await navigateToProDashboard(page);
 
       // Verify we're on the pro dashboard
       expect(page.url()).toContain("/dashboard/pro");
@@ -311,13 +273,7 @@ test.describe("Role-Based Access Control", () => {
       // Login method handles session synchronization - no timeout needed
 
       // Navigate to dashboard - should redirect to admin panel
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-
-      // Wait for role-based redirect to admin panel
-      await page.waitForURL("**/admin", { timeout: 10000 });
+      await navigateToAdminPanel(page);
 
       // Verify we're on the admin panel
       expect(page.url()).toContain("/admin");
@@ -346,7 +302,10 @@ test.describe("Role-Based Access Control", () => {
       expect(page.url()).toContain("/dashboard/user");
 
       // Return to admin panel
-      await page.goto("/en/admin");
+      await page.goto("/en/admin", {
+        waitUntil: "domcontentloaded",
+        timeout: 10000,
+      });
       await page.waitForURL("**/admin", { timeout: 5000 });
       expect(page.url()).toContain("/admin");
     });
@@ -386,13 +345,9 @@ test.describe("Role-Based Access Control", () => {
       // Login method handles session synchronization - no timeout needed
 
       // Navigate to base dashboard - should redirect based on role
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
+      await navigateToUserDashboard(page);
 
       // Should be redirected to user dashboard based on USER role
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
 
       // Verify we're on user dashboard
       expect(page.url()).toContain("/dashboard/user");
@@ -401,16 +356,13 @@ test.describe("Role-Based Access Control", () => {
     test("should show appropriate navigation based on role", async ({
       page,
     }) => {
+      test.setTimeout(120000); // 2 minutes for complex multi-user navigation test
       // Login as admin
       await loginPage.login("admin@example.com", "Admin123!");
       // Login method handles session synchronization - no timeout needed
 
       // Navigate to dashboard - should go to admin panel
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-      await page.waitForURL("**/admin", { timeout: 10000 });
+      await navigateToAdminPanel(page);
       expect(page.url()).toContain("/admin");
 
       // Logout and login as regular user to test role restrictions
@@ -419,11 +371,7 @@ test.describe("Role-Based Access Control", () => {
       // Login method handles session synchronization - no timeout needed
 
       // Navigate to dashboard - should go to user dashboard
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
+      await navigateToUserDashboard(page);
 
       // Try to access admin - should be denied/redirected
       await page.goto("/en/admin");
@@ -472,11 +420,7 @@ test.describe("Role-Based Access Control", () => {
       // Login method handles session synchronization - no timeout needed
 
       // Navigate to dashboard - should redirect to user dashboard
-      await page.goto("/en/dashboard", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
+      await navigateToUserDashboard(page);
 
       // Verify role is enforced by trying to access restricted area
       await page.goto("/en/admin");

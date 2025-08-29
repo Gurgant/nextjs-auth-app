@@ -39,14 +39,16 @@ describe("useLocalizedAction", () => {
       useLocalizedAction(mockAction, mockLocale),
     );
 
-    const plainData = { name: "test" };
+    const plainFormData = new FormData();
+    plainFormData.set("name", "test");
 
     await act(async () => {
-      await result.current.execute(plainData);
+      await result.current.execute(plainFormData);
     });
 
-    expect(appendLocaleToFormData).not.toHaveBeenCalled();
-    expect(mockAction).toHaveBeenCalledWith(plainData);
+    // Locale should still be appended even for non-empty FormData
+    expect(appendLocaleToFormData).toHaveBeenCalledWith(plainFormData, "es");
+    expect(mockAction).toHaveBeenCalledWith(plainFormData);
   });
 
   it("should handle multiple arguments correctly", async () => {

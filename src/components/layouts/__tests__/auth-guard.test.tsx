@@ -96,20 +96,22 @@ describe("AuthGuard", () => {
       expect(mockRedirect).not.toHaveBeenCalled();
     });
 
-    it("redirects to account when user is authenticated", async () => {
+    it("allows authenticated users to view public pages without redirect", async () => {
       // Mock authenticated user
       mockAuth.mockResolvedValue({
         user: { id: "1", email: "test@example.com" },
         expires: "2024-12-31",
       } as any);
 
-      await AuthGuard({
+      const result = await AuthGuard({
         children: <div>Public Content</div>,
         locale: "en",
         requireAuth: false,
       });
 
-      expect(mockRedirect).toHaveBeenCalledWith("/en/account");
+      // Should not redirect and should render children
+      expect(mockRedirect).not.toHaveBeenCalled();
+      expect(result.props.children).toEqual(<div>Public Content</div>);
     });
 
     it("redirects to custom path when authenticated", async () => {
@@ -129,7 +131,7 @@ describe("AuthGuard", () => {
       expect(mockRedirect).toHaveBeenCalledWith("/en/profile");
     });
 
-    it("uses correct locale in account redirect", async () => {
+    it("uses correct locale when explicit redirectTo is provided", async () => {
       // Mock authenticated user
       mockAuth.mockResolvedValue({
         user: { id: "1", email: "test@example.com" },
@@ -140,6 +142,7 @@ describe("AuthGuard", () => {
         children: <div>Public Content</div>,
         locale: "de",
         requireAuth: false,
+        redirectTo: "/de/account",
       });
 
       expect(mockRedirect).toHaveBeenCalledWith("/de/account");

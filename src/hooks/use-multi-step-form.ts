@@ -23,26 +23,31 @@ export interface UseMultiStepFormReturn<T = any> {
   totalSteps: number;
   isFirstStep: boolean;
   isLastStep: boolean;
-  stepData: Record<string, any>;
+  stepData: Record<string, unknown>;
   goToNext: () => void;
   goToPrevious: () => void;
   goToStep: (index: number) => void;
   updateStepData: (data: Partial<T>) => void;
-  validateCurrentStep: (data: T) => Promise<{ success: boolean; errors?: any }>;
+  validateCurrentStep: (data: T) => Promise<{
+    success: boolean;
+    errors?: Record<string, string[]>;
+  }>;
   canGoNext: boolean;
   canGoPrevious: boolean;
   progress: number;
   reset: () => void;
 }
 
-export function useMultiStepForm<T = any>({
+export function useMultiStepForm<
+  T extends Record<string, unknown> = Record<string, unknown>,
+>({
   steps,
   initialStep = 0,
   onStepChange,
   onComplete,
 }: UseMultiStepFormOptions<T>): UseMultiStepFormReturn<T> {
   const [currentStep, setCurrentStep] = useState(initialStep);
-  const [stepData, setStepData] = useState<Record<string, any>>({});
+  const [stepData, setStepData] = useState<Record<string, unknown>>({});
 
   const totalSteps = steps.length;
   const currentStepData = steps[currentStep];
@@ -78,10 +83,22 @@ export function useMultiStepForm<T = any>({
       try {
         await schema.parseAsync(data);
         return { success: true };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        // Handle Zod validation errors
+        if (error && typeof error === "object" && "errors" in error) {
+          return {
+            success: false,
+            errors: (error as { errors: Record<string, string[]> }).errors,
+          };
+        }
+
         return {
           success: false,
-          errors: error.errors || error,
+          errors: {
+            general: [
+              error instanceof Error ? error.message : "Validation failed",
+            ],
+          },
         };
       }
     },
