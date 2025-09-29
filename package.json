@@ -105,7 +105,7 @@
     "eslint-config-next": "15.5.0",
     "husky": "^9.1.7",
     "jest": "^30.0.5",
-    "jest-environment-jsdom": "^30.0.5",
+    "jest-environment-jsdom": "^30.2.0",
     "k6": "^0.0.0",
     "postcss": "8.5.6",
     "prettier": "3.6.2",
