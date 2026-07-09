@@ -1,0 +1,154 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 1
+      name: "Warm-up"
+
+    # Ramp-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Ramp-up"
+
+    # Sustained load phase
+    - duration: 120
+      arrivalRate: 10
+      name: "Sustained Load"
+
+    # Spike test phase
+    - duration: 30
+      arrivalRate: 20
+      name: "Spike Test"
+
+    # Cool-down phase
+    - duration: 30
+      arrivalRate: 2
+      name: "Cool-down"
+
+  payload:
+    - path: "./performance-tests/data/users.csv"
+      fields:
+        - "email"
+        - "password"
+        - "name"
+
+  processor: "./performance-tests/scenarios/auth-processor.js"
+
+  plugins:
+    publish-metrics:
+      - type: cloudwatch
+        enabled: false
+    apdex:
+      threshold: 500
+
+  # Performance thresholds
+  ensure:
+    - http.response_time.p95: 500
+    - http.response_time.p99: 1000
+    - http.codes.200: 100
+    - http.request_rate: 20
+
+scenarios:
+  # Scenario 1: Login Flow
+  - name: "User Login"
+    weight: 40
+    flow:
+      - get:
+          url: "/en"
+          capture:
+            - selector: "meta[name='csrf-token']"
+              attr: "content"
+              as: "csrfToken"
+
+      - think: 2
+
+      - post:
+          url: "/api/auth/callback/credentials"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+            csrfToken: "{{ csrfToken }}"
+          capture:
+            - json: "$.url"
+              as: "redirectUrl"
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+      - get:
+          url: "{{ redirectUrl }}"
+          expect:
+            - statusCode: 200
+
+  # Scenario 2: Registration Flow
+  - name: "User Registration"
+    weight: 20
+    flow:
+      - get:
+          url: "/en/register"
+          capture:
+            - selector: "meta[name='csrf-token']"
+              attr: "content"
+              as: "csrfToken"
+
+      - think: 3
+
+      - post:
+          url: "/api/auth/register"
+          json:
+            name: "{{ name }}"
+            email: "{{ $randomString() }}@example.com"
+            password: "Test123!"
+            csrfToken: "{{ csrfToken }}"
+          expect:
+            - statusCode:
+                - 200
+                - 201
+
+  # Scenario 3: Dashboard Access
+  - name: "Dashboard Access"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/callback/credentials"
+          json:
+            email: "test@example.com"
+            password: "Test123!"
+          capture:
+            - json: "$.url"
+              as: "dashboardUrl"
+
+      - get:
+          url: "/en/dashboard"
+          expect:
+            - statusCode:
+                - 200
+                - 302
+
+      - loop:
+          - get:
+              url: "/api/auth/session"
+              expect:
+                - statusCode: 200
+          - think: 5
+        count: 3
+
+  # Scenario 4: Logout Flow
+  - name: "User Logout"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/auth/signout"
+          json:
+            csrfToken: "{{ csrfToken }}"
+          expect:
+            - statusCode:
+                - 200
+                - 302
+
+      - get:
+          url: "/en"
+          expect:
+            - statusCode: 200

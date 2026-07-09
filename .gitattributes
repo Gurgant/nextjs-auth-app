@@ -1,0 +1,6 @@
+# Keep generated reports out of GitHub's language stats (Linguist)
+coverage/** linguist-generated=true
+playwright-report/** linguist-generated=true
+test-results/** linguist-generated=true
+# Screenshots are documentation, not source
+docs/screenshots/** linguist-documentation=true

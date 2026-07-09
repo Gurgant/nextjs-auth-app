@@ -1,0 +1,49 @@
+node_modules/
+.env.development 
+.env.local
+.env
+.next/
+dist/
+.DS_Store
+*.log
+.docker/
+postgres_data/
+src/generated/
+/generated/prisma
+.env.development
+.env.test
+
+# Generated artifacts and test output
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Claude Code generated files
+.claude/
+
+# Playwright MCP working directory (temp/scratch files)
+.playwright-mcp/
+
+# Build caches
+.next/
+.turbo/
+dist/
+
+# Additional generated files
+*.generated.*
+
+# Project adaptation guides (private planning documents)
+FACE_HARMONY_AUTH_ADAPTATION_GUIDE.md
+BLUEPRINT_STRATEGIC_ANALYSIS.md
+CLAUDE_AGENT_IMPLEMENTATION_INSTRUCTIONS.md
+*FACE_HARMONY*
+*_ADAPTATION_*
+*_BLUEPRINT_*
+
+# NOTE: docs/screenshots/ is NOT ignored - these are tracked for README rendering
+/home/gurgant/CursorProjects/2/backup/
+
+# Never commit real/local env files (any variant) or generated prod env
+.env*.local
+.env.production
