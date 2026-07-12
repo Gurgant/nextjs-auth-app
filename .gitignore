@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment — never commit real env files (any variant)
+.env
+.env.local
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# Build output and caches
+.next/
+.turbo/
+dist/
+*.tsbuildinfo
+
+# Generated code (recreate with `pnpm prisma:generate`)
+src/generated/
+*.generated.*
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+
+# Local databases / docker leftovers
+.docker/
+postgres_data/
+
+# Editor / tooling scratch
+.claude/
+.playwright-mcp/
+
+# OS noise
+.DS_Store
+*.log

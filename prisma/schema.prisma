@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  PRO_USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id                        String                   @id @default(cuid())
+  name                      String?
+  email                     String                   @unique
+  emailVerified             DateTime?
+  image                     String?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  password                  String?
+  role                      Role                     @default(USER)
+  hasEmailAccount           Boolean                  @default(false)
+  hasGoogleAccount          Boolean                  @default(false)
+  lastLoginAt               DateTime?
+  lastLoginIp               String?
+  lastPasswordChange        DateTime?
+  lockedUntil               DateTime?
+  loginAttempts             Int                      @default(0)
+  passwordSetAt             DateTime?
+  primaryAuthMethod         String?
+  requiresPasswordChange    Boolean                  @default(false)
+  backupCodes               String[]
+  emailVerificationRequired Boolean                  @default(true)
+  twoFactorEnabled          Boolean                  @default(false)
+  twoFactorEnabledAt        DateTime?
+  twoFactorSecret           String?
+  accounts                  Account[]
+  accountLinkRequests       AccountLinkRequest[]
+  emailVerificationTokens   EmailVerificationToken[]
+  passwordResetTokens       PasswordResetToken[]
+  securityEvents            SecurityEvent[]
+  sessions                  Session[]
+
+  @@index([email])
+  @@index([lastLoginAt])
+  @@index([role])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  email     String
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
+}
+
+model AccountLinkRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  requestType String
+  token       String   @unique
+  expires     DateTime
+  completed   Boolean  @default(false)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([expires])
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@index([expires])
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  eventType String
+  details   String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@index([ipAddress])
+}

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres123
+          POSTGRES_DB: nextjs_auth_db
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # CI-only values; nothing here is a real secret.
+      DATABASE_URL: postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db
+      AUTH_SECRET: ci-only-secret-0123456789abcdefghijklmnopqrstuv
+      NEXTAUTH_SECRET: ci-only-secret-0123456789abcdefghijklmnopqrstuv
+      NEXTAUTH_URL: http://localhost:3000
+      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Push schema to the test database
+        run: pnpm prisma:push
+
+      - name: Test (Jest — unit + integration)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
