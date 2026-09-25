@@ -13,6 +13,14 @@
  */
 
 import { z } from "zod";
+import { ENCRYPTION_KEY_PATTERN, isPublicPlaceholder } from "@/lib/env-rules";
+import {
+  MAX_SESSION_MAX_AGE_SECONDS,
+  MIN_SESSION_MAX_AGE_SECONDS,
+} from "@/lib/session-config";
+
+const ENCRYPTION_KEY_MESSAGE =
+  "must be a 64-character hex string (generate one with `openssl rand -hex 32`)";
 
 const isValidUrl = (value: string): boolean => {
   try {
@@ -43,11 +51,11 @@ const schema = z.object({
 
   NEXTAUTH_URL: z.string().refine(isValidUrl, "must be a valid URL").optional(),
 
-  // 2FA secret / backup-code encryption key: AES-256 → 32 bytes = 64 hex chars.
+  // Passphrase for 2FA secret / backup-code encryption (see src/lib/security.ts).
+  // Required in EVERY environment — there is no fallback key.
   ENCRYPTION_KEY: z
-    .string()
-    .regex(/^[0-9a-fA-F]{64}$/, "must be a 64-character hex string (32 bytes)")
-    .optional(),
+    .string({ error: ENCRYPTION_KEY_MESSAGE })
+    .regex(ENCRYPTION_KEY_PATTERN, ENCRYPTION_KEY_MESSAGE),
 
   // Google OAuth — both credentials or neither (checked below).
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
@@ -60,7 +68,23 @@ const schema = z.object({
   // Security tuning (optional; consumers supply sensible defaults).
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().optional(),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().int().positive().optional(),
-  ACCOUNT_LOCKOUT_DURATION: z.coerce.number().int().positive().optional(),
+  ACCOUNT_LOCKOUT_DURATION: z.coerce.number().int().positive().optional(), // minutes
+
+  // Session idle timeout in SECONDS (Auth.js `session.maxAge` unit; default
+  // 7 days). The bounds turn a unit mistake into a boot error: "7" (days) is
+  // below the minimum, a millisecond value is above the maximum.
+  SESSION_MAX_AGE: z.coerce
+    .number()
+    .int("must be a whole number of seconds")
+    .min(
+      MIN_SESSION_MAX_AGE_SECONDS,
+      "must be at least 300 seconds (5 minutes)",
+    )
+    .max(
+      MAX_SESSION_MAX_AGE_SECONDS,
+      "must be at most 2592000 seconds (30 days)",
+    )
+    .optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -87,10 +111,21 @@ function loadEnv(): Env {
       "AUTH_SECRET (or NEXTAUTH_SECRET): required in production (>= 32 characters)",
     );
   }
-  if (isProd && !process.env.ENCRYPTION_KEY) {
-    problems.push(
-      "ENCRYPTION_KEY: required in production (64-character hex string)",
-    );
+  // Values published in this repo (.env.example, CI) are fine locally, but
+  // anyone can read them: refuse them where real data is protected.
+  if (isProd) {
+    for (const name of [
+      "AUTH_SECRET",
+      "NEXTAUTH_SECRET",
+      "ENCRYPTION_KEY",
+      "RESEND_API_KEY",
+    ]) {
+      if (isPublicPlaceholder(process.env[name])) {
+        problems.push(
+          `${name}: still set to the public example value — generate a real one for production`,
+        );
+      }
+    }
   }
   if (
     isProd &&

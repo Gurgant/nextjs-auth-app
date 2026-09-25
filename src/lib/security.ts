@@ -1,29 +1,23 @@
 import CryptoJS from "crypto-js";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { requireEncryptionKey } from "@/lib/env-rules";
 
-// Encryption utilities for sensitive data like 2FA secrets.
-// The key MUST come from the environment. There is NO usable hardcoded fallback
-// in production — shipping one would make every stored 2FA secret decryptable.
-function getEncryptionKey(): string {
-  const key = process.env.ENCRYPTION_KEY;
-  if (key && key.length >= 32) return key;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "ENCRYPTION_KEY environment variable is required (>= 32 characters) in production to encrypt 2FA secrets and backup codes.",
-    );
-  }
-  // Dev/test only — never used for real data.
-  console.warn(
-    "⚠️  ENCRYPTION_KEY not set: using an insecure development fallback. Set ENCRYPTION_KEY (>= 32 chars) for anything real.",
-  );
-  return "dev-only-insecure-key-not-for-production-use!";
-}
+// Encryption for data at rest (2FA secrets, backup codes).
+//
+// ENCRYPTION_KEY is required in every environment — there is no hardcoded
+// fallback, which would make every stored secret decryptable. It is passed to
+// CryptoJS as a PASSPHRASE (OpenSSL EVP_BytesToKey with MD5, random salt,
+// AES-256-CBC, no MAC), used verbatim and case-sensitive. SECURITY.md
+// recommends AES-256-GCM with a managed key for production.
+//
+// The key is resolved outside the try blocks so a configuration error is
+// reported as such instead of a generic "failed to encrypt".
 
 export function encrypt(text: string): string {
+  const key = requireEncryptionKey();
   try {
-    const encrypted = CryptoJS.AES.encrypt(text, getEncryptionKey()).toString();
-    return encrypted;
+    return CryptoJS.AES.encrypt(text, key).toString();
   } catch (error) {
     console.error("Encryption error:", error);
     throw new Error("Failed to encrypt data");
@@ -31,8 +25,9 @@ export function encrypt(text: string): string {
 }
 
 export function decrypt(encryptedText: string): string {
+  const key = requireEncryptionKey();
   try {
-    const decrypted = CryptoJS.AES.decrypt(encryptedText, getEncryptionKey());
+    const decrypted = CryptoJS.AES.decrypt(encryptedText, key);
     return decrypted.toString(CryptoJS.enc.Utf8);
   } catch (error) {
     console.error("Decryption error:", error);

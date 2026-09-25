@@ -3,19 +3,14 @@ import { PrismaClient } from "../src/generated/prisma/index";
 import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 import * as dotenv from "dotenv";
+import { requireEncryptionKey } from "../src/lib/env-rules";
 
 // Load the same .env the dev server reads, WITHOUT overriding variables already
 // present in the environment (so an explicit DATABASE_URL for the test DB wins).
 // Needed for ENCRYPTION_KEY: seeded 2FA secrets must be encrypted with the same
-// key the app uses, or TOTP validation can never succeed.
+// key the app uses, or TOTP validation can never succeed. Keep the key in .env
+// (not only in .env.local), since this file reads .env alone.
 dotenv.config();
-
-/** Mirror of getEncryptionKey() in src/lib/security.ts (dev/test fallback included). */
-function getEncryptionKey(): string {
-  const key = process.env.ENCRYPTION_KEY;
-  if (key && key.length >= 32) return key;
-  return "dev-only-insecure-key-not-for-production-use!";
-}
 
 /**
  * Global setup for Playwright E2E tests
@@ -139,7 +134,7 @@ async function seedTestData(prisma: PrismaClient) {
       // from it with otplib.
       twoFactorSecret: CryptoJS.AES.encrypt(
         "JBSWY3DPEHPK3PXP",
-        getEncryptionKey(),
+        requireEncryptionKey(),
       ).toString(),
       role: "PRO_USER" as const,
     },

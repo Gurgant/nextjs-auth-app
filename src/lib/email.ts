@@ -1,9 +1,13 @@
 import { Resend } from "resend";
+import { isPublicPlaceholder } from "@/lib/env-rules";
 
-// Conditional Resend initialization to prevent crashes in development
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+// Real sending only with a real key; unset or the .env.example placeholder
+// means "not configured" and sending is simulated (logged, not delivered).
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend =
+  resendApiKey && !isPublicPlaceholder(resendApiKey)
+    ? new Resend(resendApiKey)
+    : null;
 const fromEmail = process.env.EMAIL_FROM || "noreply@authapp.com";
 
 export interface EmailTemplate {
@@ -273,18 +277,19 @@ export function createSecurityAlertTemplate(
 // Send email function
 export async function sendEmail(template: EmailTemplate): Promise<boolean> {
   try {
-    if (!resend || !process.env.RESEND_API_KEY) {
+    if (!resend) {
       // Deliberately avoid logging recipient or body: they carry PII and
       // one-time verification links.
       console.warn(
         "RESEND_API_KEY not configured, simulating email send:",
         template.subject,
       );
-      // Return true in development to not break flows
+      // Simulated sends report success so flows can be exercised locally.
       return true;
     }
 
-    const data = await resend.emails.send({
+    // The Resend SDK does not throw on API errors; it returns { error }.
+    const { data, error } = await resend.emails.send({
       from: fromEmail,
       to: template.to,
       subject: template.subject,
@@ -292,7 +297,12 @@ export async function sendEmail(template: EmailTemplate): Promise<boolean> {
       text: template.text,
     });
 
-    console.log("✅ Email sent successfully:", data.data?.id || "unknown");
+    if (error) {
+      console.error("❌ Email provider rejected the message:", error.name);
+      return false;
+    }
+
+    console.log("✅ Email sent successfully:", data?.id || "unknown");
     return true;
   } catch (error) {
     console.error("❌ Failed to send email:", error);

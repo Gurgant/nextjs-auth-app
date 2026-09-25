@@ -1,6 +1,10 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
 
+// Test-only encryption key (same public value as CI). Assigned, not defaulted:
+// next/jest loads the developer's .env, and tests must never use a real key.
+process.env.ENCRYPTION_KEY = "0123456789abcdef".repeat(4);
+
 // Polyfill for setImmediate (not available in jsdom environment)
 if (typeof setImmediate === "undefined") {
   global.setImmediate = (callback, ...args) => {

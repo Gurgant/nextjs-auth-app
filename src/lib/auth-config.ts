@@ -14,6 +14,7 @@ import {
   clearAttempts,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
 import type {
@@ -190,8 +191,11 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt" as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-    updateAge: 24 * 60 * 60, // 24 hours
+    // Seconds; default 7 days, override with SESSION_MAX_AGE (validated at boot
+    // by src/lib/env.ts). Sliding idle timeout: Auth.js re-issues the token on
+    // every GET /api/auth/session. JWTs cannot be revoked one by one — see
+    // SECURITY.md. (`updateAge` only applies to database sessions.)
+    maxAge: resolveSessionMaxAge(),
   },
   callbacks: {
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
