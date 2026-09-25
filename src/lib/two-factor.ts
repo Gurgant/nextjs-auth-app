@@ -2,22 +2,11 @@ import { authenticator } from "otplib";
 import * as QRCode from "qrcode";
 import { encrypt, decrypt, generateBackupCodes } from "@/lib/security";
 
-// TOTP configuration - using const instead of direct assignment to avoid read-only errors
-const TOTP_OPTIONS = {
-  window: 1, // Allow ±1 step (±30s) tolerance — RFC 6238 recommendation
-  step: 30, // 30-second time step
-  digits: 6, // 6-digit codes
-  algorithm: "sha1", // Explicitly set algorithm
-  encoding: "ascii", // Ensure proper encoding
-};
-
-// Safe configuration - only set if options is writable
-try {
-  Object.assign(authenticator.options, TOTP_OPTIONS);
-} catch {
-  // Options object is read-only in some otplib builds; method-level
-  // defaults (TOTP_OPTIONS above) still apply where passed explicitly.
-}
+// Accept ±1 time step (±30 s of clock drift, RFC 6238 §5.2). The rest stays
+// on the otplib authenticator defaults (30 s step, 6 digits, SHA-1, base32
+// secrets). `options` must be assigned through its setter: the getter returns
+// a frozen copy, so mutating it has no effect.
+authenticator.options = { window: 1 };
 
 export interface TwoFactorSetup {
   secret: string;
