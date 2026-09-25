@@ -530,4 +530,124 @@ describe("Authentication Integration Tests (Real Database)", () => {
       // Cleanup is handled by beforeEach
     }, 120000); // 2 minute timeout for bulk operations
   });
+
+  // Kept in this file on purpose: its beforeEach wipes the users table, so a
+  // second real-DB test file running in parallel would race with it.
+  describe("Account lockout - Real DB", () => {
+    const PASSWORD = "Correct123!";
+    const policy = { maxAttempts: 3, lockoutMs: 15 * 60_000 };
+
+    const makeUser = async (email: string) =>
+      prisma.user.create({
+        data: { email, password: await bcrypt.hash(PASSWORD, 4) },
+      });
+
+    it("counts concurrent failures atomically", async () => {
+      const user = await makeUser("atomic@example.com");
+      const repo = new UserRepository(prisma);
+
+      await Promise.all(
+        Array.from({ length: 8 }, () =>
+          repo.registerFailedLogin(user.id, {
+            maxAttempts: 100,
+            lockoutMs: 60_000,
+          }),
+        ),
+      );
+
+      const row = await prisma.user.findUnique({ where: { id: user.id } });
+      expect(row?.loginAttempts).toBe(8);
+      expect(row?.lockedUntil).toBeNull();
+    });
+
+    it("locks at the threshold for exactly lockoutMs and reports it once", async () => {
+      const user = await makeUser("threshold@example.com");
+      const repo = new UserRepository(prisma);
+      const now = new Date();
+
+      const first = await repo.registerFailedLogin(user.id, policy, now);
+      const second = await repo.registerFailedLogin(user.id, policy, now);
+      expect(first.lockedNow).toBe(false);
+      expect(second).toEqual({
+        attempts: 2,
+        lockedUntil: null,
+        lockedNow: false,
+      });
+
+      const racing = await Promise.all(
+        Array.from({ length: 3 }, () =>
+          repo.registerFailedLogin(user.id, policy, now),
+        ),
+      );
+      expect(racing.filter((r) => r.lockedNow)).toHaveLength(1);
+
+      const row = await prisma.user.findUnique({ where: { id: user.id } });
+      expect(row?.loginAttempts).toBe(5);
+      expect(row?.lockedUntil?.getTime()).toBe(
+        now.getTime() + policy.lockoutMs,
+      );
+    });
+
+    it("verifyCredentials distinguishes valid, invalid and locked", async () => {
+      const user = await makeUser("verify@example.com");
+      const oauthOnly = await prisma.user.create({
+        data: { email: "oauth-only@example.com" },
+      });
+      const repo = new UserRepository(prisma);
+
+      await expect(
+        repo.verifyCredentials("verify@example.com", PASSWORD),
+      ).resolves.toMatchObject({ status: "valid", user: { id: user.id } });
+      await expect(
+        repo.verifyCredentials("verify@example.com", "wrong"),
+      ).resolves.toEqual({ status: "invalid", userId: user.id });
+      await expect(
+        repo.verifyCredentials("nobody@example.com", PASSWORD),
+      ).resolves.toEqual({ status: "invalid", userId: null });
+      await expect(
+        repo.verifyCredentials(oauthOnly.email, PASSWORD),
+      ).resolves.toEqual({ status: "invalid", userId: null });
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { loginAttempts: 5, lockedUntil: new Date(Date.now() + 60_000) },
+      });
+      // Even the correct password is refused while the lock is active.
+      await expect(
+        repo.verifyCredentials("verify@example.com", PASSWORD),
+      ).resolves.toMatchObject({ status: "locked", userId: user.id });
+    });
+
+    it("an expired lock is not enforced and the next failure starts a fresh count", async () => {
+      const user = await makeUser("expired@example.com");
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { loginAttempts: 5, lockedUntil: new Date(Date.now() - 1000) },
+      });
+      const repo = new UserRepository(prisma);
+
+      await expect(
+        repo.verifyCredentials("expired@example.com", PASSWORD),
+      ).resolves.toMatchObject({ status: "valid" });
+      await expect(repo.registerFailedLogin(user.id, policy)).resolves.toEqual({
+        attempts: 1,
+        lockedUntil: null,
+        lockedNow: false,
+      });
+    });
+
+    it("recordSuccessfulLogin clears the counter and the lock", async () => {
+      const user = await makeUser("reset@example.com");
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { loginAttempts: 2, lockedUntil: new Date(Date.now() - 1000) },
+      });
+
+      await new UserRepository(prisma).recordSuccessfulLogin(user.id);
+
+      const row = await prisma.user.findUnique({ where: { id: user.id } });
+      expect(row).toMatchObject({ loginAttempts: 0, lockedUntil: null });
+      expect(row?.lastLoginAt).toBeTruthy();
+    });
+  });
 });

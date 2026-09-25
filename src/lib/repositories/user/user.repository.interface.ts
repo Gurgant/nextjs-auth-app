@@ -39,10 +39,46 @@ export interface UserWithAccountDetails extends User {
   accounts: Account[];
 }
 
+/** Temporary lockout after repeated failed sign-ins (see src/lib/auth/lockout.ts). */
+export interface LockoutPolicy {
+  maxAttempts: number;
+  lockoutMs: number;
+}
+
+/**
+ * Outcome of a credential check. Callers MUST give every non-"valid" status
+ * the same generic answer, so the lock state never reveals itself.
+ */
+export type CredentialCheckResult =
+  | { status: "valid"; user: User }
+  // userId is null for an unknown email or a password-less (OAuth-only) user
+  | { status: "invalid"; userId: string | null }
+  | { status: "locked"; userId: string; lockedUntil: Date };
+
+export interface FailedLoginResult {
+  /** loginAttempts after this failure */
+  attempts: number;
+  /** the lock applied by THIS call, else null */
+  lockedUntil: Date | null;
+  /** true for exactly one caller: the one that locked the account */
+  lockedNow: boolean;
+}
+
 export interface IUserRepository extends IRepository<User> {
   findByEmail(email: string): Promise<User | null>;
   findByEmailWithAccounts(email: string): Promise<UserWithAccounts | null>;
   findByCredentials(email: string, password: string): Promise<User | null>;
+  verifyCredentials(
+    email: string,
+    password: string,
+    now?: Date,
+  ): Promise<CredentialCheckResult>;
+  registerFailedLogin(
+    userId: string,
+    policy: LockoutPolicy,
+    now?: Date,
+  ): Promise<FailedLoginResult>;
+  recordSuccessfulLogin(userId: string): Promise<void>;
   createWithAccount(data: CreateUserWithAccountDTO): Promise<User>;
   updateLastLogin(userId: string): Promise<void>;
   updatePassword(userId: string, hashedPassword: string): Promise<void>;

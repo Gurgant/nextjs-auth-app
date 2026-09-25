@@ -60,7 +60,14 @@ const MINUTE = 60_000;
  * Default rules, aligned with OWASP account-lockout norms (3–5/account) and the
  * NIST SP 800-63B ceiling (≤100 failed attempts). Tune to real traffic.
  */
+function positiveIntEnv(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isInteger(n) && n > 0 ? n : fallback;
+}
+
 export const RATE_LIMITS = {
+  /** Failed credential sign-ins, per email AND per client IP (AUTH_RATE_LIMIT). */
+  login: { limit: positiveIntEnv("AUTH_RATE_LIMIT", 10), windowMs: 1 * MINUTE },
   /** Failed 2FA (TOTP/backup) code submissions, per account. */
   twoFactor: { limit: 5, windowMs: 15 * MINUTE },
   /** Password re-verification: account link/unlink, change password. */

@@ -3,10 +3,10 @@ import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { repositories } from "@/lib/repositories";
+import type { CredentialCheckResult } from "@/lib/repositories";
 import { z } from "zod";
-import { LRUCache } from "lru-cache";
 import { loginEmailSchema, loginPasswordSchema } from "@/lib/validation";
-import { decrypt } from "@/lib/security";
+import { decrypt, getClientIP, logSecurityEvent } from "@/lib/security";
 import { validateTOTPCode, validateBackupCode } from "@/lib/two-factor";
 import {
   isRateLimited,
@@ -14,6 +14,7 @@ import {
   clearAttempts,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { getLockoutPolicy } from "@/lib/auth/lockout";
 import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
@@ -29,14 +30,10 @@ import type {
 // This file contains the core auth configuration without environment variable checks
 // to prevent client-side import errors
 
-// Rate limiting configuration
-const authRateLimiter = new LRUCache<string, number>({
-  max: 500, // Store up to 500 unique email entries
-  ttl: 60 * 1000, // 60 seconds (1 minute)
-});
-
-// Rate limit configuration (the LRU cache above expires entries after 60s)
-const RATE_LIMIT_ATTEMPTS = parseInt(process.env.AUTH_RATE_LIMIT || "10");
+// Credential sign-ins are throttled per email AND per client IP (in-memory,
+// failure-counted) and, independently, locked per account in the database
+// after repeated failures (src/lib/auth/lockout.ts).
+const LOGIN_RL_SCOPE = "login";
 
 // Input validation schema for credentials
 const credentialsSchema = z.object({
@@ -51,6 +48,45 @@ class TwoFactorRequired extends CredentialsSignin {
 }
 class TwoFactorInvalid extends CredentialsSignin {
   code = "2fa_invalid";
+}
+
+interface LoginContext {
+  ip?: string;
+  userAgent?: string;
+}
+
+/**
+ * Count a failed attempt against an existing account and lock it at the
+ * threshold. Never throws: this attempt is already rejected, so a storage
+ * error must not turn into a different answer.
+ */
+async function registerFailedLogin(
+  userId: string,
+  trigger: "password" | "2fa",
+  ctx: LoginContext,
+): Promise<void> {
+  try {
+    const result = await repositories
+      .getUserRepository()
+      .registerFailedLogin(userId, getLockoutPolicy());
+    if (result.lockedNow && result.lockedUntil) {
+      await logSecurityEvent({
+        userId,
+        eventType: "account_locked",
+        success: false,
+        details: "Temporarily locked after repeated failed sign-in attempts",
+        metadata: {
+          trigger,
+          attempts: result.attempts,
+          lockedUntil: result.lockedUntil.toISOString(),
+        },
+        ipAddress: ctx.ip,
+        userAgent: ctx.userAgent,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to record failed login:", error);
+  }
 }
 
 export const authOptions = {
@@ -80,36 +116,44 @@ export const authOptions = {
         totpCode: { label: "2FA Code", type: "text" },
         backupCode: { label: "Backup Code", type: "text" },
       },
-      async authorize(credentials) {
-        // Validate and normalize input
+      async authorize(credentials, request) {
+        // Validate and normalize input (schema-invalid input is not counted)
         const validation = credentialsSchema.safeParse(credentials);
         if (!validation.success) {
           return null;
         }
         const { email, password } = validation.data;
 
-        // Check rate limiting
-        const attempts = authRateLimiter.get(email) || 0;
-        if (attempts >= RATE_LIMIT_ATTEMPTS) {
+        const headers = request?.headers;
+        const ctx: LoginContext = {
+          ip: headers ? getClientIP(headers) : undefined,
+          userAgent: headers?.get("user-agent") ?? undefined,
+        };
+        const rlKeys = [email, ctx.ip];
+        if (isRateLimited(LOGIN_RL_SCOPE, rlKeys, RATE_LIMITS.login).blocked) {
           console.warn("Credentials login rate limit exceeded");
           return null;
         }
 
-        // Verify credentials (password) via the repository
-        let user;
+        const userRepo = repositories.getUserRepository();
+        let check: CredentialCheckResult;
         try {
-          user = await repositories
-            .getUserRepository()
-            .findByCredentials(email, password);
+          check = await userRepo.verifyCredentials(email, password);
         } catch (error) {
           console.error("Authorize error:", error);
           return null;
         }
 
-        if (!user) {
-          authRateLimiter.set(email, attempts + 1);
+        if (check.status !== "valid") {
+          recordAttempt(LOGIN_RL_SCOPE, rlKeys, RATE_LIMITS.login);
+          if (check.status === "invalid" && check.userId) {
+            await registerFailedLogin(check.userId, "password", ctx);
+          }
+          // Same answer for unknown email, wrong password and locked account
+          // (an active lock is not extended).
           return null;
         }
+        const user = check.user;
 
         // Enforce two-factor authentication when enabled. These throws are NOT
         // caught here, so their `code` reaches the client for the two-stage login.
@@ -158,6 +202,7 @@ export const authOptions = {
 
           if (!ok) {
             recordAttempt("2fa", [user.id], RATE_LIMITS.twoFactor);
+            await registerFailedLogin(user.id, "2fa", ctx);
             throw new TwoFactorInvalid();
           }
 
@@ -165,12 +210,13 @@ export const authOptions = {
           clearAttempts("2fa", [user.id]);
         }
 
-        // Successful authentication
-        authRateLimiter.delete(email);
+        // Successful authentication. Only the email counter is cleared: one
+        // valid account must not reset an IP that is spraying other accounts.
+        clearAttempts(LOGIN_RL_SCOPE, [email]);
         try {
-          await repositories.getUserRepository().updateLastLogin(user.id);
+          await userRepo.recordSuccessfulLogin(user.id);
         } catch (error) {
-          console.error("Failed to update last login:", error);
+          console.error("Failed to record successful login:", error);
         }
 
         return {

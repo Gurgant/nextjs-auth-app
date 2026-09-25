@@ -1,14 +1,29 @@
 import { User } from "@/generated/prisma";
 
 import bcrypt from "bcryptjs";
+import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
 import { PrismaRepository } from "../base/prisma.repository";
 import {
   IUserRepository,
   CreateUserWithAccountDTO,
+  CredentialCheckResult,
+  FailedLoginResult,
+  LockoutPolicy,
   UpdateUserDTO,
   UserWithAccounts,
   UserWithAccountDetails,
 } from "./user.repository.interface";
+
+// Compared against when the email is unknown or has no password, so every
+// failed check costs one bcrypt comparison (no timing oracle for existence).
+let dummyHashPromise: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+  dummyHashPromise ??= bcrypt.hash(
+    "timing-equalizer-not-a-password",
+    getBcryptRounds(),
+  );
+  return dummyHashPromise;
+}
 
 export class UserRepository
   extends PrismaRepository<User>
@@ -82,6 +97,77 @@ export class UserRepository
           },
         },
       },
+    });
+  }
+
+  async verifyCredentials(
+    email: string,
+    password: string,
+    now: Date = new Date(),
+  ): Promise<CredentialCheckResult> {
+    const user = await this.findByEmail(email);
+    const passwordOk = await bcrypt.compare(
+      password,
+      user?.password ?? (await getDummyHash()),
+    );
+
+    if (!user || !user.password) return { status: "invalid", userId: null };
+    // An active lock refuses even the correct password.
+    if (user.lockedUntil && user.lockedUntil > now) {
+      return {
+        status: "locked",
+        userId: user.id,
+        lockedUntil: user.lockedUntil,
+      };
+    }
+    return passwordOk
+      ? { status: "valid", user }
+      : { status: "invalid", userId: user.id };
+  }
+
+  /**
+   * Count one failed sign-in; lock the account for `policy.lockoutMs` once the
+   * count reaches `policy.maxAttempts`. Safe under concurrency: the increment
+   * is a single UPDATE, and the conditional lock lets exactly one caller win
+   * (it alone gets lockedNow). An active lock is never extended.
+   */
+  async registerFailedLogin(
+    userId: string,
+    policy: LockoutPolicy,
+    now: Date = new Date(),
+  ): Promise<FailedLoginResult> {
+    // An expired lock starts a fresh count.
+    await this.model.updateMany({
+      where: { id: userId, lockedUntil: { lte: now } },
+      data: { loginAttempts: 0, lockedUntil: null },
+    });
+
+    const { loginAttempts } = await this.model.update({
+      where: { id: userId },
+      data: { loginAttempts: { increment: 1 } },
+      select: { loginAttempts: true },
+    });
+    if (loginAttempts < policy.maxAttempts) {
+      return { attempts: loginAttempts, lockedUntil: null, lockedNow: false };
+    }
+
+    const lockedUntil = new Date(now.getTime() + policy.lockoutMs);
+    const { count } = await this.model.updateMany({
+      where: {
+        id: userId,
+        OR: [{ lockedUntil: null }, { lockedUntil: { lte: now } }],
+      },
+      data: { lockedUntil },
+    });
+    return count === 1
+      ? { attempts: loginAttempts, lockedUntil, lockedNow: true }
+      : { attempts: loginAttempts, lockedUntil: null, lockedNow: false };
+  }
+
+  async recordSuccessfulLogin(userId: string): Promise<void> {
+    await this.model.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date(), loginAttempts: 0, lockedUntil: null },
     });
   }
 

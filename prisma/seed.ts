@@ -46,7 +46,15 @@ async function main() {
 
     const user = await prisma.user.upsert({
       where: { email },
-      update: { name, role, password: passwordHash, emailVerified: new Date() },
+      // Re-seeding also clears a lockout left by failed sign-ins.
+      update: {
+        name,
+        role,
+        password: passwordHash,
+        emailVerified: new Date(),
+        loginAttempts: 0,
+        lockedUntil: null,
+      },
       create: {
         email,
         name,
