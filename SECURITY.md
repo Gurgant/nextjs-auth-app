@@ -84,8 +84,6 @@ the default branch; run the latest `main`.
   production). Validation errors list variable **names only** — never values.
 - `ENCRYPTION_KEY` is **required in production** with no usable hardcoded
   fallback.
-- **Development-only endpoints** (e.g. the mock-session helper) return **403 in
-  production**.
 
 ### Transport & HTTP headers
 

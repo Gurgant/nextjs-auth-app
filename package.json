@@ -48,7 +48,6 @@
     "test:e2e:chromium": "playwright test --workers=1 --project=chromium",
     "test:e2e:firefox": "playwright test --workers=1 --project=firefox",
     "test:e2e:webkit": "playwright test --workers=1 --project=webkit",
-    "docs:shots": "cross-env DOCS_SCREENSHOTS=true PLAYWRIGHT_BASE_URL=http://localhost:3000 playwright test e2e/docs/documentation-screenshots.spec.ts --project=chromium-docs --workers=1",
     "prod:check": "node scripts/production-readiness-check.js",
     "prepare": "husky"
   },

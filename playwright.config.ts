@@ -82,44 +82,25 @@ export default defineConfig({
   // ⚠️ Never set NODE_ENV=test on the dev server: next.config.ts would serve
   // the production CSP (no 'unsafe-eval'), which silently breaks hydration in
   // `next dev` — pages render but nothing is interactive.
-  webServer: process.env.DOCS_SCREENSHOTS
-    ? // Production build for stable documentation screenshots
-      {
-        command: "pnpm build && pnpm start",
-        url: "http://localhost:3000",
-        reuseExistingServer: true,
-        timeout: 180000, // build + start
-        stdout: "pipe",
-        stderr: "pipe",
-        env: {
-          DATABASE_URL:
-            process.env.DATABASE_URL ||
-            "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
-          NEXTAUTH_SECRET: "docs-screenshot-secret-key",
-          NEXTAUTH_URL: "http://localhost:3000",
-          PORT: "3000",
-        },
-      }
-    : // Development server for regular tests
-      {
-        command: "pnpm run dev",
-        url: "http://localhost:3000",
-        reuseExistingServer: true, // Always reuse to prevent port conflicts
-        timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
-        stdout: "pipe",
-        stderr: "pipe",
-        env: {
-          DATABASE_URL:
-            process.env.DATABASE_URL ||
-            "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
-          // CI-specific optimizations
-          ...(process.env.CI && {
-            NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
-            NEXTAUTH_URL: "http://localhost:3000",
-            PORT: "3000",
-          }),
-        },
-      },
+  webServer: {
+    command: "pnpm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: true, // Always reuse to prevent port conflicts
+    timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
+    stdout: "pipe",
+    stderr: "pipe",
+    env: {
+      DATABASE_URL:
+        process.env.DATABASE_URL ||
+        "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
+      // CI-specific optimizations
+      ...(process.env.CI && {
+        NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
+        NEXTAUTH_URL: "http://localhost:3000",
+        PORT: "3000",
+      }),
+    },
+  },
 
   // Output directory
   outputDir: "test-results/",
