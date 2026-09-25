@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getUserWithAccountDetails } from "@/lib/data-access/user-repository";
 
-// Cache the response for 30 seconds to avoid repeated DB queries
+// Security state (2FA, linked providers) must never be served stale.
 export const dynamic = "force-dynamic";
-export const revalidate = 30;
 
 interface OptimizedAccountInfo {
   hasGoogleAccount: boolean;
@@ -29,9 +28,10 @@ export async function GET(_request: NextRequest) {
       );
     }
 
-    // Add cache headers for client-side caching
+    // Never cache: right after enabling 2FA the page refetches this and must
+    // see the new state (a 30 s private cache used to show "Disabled").
     const responseHeaders = new Headers();
-    responseHeaders.set("Cache-Control", "private, max-age=30");
+    responseHeaders.set("Cache-Control", "private, no-store");
     responseHeaders.set("Vary", "Cookie");
 
     try {
@@ -43,7 +43,6 @@ export async function GET(_request: NextRequest) {
           {
             success: false,
             message: "User not found",
-            data: getDefaultAccountInfo(),
           },
           { status: 404, headers: responseHeaders },
         );
@@ -67,22 +66,20 @@ export async function GET(_request: NextRequest) {
         {
           success: true,
           data: accountInfo,
-          cached: true,
         },
         { status: 200, headers: responseHeaders },
       );
     } catch (dbError) {
       console.error("Database error in account info:", dbError);
 
-      // Return fallback data instead of failing completely
+      // Fail honestly: made-up defaults would show a 2FA-protected account
+      // as unprotected.
       return NextResponse.json(
         {
-          success: true,
-          data: getDefaultAccountInfo(),
-          fallback: true,
-          message: "Using cached data due to temporary issue",
+          success: false,
+          message: "Account information is temporarily unavailable",
         },
-        { status: 200, headers: responseHeaders },
+        { status: 503, headers: responseHeaders },
       );
     }
   } catch (error) {
@@ -92,9 +89,8 @@ export async function GET(_request: NextRequest) {
       {
         success: false,
         message: "Failed to load account information",
-        data: getDefaultAccountInfo(),
       },
-      { status: 500 },
+      { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
 }
@@ -120,16 +116,4 @@ function determinePrimaryAuthMethod(user: any): string {
   }
 
   return "unknown";
-}
-
-function getDefaultAccountInfo(): OptimizedAccountInfo {
-  return {
-    hasGoogleAccount: false,
-    hasPassword: false,
-    hasEmailAccount: false,
-    emailVerified: null,
-    twoFactorEnabled: false,
-    primaryAuthMethod: "unknown",
-    createdAt: new Date().toISOString(),
-  };
 }

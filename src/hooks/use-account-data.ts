@@ -45,8 +45,8 @@ export function useAccountData(userId?: string): UseAccountDataReturn {
         headers: {
           "Content-Type": "application/json",
         },
-        // Enable client-side caching
-        cache: "force-cache",
+        // Always fresh: the page refetches right after security changes.
+        cache: "no-store",
       });
 
       const result = await response.json();
@@ -59,32 +59,15 @@ export function useAccountData(userId?: string): UseAccountDataReturn {
         setError(errorMessage);
         console.error(`❌ Error loading account info:`, errorMessage);
 
-        // Use fallback data if available
-        if (result.data) {
-          setAccountInfo(result.data);
-        } else {
-          setAccountInfo({
-            hasGoogleAccount: false,
-            hasPassword: false,
-            hasEmailAccount: false,
-            emailVerified: null,
-            twoFactorEnabled: false,
-          });
-        }
+        // No made-up fallback: unknown is shown as an error, not as "off".
+        setAccountInfo(null);
       }
     } catch (error) {
       const errorMessage = tErrors("failedToLoadAccountInfo");
       setError(errorMessage);
       console.error(`❌ Network error during account info loading:`, error);
 
-      // Set fallback account info to prevent UI breaks
-      setAccountInfo({
-        hasGoogleAccount: false,
-        hasPassword: false,
-        hasEmailAccount: false,
-        emailVerified: null,
-        twoFactorEnabled: false,
-      });
+      setAccountInfo(null);
     } finally {
       setIsLoading(false);
     }
