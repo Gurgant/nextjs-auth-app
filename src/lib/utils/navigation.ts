@@ -4,6 +4,7 @@
  */
 
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import type { Locale } from "@/config/i18n";
 
 /**
@@ -56,7 +57,7 @@ export function localizedPath(
  */
 export function localizedRedirect(path: string, locale: Locale): never {
   const fullPath = localizedPath(path, locale);
-  redirect(fullPath);
+  redirect(fullPath as Route);
 }
 
 /**

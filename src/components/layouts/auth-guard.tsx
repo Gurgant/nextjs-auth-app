@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 import { auth } from "@/lib/auth";
 
 interface AuthGuardProps {
@@ -35,13 +36,13 @@ export async function AuthGuard({
   // Handle protected routes
   if (requireAuth && !isAuthenticated) {
     const defaultRedirect = `/${locale}`;
-    redirect(redirectTo || defaultRedirect);
+    redirect((redirectTo || defaultRedirect) as Route);
   }
 
   // Handle public routes (allow authenticated users to see home page with auth state)
   // Only redirect if explicitly requested via redirectTo parameter
   if (!requireAuth && isAuthenticated && redirectTo) {
-    redirect(redirectTo);
+    redirect(redirectTo as Route);
   }
 
   return <>{children}</>;

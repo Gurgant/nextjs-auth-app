@@ -2,8 +2,10 @@ packages:
   - "."
 
 ignoredBuiltDependencies:
+  - "@parcel/watcher"
   - "@prisma/client"
   - "@prisma/engines"
+  - "@swc/core"
   - "@tailwindcss/oxide"
   - prisma
   - sharp
@@ -11,3 +13,15 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - esbuild
+
+# Security floors for transitive dependencies whose parents pin vulnerable
+# versions (checked with `pnpm audit --prod`). Each range stays inside the
+# major the parent expects; drop an entry once its parent ships the fix.
+overrides:
+  "postcss@<8.5.23": "8.5.23" # next pins 8.4.31
+  "nanoid@<3.3.18": "^3.3.18" # via postcss
+  "sharp@<0.35.4": "^0.35.4" # next optional dep; next allows ^0.35.4
+  "browserslist@<4.28.7": "^4.28.7"
+  "@babel/core@<7.29.6": "^7.29.6" # jest toolchain
+  "defu@<6.1.5": "^6.1.5" # prisma > @prisma/config > c12
+  "deepmerge-ts@<8.0.0": "^8.0.2" # @prisma/config pins 7.1.5

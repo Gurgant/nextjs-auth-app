@@ -2,8 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import * as os from "os";
 
 /**
- * Modern Playwright Configuration - Latest Version Compatible
- * Fixed for Next.js 15.5.0 TypeScript moduleResolution compatibility
+ * Playwright configuration.
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
