@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { SignInButton } from "@/components/auth/sign-in-button";
+import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
 import { CredentialsForm } from "@/components/auth/credentials-form";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
@@ -16,6 +17,9 @@ export default function HomePage() {
   const tAuth = useTranslations("Auth");
   const { data: session, status } = useSession();
   const [showCredentials, setShowCredentials] = useState(false);
+  // Without Google configured, the email form is the only way in: show it
+  // directly instead of a one-option chooser.
+  const googleEnabled = useGoogleSignInEnabled();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [sessionEstablished, setSessionEstablished] = useState(false);
   const params = useParams();
@@ -224,7 +228,7 @@ export default function HomePage() {
 
           {/* Auth Card */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-white/20">
-            {showCredentials ? (
+            {showCredentials || googleEnabled === false ? (
               <div className="space-y-6">
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -235,22 +239,26 @@ export default function HomePage() {
                   </p>
                 </div>
                 <CredentialsForm />
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500 font-medium">
-                      {tAuth("or")}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowCredentials(false)}
-                  className="w-full text-blue-600 hover:text-blue-700 font-medium py-2 px-4 rounded-xl hover:bg-blue-50 transition-colors duration-200"
-                >
-                  {tAuth("signInWithGoogleInstead")}
-                </button>
+                {googleEnabled !== false && (
+                  <>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-200" />
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-4 bg-white text-gray-500 font-medium">
+                          {tAuth("or")}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowCredentials(false)}
+                      className="w-full text-blue-600 hover:text-blue-700 font-medium py-2 px-4 rounded-xl hover:bg-blue-50 transition-colors duration-200"
+                    >
+                      {tAuth("signInWithGoogleInstead")}
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <div className="space-y-6">

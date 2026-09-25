@@ -5,15 +5,17 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { useSafeLocale } from "@/hooks/use-safe-locale";
+import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
 
 export function SignInButton() {
   const { data: session, status } = useSession();
   const t = useTranslations("Auth");
+  const googleEnabled = useGoogleSignInEnabled();
 
   // Use safe locale extraction
   const currentLocale = useSafeLocale();
 
-  if (status === "loading") {
+  if (status === "loading" || (!session && googleEnabled === null)) {
     return (
       <div className="animate-pulse bg-gradient-to-r from-gray-200 to-gray-300 h-12 w-full rounded-xl" />
     );
@@ -42,6 +44,11 @@ export function SignInButton() {
         {t("signOut")}
       </GradientButton>
     );
+  }
+
+  // Google is optional: without credentials the provider is not registered.
+  if (!googleEnabled) {
+    return null;
   }
 
   return (

@@ -31,29 +31,26 @@ export async function GET(_request: NextRequest) {
       overallStatus = "unhealthy";
     }
 
-    // Environment variables check
-    const requiredEnvVars = [
-      "DATABASE_URL",
-      "NEXTAUTH_URL",
-      "NEXTAUTH_SECRET",
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_SECRET",
-    ];
-
-    const missingEnvVars = requiredEnvVars.filter(
-      (envVar) => !process.env[envVar],
-    );
+    // Environment check: only what the app cannot run without (Google OAuth
+    // and e-mail are optional). Names are logged server-side, never returned
+    // by this public endpoint.
+    const missingEnvVars = [
+      !process.env.DATABASE_URL && "DATABASE_URL",
+      !(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET) &&
+        "AUTH_SECRET",
+      !process.env.ENCRYPTION_KEY && "ENCRYPTION_KEY",
+    ].filter(Boolean);
 
     checks.environment = {
       status: missingEnvVars.length === 0 ? "healthy" : "unhealthy",
       message:
         missingEnvVars.length === 0
-          ? "All required environment variables present"
-          : `Missing environment variables: ${missingEnvVars.join(", ")}`,
-      missingVariables: missingEnvVars.length > 0 ? missingEnvVars : undefined,
+          ? "Required configuration present"
+          : "Required configuration missing (see server logs)",
     };
 
     if (missingEnvVars.length > 0) {
+      console.error("Health check: missing configuration:", missingEnvVars);
       overallStatus = "unhealthy";
     }
 
@@ -86,10 +83,8 @@ export async function GET(_request: NextRequest) {
       }
     }
 
-    // System info
+    // System info (no runtime/platform versions: this endpoint is public)
     const systemInfo = {
-      nodeVersion: process.version,
-      platform: process.platform,
       uptime: Math.round(process.uptime()),
       environment: process.env.NODE_ENV || "development",
       timestamp: new Date().toISOString(),

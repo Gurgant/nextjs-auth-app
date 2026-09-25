@@ -89,21 +89,32 @@ async function registerFailedLogin(
   }
 }
 
+// Google sign-in is optional: the provider is registered only when both
+// credentials are set (env.ts rejects setting just one), so the UI can ask
+// /api/auth/providers whether to show it.
+export const isGoogleConfigured = Boolean(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+);
+
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
   trustHost: true, // Required for E2E tests and development
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
-    }),
+    ...(isGoogleConfigured
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            authorization: {
+              params: {
+                prompt: "consent",
+                access_type: "offline",
+                response_type: "code",
+              },
+            },
+          }),
+        ]
+      : []),
     Credentials({
       name: "credentials",
       credentials: {
