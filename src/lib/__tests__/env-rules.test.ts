@@ -94,6 +94,7 @@ describe("isPublicPlaceholder", () => {
     "0123456789ABCDEF".repeat(4),
     "generate-with-openssl-rand-base64-32-xxxx",
     "  your-resend-api-key  ",
+    "re_...",
   ])("flags %s", (value) => {
     expect(isPublicPlaceholder(value)).toBe(true);
   });

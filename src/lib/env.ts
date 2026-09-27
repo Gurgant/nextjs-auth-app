@@ -1,10 +1,11 @@
 /**
- * Boot-time environment validation (fail-fast).
+ * Start-up environment validation.
  *
  * SERVER-ONLY. This module reads secrets from `process.env`; never import it
  * into a Client Component. It is loaded once at server startup via the
- * `register()` hook in `src/instrumentation.ts`, so a misconfigured environment
- * aborts the process before it serves any request.
+ * `register()` hook in `src/instrumentation.ts`. With a misconfigured
+ * environment Next logs the error (variable names only) and fails every request;
+ * the process itself keeps running (measured with `next start`).
  *
  * The schema only validates the variables this app actually consumes at
  * runtime; unknown keys (PATH, test-only vars, …) are ignored. Production-only
@@ -106,9 +107,11 @@ function loadEnv(): Env {
   const hasSigningSecret =
     !!process.env.AUTH_SECRET || !!process.env.NEXTAUTH_SECRET;
 
-  if (isProd && !hasSigningSecret) {
+  // Required everywhere: without it Auth.js answers every sign-in and session
+  // call with MissingSecret, even in development (observed).
+  if (!hasSigningSecret) {
     problems.push(
-      "AUTH_SECRET (or NEXTAUTH_SECRET): required in production (>= 32 characters)",
+      "AUTH_SECRET (or NEXTAUTH_SECRET): required (>= 32 characters; openssl rand -base64 32)",
     );
   }
   // Values published in this repo (.env.example, CI) are fine locally, but
@@ -158,6 +161,6 @@ function loadEnv(): Env {
   return parsed.data;
 }
 
-// Validated once at module load. The `register()` hook imports this module so a
-// misconfigured server fails fast at cold start.
+// Validated once at module load. The `register()` hook imports this module, so
+// a misconfigured server serves nothing from its first request on.
 export const env: Env = loadEnv();

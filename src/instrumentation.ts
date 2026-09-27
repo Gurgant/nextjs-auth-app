@@ -2,9 +2,9 @@
  * Next.js instrumentation hook.
  *
  * `register()` runs once when a server instance starts and must complete before
- * the server accepts requests — the ideal fail-fast point for environment
- * validation. Importing `./lib/env` runs that module's schema validation, which
- * throws on a misconfigured environment and aborts startup.
+ * requests are handled. Importing `./lib/env` runs that module's schema
+ * validation, which throws on a misconfigured environment: Next then logs the
+ * error and answers every request with an error (the process keeps running).
  *
  * Guarded to the Node.js runtime so it neither runs in the Edge bundle nor at
  * `next build` (Next does not execute `register()` during build); validation

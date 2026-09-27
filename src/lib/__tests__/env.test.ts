@@ -58,6 +58,13 @@ describe("development", () => {
     );
   });
 
+  it("refuses to boot without a session secret (Auth.js needs one in dev too)", () => {
+    const { AUTH_SECRET: _a, NEXTAUTH_SECRET: _n, ...rest } = EXAMPLE;
+    expect(bootError({ ...rest, NODE_ENV: "development" })).toMatch(
+      /AUTH_SECRET/,
+    );
+  });
+
   it("refuses a non-hex ENCRYPTION_KEY", () => {
     expect(
       bootError({

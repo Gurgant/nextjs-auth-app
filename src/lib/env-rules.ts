@@ -23,7 +23,8 @@ const PUBLIC_PLACEHOLDERS = new Set(
     "0123456789abcdef".repeat(4), // CI + Jest ENCRYPTION_KEY
     "generate-with-openssl-rand-base64-32-xxxx", // .env.example AUTH_SECRET
     "ci-only-secret-0123456789abcdefghijklmnopqrstuv", // CI AUTH_SECRET
-    "your-resend-api-key", // .env.example RESEND_API_KEY
+    "your-resend-api-key", // older .env.example RESEND_API_KEY
+    "re_...", // .env.example RESEND_API_KEY (commented out)
   ].map((v) => v.toLowerCase()),
 );
 
