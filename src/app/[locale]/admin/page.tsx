@@ -332,8 +332,9 @@ export default async function AdminDashboardPage({
             </a>
 
             <a
-              href={`/${locale}/api/admin/metrics`}
+              href="/api/admin/metrics"
               target="_blank"
+              rel="noopener noreferrer"
               className="p-4 border-2 border-purple-500 text-purple-500 rounded-lg hover:bg-purple-50 transition-colors text-center"
             >
               <svg
