@@ -1,62 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-interface WebVitalData {
-  metric: string;
-  value: number;
-  rating: "good" | "needs-improvement" | "poor";
-  url: string;
-  timestamp: number;
-  userAgent: string;
-}
+import {
+  recentWebVitals,
+  recordWebVital,
+  type StoredWebVital,
+} from "@/lib/performance/web-vitals-store";
 
-// In-memory storage for demo purposes (use an analytics service in
-// production). The endpoint accepts anonymous POSTs, so the store is a
-// bounded ring: without the cap any client could grow server memory forever.
-const MAX_STORED_METRICS = 1000;
-const WEB_VITALS = new Set(["CLS", "INP", "FCP", "LCP", "TTFB"]);
-const performanceMetrics: WebVitalData[] = [];
-
+// Demo collector (see src/lib/performance/web-vitals-store.ts): anonymous POSTs
+// are accepted, so the store validates, trims and caps everything it keeps.
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const data: WebVitalData = await request.json();
+    const data: unknown = await request.json();
 
-    // Validate the data
-    if (
-      !WEB_VITALS.has(data.metric) ||
-      typeof data.value !== "number" ||
-      !Number.isFinite(data.value)
-    ) {
+    if (!recordWebVital(data, session?.user?.id || "anonymous")) {
       return NextResponse.json(
         { error: "Invalid metric data" },
         { status: 400 },
       );
-    }
-
-    // Store the metric (in production, save to database)
-    const metricEntry = {
-      ...data,
-      userId: session?.user?.id || "anonymous",
-      timestamp: data.timestamp || Date.now(),
-    };
-
-    performanceMetrics.push(metricEntry);
-    if (performanceMetrics.length > MAX_STORED_METRICS) {
-      performanceMetrics.splice(
-        0,
-        performanceMetrics.length - MAX_STORED_METRICS,
-      );
-    }
-
-    // Console visibility only while developing
-    if (process.env.NODE_ENV === "development") {
-      console.log(`Performance metric received:`, {
-        metric: data.metric,
-        value: data.value,
-        rating: data.rating,
-        url: data.url,
-      });
     }
 
     return NextResponse.json({ success: true });
@@ -72,9 +34,7 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     // Return aggregated metrics
-    const last24Hours = performanceMetrics.filter(
-      (metric) => Date.now() - metric.timestamp < 24 * 60 * 60 * 1000,
-    );
+    const last24Hours = recentWebVitals(24 * 60 * 60 * 1000);
 
     const aggregated = {
       total: last24Hours.length,
@@ -108,7 +68,7 @@ export async function GET() {
   }
 }
 
-function calculateAverage(metrics: WebVitalData[], metricName: string) {
+function calculateAverage(metrics: StoredWebVital[], metricName: string) {
   const filtered = metrics.filter((m) => m.metric === metricName);
   if (filtered.length === 0) return null;
 
