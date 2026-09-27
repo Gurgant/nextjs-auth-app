@@ -5,8 +5,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { Role } from "@/lib/types/prisma";
-import { hasRole, hasExactRole, isAdmin, isProUser } from "@/lib/auth/rbac";
+import type { Role } from "@/lib/types/prisma";
+import { hasRole, hasExactRole, isAdmin, isProUser } from "@/lib/auth/roles";
 
 export function useRole() {
   const { data: session, status } = useSession();

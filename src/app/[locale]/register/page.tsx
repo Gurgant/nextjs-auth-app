@@ -1,5 +1,6 @@
 import { RegistrationForm } from "@/components/auth/registration-form";
-import { AuthGuard, FormPageLayout } from "@/components/layouts";
+import { FormPageLayout } from "@/components/layouts";
+import { AuthGuard } from "@/components/layouts/auth-guard";
 import { type Locale } from "@/config/i18n";
 
 interface Props {

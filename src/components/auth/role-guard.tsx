@@ -6,7 +6,7 @@
 
 import { ReactNode } from "react";
 import { useRole } from "@/hooks/use-role";
-import { Role } from "@/lib/types/prisma";
+import type { Role } from "@/lib/types/prisma";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";

@@ -62,3 +62,12 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Server-only code (auth config, repositories, Prisma) must never reach
+      # the browser: a Client Component importing a server module bundles it.
+      - name: No server code in client bundles
+        run: |
+          if grep -rlE "registerFailedLogin|timing-equalizer-not-a-password|PrismaClient" .next/static; then
+            echo "::error::server-only code found in client chunks (files above)"
+            exit 1
+          fi

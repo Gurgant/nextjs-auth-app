@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { AccountPageWrapper } from "@/components/account/account-page-wrapper";
-import { AuthGuard, DashboardLayout } from "@/components/layouts";
+import { DashboardLayout } from "@/components/layouts";
+import { AuthGuard } from "@/components/layouts/auth-guard";
 
 interface Props {
   params: Promise<{ locale: string }>;

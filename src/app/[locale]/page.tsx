@@ -7,8 +7,8 @@ import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
 import { CredentialsForm } from "@/components/auth/credentials-form";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { getRoleDashboardPath } from "@/lib/auth/rbac";
-import { Role } from "@/lib/types/prisma";
+import { getRoleDashboardPath } from "@/lib/auth/roles";
+import type { Role } from "@/lib/types/prisma";
 import Link from "next/link";
 import type { Route } from "next";
 
