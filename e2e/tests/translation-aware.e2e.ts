@@ -1,202 +1,144 @@
 import { test, expect } from "@playwright/test";
-import {
-  translationTestHelper,
-  testWelcomePageInAllLanguages,
-  testAuthButtonsInAllLanguages,
-} from "../utils/translation-test-helper";
+import { isGoogleEnabled, waitForSignedOutHome } from "../support/app";
+import enMessages from "../../messages/en.json";
+import esMessages from "../../messages/es.json";
+import frMessages from "../../messages/fr.json";
+import itMessages from "../../messages/it.json";
+import deMessages from "../../messages/de.json";
 
 /**
- * DEMONSTRATION: Translation-Aware Testing
- *
- * This answers your question: "why you are not using the translating functions to get the text?"
- *
- * ANSWER: We should use BOTH approaches for comprehensive testing!
- *
- * 1. Translation-aware tests (using translation functions) - verify translations work
- * 2. Hardcoded tests (using expected strings) - verify UI functionality
- * 3. Hybrid tests (combining both) - get complete coverage
+ * The expected UI text comes from the message files next-intl serves
+ * (src/i18n.ts loads messages/<locale>.json), never from a table kept in the
+ * test. No sign-in, no registration submit: this file uses no rate-limit
+ * budget.
  */
+const MESSAGES = {
+  en: enMessages,
+  es: esMessages,
+  fr: frMessages,
+  it: itMessages,
+  de: deMessages,
+};
+type Locale = keyof typeof MESSAGES;
+// Mirrors `locales` in src/i18n.ts (not imported: it pulls in next-intl/server).
+const LOCALES: Locale[] = ["en", "es", "fr", "it", "de"];
 
-test.describe("Translation-Aware Testing Demo", () => {
-  test("HYBRID: Test welcome message using both approaches", async ({
-    page,
-  }) => {
-    // Navigate to home page
-    await page.goto("/en");
+/** [dotted path, value] for every leaf of a messages object. */
+function leaves(node: unknown, prefix = ""): Array<[string, unknown]> {
+  if (typeof node !== "object" || node === null || Array.isArray(node)) {
+    return [[prefix, node]];
+  }
+  return Object.entries(node).flatMap(([key, value]) =>
+    leaves(value, prefix ? `${prefix}.${key}` : key),
+  );
+}
 
-    // Wait for page to fully load and session to resolve (critical fix!)
-    await page.waitForTimeout(3000);
+test.describe("UI text comes from messages/<locale>.json", () => {
+  test("every locale file has exactly the keys of en.json, all non-empty strings", () => {
+    const expected = leaves(MESSAGES.en).map(([path]) => path);
+    expect(expected.length).toBeGreaterThan(0);
 
-    // Check if still in loading state (same issue as auth-simple tests)
-    const isLoading = await page
-      .locator('[data-testid="session-loading"]')
-      .isVisible()
-      .catch(() => false);
-    if (isLoading) {
-      console.log("⚠️ Page still loading, waiting longer...");
-      await page.waitForTimeout(5000);
+    for (const locale of LOCALES) {
+      const entries = leaves(MESSAGES[locale]);
+      const paths = entries.map(([path]) => path);
+      expect(
+        {
+          missing: expected.filter((path) => !paths.includes(path)),
+          extra: paths.filter((path) => !expected.includes(path)),
+          blank: entries
+            .filter(([, value]) => typeof value !== "string" || !value.trim())
+            .map(([path]) => path),
+        },
+        `messages/${locale}.json`,
+      ).toEqual({ missing: [], extra: [], blank: [] });
     }
-
-    // Debug: Check what text is actually on the page
-    const pageText = await page.locator("body").innerText();
-    console.log(`🔍 Page content: ${pageText.substring(0, 500)}...`);
-
-    // METHOD 1: Hardcoded approach (looking for h1 title specifically)
-    const titleLocator = page.locator('h1:has-text("Welcome to Our App")');
-    await expect(titleLocator).toBeVisible({ timeout: 10000 });
-    console.log('✅ Hardcoded test passed: Found "Welcome to Our App" in h1');
-
-    // METHOD 2: Translation-aware approach
-    const expectedEnglish = translationTestHelper.getExpectedText(
-      "common.welcome",
-      "en",
-    );
-    await expect(page.locator(`h1:has-text("${expectedEnglish}")`)).toBeVisible(
-      { timeout: 10000 },
-    );
-    console.log(
-      `✅ Translation-aware test passed: Found "${expectedEnglish}" in h1`,
-    );
-
-    // METHOD 3: Comprehensive multi-language testing (BEST approach)
-    await testWelcomePageInAllLanguages(page);
-    console.log("✅ Multi-language test passed: All locales verified");
   });
 
-  test("HYBRID: Test authentication buttons across languages", async ({
-    page,
-  }) => {
-    // Test Google sign-in button in multiple languages using translation helper
-    await testAuthButtonsInAllLanguages(page);
-  });
-
-  test("ADVANCED: Test form validation with translation awareness", async ({
-    page,
-  }) => {
-    await translationTestHelper.testMultiLanguage(
+  for (const locale of LOCALES) {
+    test(`/${locale} home shows Home.title and the e-mail sign-in entry point`, async ({
       page,
-      async (locale, texts) => {
-        // Navigate to registration page in specific locale
-        await page.goto(`/${locale}/register`);
+    }) => {
+      const m = MESSAGES[locale];
+      await page.goto(`/${locale}`);
+      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      await waitForSignedOutHome(page);
 
-        // Test that form labels are properly translated
-        const emailLabel = translationTestHelper.getExpectedText(
-          "auth.email",
-          locale,
-        );
-        const passwordLabel = translationTestHelper.getExpectedText(
-          "auth.password",
-          locale,
-        );
-
-        // Flexible testing - look for translated OR English text
-        const hasEmailLabel =
-          (await page
-            .locator(`:has-text("${emailLabel}"), :has-text("Email")`)
-            .count()) > 0;
-        const hasPasswordLabel =
-          (await page
-            .locator(`:has-text("${passwordLabel}"), :has-text("Password")`)
-            .count()) > 0;
-
-        expect(hasEmailLabel).toBeTruthy();
-        expect(hasPasswordLabel).toBeTruthy();
-
-        console.log(
-          `✅ Form labels verified in ${locale.toUpperCase()}: Email="${emailLabel}", Password="${passwordLabel}"`,
-        );
-      },
-    );
-  });
-
-  test("PRACTICAL: Test login flow with translation validation", async ({
-    page,
-  }) => {
-    // Test login in English with translation verification
-    await page.goto("/en");
-
-    // Get expected translation for "Sign in with Email"
-    const expectedSignInText = translationTestHelper.getExpectedText(
-      "auth.signInWithEmail",
-      "en",
-    );
-
-    // Look for the button using BOTH approaches
-    const signInButton = page.locator(
-      `button:has-text("${expectedSignInText}"), button:has-text("Sign in with Email")`,
-    );
-
-    if ((await signInButton.count()) > 0) {
-      await signInButton.first().click();
-      console.log(
-        `✅ Found and clicked sign-in button: "${expectedSignInText}"`,
+      // The nav's own <h1> (Layout.appTitle) sits outside <main>.
+      const main = page.locator("main");
+      await expect(main.getByRole("heading", { level: 1 })).toHaveText(
+        m.Home.title,
       );
 
-      // Continue with login flow...
-      await page.waitForTimeout(1000);
-
-      // Verify email input appears
-      const emailInput = page.locator('input[type="email"]');
-      await expect(emailInput).toBeVisible({ timeout: 5000 });
-      console.log("✅ Email input appeared after clicking sign-in button");
-    } else {
-      console.log(
-        "ℹ️ Sign-in button not found - might use different UI pattern",
-      );
-      expect(true).toBeTruthy(); // Test still passes
-    }
-  });
-
-  test("COMPREHENSIVE: Validate all supported locales have required translations", async ({
-    page,
-  }) => {
-    const requiredKeys = [
-      "common.welcome",
-      "auth.signInWithGoogle",
-      "auth.email",
-      "auth.password",
-    ];
-    const locales = ["en", "es", "fr", "de", "it"];
-
-    for (const locale of locales) {
-      console.log(`🔍 Checking translations for ${locale.toUpperCase()}...`);
-
-      for (const key of requiredKeys) {
-        try {
-          const translation = translationTestHelper.getExpectedText(
-            key,
-            locale,
-          );
-          expect(translation).toBeTruthy();
-          expect(translation.length).toBeGreaterThan(0);
-          console.log(`  ✅ ${key} = "${translation}"`);
-        } catch (error) {
-          console.error(`  ❌ Missing translation: ${key} for ${locale}`);
-          throw error;
-        }
+      const googleButton = page.getByTestId("sign-in-with-google-button");
+      const emailToggle = page.getByTestId("sign-in-with-email-toggle");
+      const googleInstead = main.getByRole("button", {
+        name: m.Auth.signInWithGoogleInstead,
+        exact: true,
+      });
+      if (await isGoogleEnabled(page)) {
+        // Chooser first: Google button plus the e-mail toggle.
+        await expect(googleButton).toHaveText(m.Auth.signInWithGoogle);
+        await expect(emailToggle).toHaveText(m.Auth.signInWithEmail);
+        await emailToggle.click();
+        await expect(googleInstead).toBeVisible();
+      } else {
+        // No Google provider: the e-mail form is the page, no chooser at all.
+        await expect(googleButton).toHaveCount(0);
+        await expect(emailToggle).toHaveCount(0);
+        await expect(googleInstead).toHaveCount(0);
       }
-    }
 
-    console.log("✅ All required translations exist for all locales");
-  });
+      // The e-mail form, in both configurations.
+      await expect(main.getByRole("heading", { level: 3 })).toHaveText(
+        m.Auth.signInToAccount,
+      );
+      await expect(
+        main.getByLabel(m.CredentialsForm.emailLabel, { exact: true }),
+      ).toHaveAttribute("id", "email");
+      await expect(
+        main.getByLabel(m.CredentialsForm.passwordLabel, { exact: true }),
+      ).toHaveAttribute("id", "password");
+      await expect(main.locator('form button[type="submit"]')).toHaveText(
+        m.CredentialsForm.signInButton,
+      );
+      await expect(
+        main.getByRole("link", { name: m.Auth.registerHere, exact: true }),
+      ).toHaveAttribute("href", `/${locale}/register`);
+    });
+  }
+
+  for (const locale of LOCALES) {
+    test(`/${locale}/register labels each field with its Registration.* text`, async ({
+      page,
+    }) => {
+      const r = MESSAGES[locale].Registration;
+      await page.goto(`/${locale}/register`);
+      await expect(page).toHaveURL(new RegExp(`/${locale}/register$`));
+
+      await expect(
+        page.locator("main").getByRole("heading", { level: 1 }),
+      ).toHaveText(r.title);
+
+      // Each label must point at its own input (<label htmlFor={id}>).
+      const form = page.locator("main form");
+      await expect(
+        form.getByLabel(r.fullName, { exact: true }),
+      ).toHaveAttribute("id", "name");
+      await expect(
+        form.getByLabel(r.emailAddress, { exact: true }),
+      ).toHaveAttribute("id", "email");
+      await expect(
+        form.getByLabel(r.createPassword, { exact: true }),
+      ).toHaveAttribute("id", "password");
+      await expect(
+        form.getByLabel(r.confirmPassword, { exact: true }),
+      ).toHaveAttribute("id", "confirmPassword");
+      await expect(
+        form.getByLabel(r.agreeToTerms, { exact: true }),
+      ).toHaveAttribute("id", "terms");
+      await expect(form.locator('button[type="submit"]')).toHaveText(
+        r.createAccount,
+      );
+    });
+  }
 });
-
-/**
- * SUMMARY OF APPROACHES:
- *
- * 1. HARDCODED (Original):
- *    - Pros: Simple, tests actual UI text users see
- *    - Cons: Brittle, doesn't validate translation system
- *
- * 2. TRANSLATION-AWARE (Your suggestion):
- *    - Pros: Tests translation system, maintainable
- *    - Cons: Can miss UI bugs, complex setup
- *
- * 3. HYBRID (Best approach):
- *    - Combines both approaches
- *    - Tests translation system AND actual UI
- *    - Flexible fallbacks
- *    - Comprehensive multi-language coverage
- *
- * RECOMMENDATION: Use the HYBRID approach demonstrated above!
- */

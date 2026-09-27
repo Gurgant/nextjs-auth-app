@@ -1,475 +1,395 @@
 import { test, expect } from "@playwright/test";
-import { authenticator } from "otplib";
-import { LoginPage } from "../pages/login.page";
-import { RegisterPage } from "../pages/register.page";
-import { AuthStateManager } from "../utils/auth-state-manager";
+import type { Page } from "@playwright/test";
+import en from "../../messages/en.json";
+import {
+  USERS,
+  currentTotp,
+  expectSignedInAs,
+  expectSignedOut,
+  formAlert,
+  isGoogleEnabled,
+  openEmailSignIn,
+  signInViaApi,
+  signOutViaCookies,
+  submitCredentials,
+  waitForSignedOutHome,
+} from "../support/app";
 
-test.describe("User Login/Logout Flow", () => {
-  let loginPage: LoginPage;
+/*
+ * E-mail sign-in, sign-out and session handling on the home page
+ * (src/app/[locale]/page.tsx, src/components/auth/credentials-form.tsx).
+ *
+ * Rate-limit / lockout budget for this file (src/lib/rate-limit.ts, src/lib/auth-config.ts):
+ * - failed credential sign-ins: 2. The first uses nobody@example.com. The second is
+ *   test@example.com with a wrong password, and the next test signs that user in
+ *   successfully, which resets its lockout counter.
+ * - wrong 2FA codes: 1, reset by the valid-code test that follows it.
+ * - registrations: 0.
+ * These resets depend on test order, so the file keeps its order even under fullyParallel.
+ */
+test.describe.configure({ mode: "default" });
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page);
-    // Optimized authentication state management - only logout if needed
-    await AuthStateManager.ensureAuthState(page, "logged-out");
+/** Seeded by e2e/global-setup.ts with emailVerified: null (not part of USERS). */
+const UNVERIFIED = {
+  email: "unverified@example.com",
+  password: "Unverified123!",
+} as const;
+
+const submitButton = (page: Page) => page.locator('form button[type="submit"]');
+
+const accountHeading = (page: Page) =>
+  page.getByRole("heading", { level: 1, name: en.Account.title, exact: true });
+
+/** The raw session user, including fields that sessionUser() does not type. */
+async function rawSessionUser(
+  page: Page,
+): Promise<Record<string, unknown> | null> {
+  const res = await page.request.get("/api/auth/session");
+  expect(res.ok()).toBe(true);
+  const body = await res.json();
+  return body?.user ?? null;
+}
+
+test("signed-out home shows the app title, the e-mail form with a disabled submit and a link to /en/register", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+
+  await expect(page).toHaveTitle(en.Layout.appTitle);
+  await expect(
+    page.getByRole("heading", { level: 1, name: en.Home.title, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: en.Auth.signInToAccount, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel(en.CredentialsForm.emailLabel, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByLabel(en.CredentialsForm.passwordLabel, { exact: true }),
+  ).toBeVisible();
+  await expect(submitButton(page)).toHaveText(en.CredentialsForm.signInButton);
+  await expect(submitButton(page)).toBeDisabled();
+  await expect(
+    page.getByRole("link", { name: en.Auth.registerHere, exact: true }),
+  ).toHaveAttribute("href", "/en/register");
+  await expect(page.getByTestId("authenticated-home")).toHaveCount(0);
+});
+
+test("submit is enabled only while both e-mail and password are non-blank", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  const email = page.locator("input#email");
+  const password = page.locator("input#password");
+
+  await expect(submitButton(page)).toBeDisabled();
+  await email.fill(USERS.user.email);
+  await expect(submitButton(page)).toBeDisabled();
+  await password.fill("   "); // whitespace only counts as blank (trim)
+  await expect(submitButton(page)).toBeDisabled();
+  await password.fill("x");
+  await expect(submitButton(page)).toBeEnabled();
+  await email.fill("");
+  await expect(submitButton(page)).toBeDisabled();
+});
+
+test("the register link on the home page opens /en/register with the registration heading", async ({
+  page,
+}) => {
+  await page.goto("/en");
+  await waitForSignedOutHome(page);
+
+  await page
+    .getByRole("link", { name: en.Auth.registerHere, exact: true })
+    .click();
+
+  await expect(page).toHaveURL(/\/en\/register$/);
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: en.Registration.title,
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("providers are exactly credentials (+ google when configured) and the Google button follows that list", async ({
+  page,
+}) => {
+  const google = await isGoogleEnabled(page);
+  const res = await page.request.get("/api/auth/providers");
+  expect(res.ok()).toBe(true);
+  const providers = await res.json();
+  // No other provider (e.g. GitHub) is registered in src/lib/auth-config.ts.
+  expect(Object.keys(providers).sort()).toEqual(
+    google ? ["credentials", "google"] : ["credentials"],
+  );
+  expect(providers.credentials).toMatchObject({
+    id: "credentials",
+    type: "credentials",
   });
 
-  test("should display login page correctly", async () => {
-    await loginPage.assertLoginPageDisplayed();
-    await loginPage.assertTitle(/Auth App/i);
+  await page.goto("/en");
+  await waitForSignedOutHome(page);
+  const googleButton = page.getByTestId("sign-in-with-google-button");
+  const emailToggle = page.getByTestId("sign-in-with-email-toggle");
+  const googleInstead = page.getByRole("button", {
+    name: en.Auth.signInWithGoogleInstead,
+    exact: true,
   });
+  const emailInput = page.locator("input#email");
 
-  test("should login with valid credentials", async () => {
-    // Use reliable AuthStateManager to authenticate as user
-    console.log("🔐 Authenticating as test user via AuthStateManager...");
-    await AuthStateManager.ensureAuthState(loginPage.page, "user");
+  // Never clicked: it would leave for accounts.google.com.
+  if (google) {
+    await expect(googleButton).toHaveText(en.Auth.signInWithGoogle);
+    await expect(emailToggle).toHaveText(en.Auth.signInWithEmail);
+    await expect(emailInput).toHaveCount(0);
+    await emailToggle.click();
+    await expect(emailInput).toBeVisible();
+    await expect(googleInstead).toBeVisible();
+  } else {
+    await expect(emailInput).toBeVisible();
+    await expect(googleButton).toHaveCount(0);
+    await expect(emailToggle).toHaveCount(0);
+    await expect(googleInstead).toHaveCount(0);
+  }
+});
 
-    // Navigate to home page to verify authenticated state
-    await loginPage.page.goto("/en");
-    await loginPage.page.waitForTimeout(2000);
-
-    // Primary test: Wait for authenticated home element (this was the main failure point)
-    console.log("🔍 Waiting for authenticated home element...");
-
-    try {
-      await loginPage.page.waitForSelector(
-        '[data-testid="authenticated-home"]',
-        { timeout: 15000 },
-      );
-      console.log(
-        "✅ Found authenticated-home element - authentication confirmed",
-      );
-
-      // Test dashboard navigation functionality
-      const dashboardButton = loginPage.page.locator(
-        '[data-testid="go-to-dashboard-button"]',
-      );
-
-      if (await dashboardButton.isVisible({ timeout: 3000 })) {
-        console.log("✅ Dashboard button visible, testing navigation...");
-        await dashboardButton.click();
-        await loginPage.page.waitForURL(/\/dashboard/, { timeout: 15000 });
-        console.log("✅ Successfully navigated to dashboard");
-      } else {
-        console.log(
-          "ℹ️ Dashboard button not found, but authentication confirmed",
-        );
-      }
-    } catch (error) {
-      console.log(
-        "❌ Authenticated-home element not found, performing fallback verification...",
-      );
-
-      // Fallback: Check for alternative authentication indicators
-      const authIndicators = [
-        '[data-testid="go-to-dashboard-button"]',
-        'text="Welcome back"',
-        'text="successfully signed in"',
-        "[data-session-email]",
-      ];
-
-      let authConfirmed = false;
-      for (const indicator of authIndicators) {
-        if (
-          await loginPage.page
-            .locator(indicator)
-            .isVisible({ timeout: 2000 })
-            .catch(() => false)
-        ) {
-          console.log(`✅ Found authentication indicator: ${indicator}`);
-          authConfirmed = true;
-          break;
-        }
-      }
-
-      if (!authConfirmed) {
-        // Final debugging before failure
-        const pageContent = await loginPage.page.textContent("body");
-        console.log(
-          `❌ Authentication failed. Page content: ${pageContent?.substring(0, 500)}...`,
-        );
-        throw new Error(`Authentication not confirmed: ${error}`);
-      }
-    }
-
-    // Final verification - ensure we're on an authenticated page or home with auth state
-    const finalUrl = loginPage.page.url();
-    console.log(`🔍 Final URL: ${finalUrl}`);
-
-    // Accept either authenticated pages or home page with auth indicators
-    const isAuthPage = /\/(account|dashboard|admin)/.test(finalUrl);
-    const isHomeWithAuth =
-      finalUrl.includes("/en") &&
-      (await loginPage.page
-        .locator(
-          '[data-testid="authenticated-home"], [data-testid="go-to-dashboard-button"]',
-        )
-        .first()
-        .isVisible({ timeout: 3000 })
-        .catch(() => false));
-
-    expect(isAuthPage || isHomeWithAuth).toBeTruthy();
-    expect(finalUrl).not.toMatch(/signin|login/);
-
-    console.log("✅ Login test completed successfully");
-  });
-
-  test("should show error for invalid credentials", async () => {
-    // Try to login with wrong password
-    await loginPage.login("test@example.com", "WrongPassword123!");
-
-    // Wait for error to appear - check multiple possible error indicators
-    await loginPage.page.waitForTimeout(3000); // Give NextAuth time to process
-
-    // Check for various error indicators
-    const hasAlertError = await loginPage.page
-      .getByRole("alert")
-      .filter({ hasText: /invalid|error|wrong|incorrect/i })
-      .first()
-      .isVisible()
-      .catch(() => false);
-    const hasErrorMessage = await loginPage.page
-      .locator(".error, .text-red-500, .text-red-600")
-      .isVisible();
-    const stayedOnLogin =
-      loginPage.page.url().includes("/") &&
-      !loginPage.page.url().includes("/dashboard");
-
-    // At least one error indicator should be present, or user should stay on login page
-    expect(hasAlertError || hasErrorMessage || stayedOnLogin).toBeTruthy();
-  });
-
-  test("should show error for non-existent user", async () => {
-    // Try to login with non-existent email
-    await loginPage.login("nonexistent@example.com", "Password123!");
-
-    // Wait for error processing
-    await loginPage.page.waitForTimeout(3000);
-
-    // Check for various error indicators
-    const hasAlertError = await loginPage.page
-      .getByRole("alert")
-      .filter({ hasText: /invalid|error|wrong|incorrect/i })
-      .first()
-      .isVisible()
-      .catch(() => false);
-    const hasErrorMessage = await loginPage.page
-      .locator(".error, .text-red-500, .text-red-600")
-      .isVisible();
-    const stayedOnLogin =
-      loginPage.page.url().includes("/") &&
-      !loginPage.page.url().includes("/dashboard");
-
-    // Should show error or stay on login page (indicating failed login)
-    expect(hasAlertError || hasErrorMessage || stayedOnLogin).toBeTruthy();
-  });
-
-  test("should validate email format", async () => {
-    // Enter invalid email
-    await loginPage.fillLoginForm("invalid-email", "Password123!");
-    await loginPage.submitLogin();
-    await loginPage.page.waitForTimeout(2000);
-
-    // Should prevent login with invalid email (stay on login page)
-    const stayedOnLogin =
-      loginPage.page.url().includes("/") &&
-      !loginPage.page.url().includes("/dashboard");
-    expect(stayedOnLogin).toBeTruthy();
-  });
-
-  test("should validate required fields", async () => {
-    // Use the centralized email form access method (handles toggle automatically)
-    await loginPage.ensureEmailFormVisible();
-
-    // Verify submit button is disabled when fields are empty
-    const submitButton = loginPage.page.locator('button[type="submit"]');
-    await expect(submitButton).toBeDisabled();
-
-    // Fill only email, button should still be disabled
-    await loginPage.page.fill('input[id="email"]', "test@example.com");
-    await expect(submitButton).toBeDisabled();
-
-    // Fill both fields, button should be enabled
-    await loginPage.page.fill('input[id="password"]', "password");
-    await expect(submitButton).toBeEnabled();
-  });
-
-  test("should handle remember me option", async () => {
-    // Fill login form first
-    await loginPage.fillLoginForm("test@example.com", "Test123!");
-
-    // Check if remember me checkbox exists and is visible
-    const rememberMeCheckbox = loginPage.page.locator(
-      'input[name="rememberMe"]',
-    );
-    const checkboxExists = await rememberMeCheckbox
-      .isVisible()
-      .catch(() => false);
-
-    if (checkboxExists) {
-      // If checkbox exists, test the remember me functionality
-      await loginPage.toggleRememberMe();
-      await loginPage.submitLogin();
-
-      // Wait for successful login
-      await loginPage.waitForLoginComplete();
-
-      // Check if session is persistent (would need to check cookies)
-      const cookies = await loginPage.page.context().cookies();
-      const sessionCookie = cookies.find((c) => c.name.includes("session"));
-
-      if (sessionCookie) {
-        // Remember me should set a longer expiry
-        expect(sessionCookie.expires).toBeGreaterThan(
-          Date.now() / 1000 + 86400,
-        ); // More than 1 day
-      }
-    } else {
-      // If remember me checkbox doesn't exist, just proceed with regular login
-      await loginPage.submitLogin();
-
-      // Wait for successful login
-      await loginPage.waitForLoginComplete();
-
-      // Verify login was successful - should be redirected away from login
-      await loginPage.page.waitForTimeout(2000);
-      const currentUrl = loginPage.page.url();
-      const loginSuccessful =
-        currentUrl.includes("/dashboard") ||
-        currentUrl.includes("/admin") ||
-        !currentUrl.includes("/signin");
-      expect(loginSuccessful).toBeTruthy();
+test("a malformed e-mail is blocked by the browser, then an unknown account gets the generic alert and no session", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  const submittedEmails: Array<string | null> = [];
+  page.on("request", (req) => {
+    if (
+      req.method() === "POST" &&
+      new URL(req.url()).pathname === "/api/auth/callback/credentials"
+    ) {
+      const form = new URLSearchParams(req.postData() ?? "");
+      submittedEmails.push(form.get("email"));
     }
   });
 
-  test("should navigate to forgot password", async () => {
-    // Check if forgot password link exists
-    const forgotLink = await loginPage.page.locator(
-      'a:has-text("Forgot password"), a:has-text("Reset password")',
-    );
+  await submitCredentials(page, "invalid-email", "Password123!");
+  const email = page.locator("input#email");
+  expect(
+    await email.evaluate(
+      (el) => (el as HTMLInputElement).validity.typeMismatch,
+    ),
+  ).toBe(true);
 
-    if ((await forgotLink.count()) > 0) {
-      await forgotLink.first().click();
-      await loginPage.page.waitForTimeout(2000);
+  // Prove the blocked submit sent nothing: a valid submit must now produce the
+  // alert AND exactly one sign-in request.
+  await email.fill("nobody@example.com");
+  await submitButton(page).click();
 
-      // Check if navigated to password reset
-      const isPasswordReset =
-        loginPage.page.url().includes("forgot") ||
-        loginPage.page.url().includes("reset") ||
-        (await loginPage.page.locator('h1:has-text("Reset")').count()) > 0;
+  await expect(formAlert(page)).toHaveText(
+    en.CredentialsForm.invalidCredentials,
+  );
+  expect(submittedEmails).toEqual(["nobody@example.com"]);
+  await expect(page).toHaveURL(/\/en$/);
+  await expectSignedOut(page);
+});
 
-      expect(isPasswordReset).toBeTruthy();
-    } else {
-      // No forgot password link is valid (feature not implemented)
-      expect(true).toBeTruthy();
-    }
+test("a wrong password for a seeded user shows the same generic alert and creates no session", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  await submitCredentials(page, USERS.user.email, "WrongPassword123!");
+
+  await expect(formAlert(page)).toHaveText(
+    en.CredentialsForm.invalidCredentials,
+  );
+  await expect(page).toHaveURL(/\/en$/);
+  await expectSignedOut(page);
+});
+
+test("valid credentials show the loading button, then land on /en/account with a live session", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+
+  // Hold the credentials callback so the loading state is observable (no timer).
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
   });
+  await page.route(
+    (url) => url.pathname === "/api/auth/callback/credentials",
+    async (route) => {
+      await held;
+      await route.continue();
+    },
+  );
 
-  test("should navigate to sign up", async ({ page }) => {
-    // Navigate directly to registration page for reliability
-    await page.goto("/en/register", {
-      waitUntil: "domcontentloaded",
-      timeout: 15000,
-    });
+  await submitCredentials(page, USERS.user.email, USERS.user.password);
+  await expect(submitButton(page)).toHaveText(en.CredentialsForm.signingIn);
+  await expect(submitButton(page)).toBeDisabled();
+  release();
 
-    // Wait for page to load
-    await page.waitForTimeout(2000);
+  await expect(page).toHaveURL(/\/en\/account$/, { timeout: 20_000 });
+  await expectSignedInAs(page, USERS.user.email);
+  // A verified user's session carries the verification date (contrast for the unverified test).
+  expect((await rawSessionUser(page))?.emailVerified).toEqual(
+    expect.any(String),
+  );
+  await expect(accountHeading(page)).toBeVisible({ timeout: 20_000 });
+});
 
-    // Assert registration page is displayed
-    const registerPage = new RegisterPage(page);
-    await registerPage.assertRegistrationPageDisplayed();
+test("an unverified e-mail does not block sign-in: /en/account opens and the session has emailVerified null", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  await submitCredentials(page, UNVERIFIED.email, UNVERIFIED.password);
 
-    // Verify URL is correct
-    await page.waitForURL(/register/, { timeout: 5000 });
+  await expect(page).toHaveURL(/\/en\/account$/, { timeout: 20_000 });
+  await expectSignedInAs(page, UNVERIFIED.email);
+  expect(await rawSessionUser(page)).toMatchObject({
+    email: UNVERIFIED.email,
+    emailVerified: null,
   });
+  await expect(accountHeading(page)).toBeVisible({ timeout: 20_000 });
+});
 
-  test("should challenge a 2FA-enabled user and withhold the session", async () => {
-    // Correct password alone must NOT authenticate a 2FA-enabled user.
-    await loginPage.login("2fa@example.com", "2FA123!");
-
-    // The form must switch to the second stage and ask for the TOTP code.
-    await loginPage.page.waitForSelector('input[id="totpCode"]', {
-      timeout: 10000,
-    });
-
-    // No session may exist yet: the password stage is not an authentication.
-    const session = await loginPage.page.evaluate(async () => {
-      const res = await fetch("/api/auth/session");
-      return res.json();
-    });
-    expect(session?.user ?? null).toBeNull();
-  });
-
-  test("should reject an invalid 2FA code", async ({ page }) => {
-    // Asserted at the HTTP level (same server, real signIn contract): a correct
-    // password plus a wrong TOTP code must come back as `2fa_invalid` and MUST
-    // NOT create a session. The UI wiring for rendering credential errors is
-    // covered by "should show error for invalid credentials"; driving this
-    // particular submit through the dev server with Playwright stalls on a
-    // dev-server socket quirk (the same flow verified fine in a real browser).
-    const csrf = await page.request.get("/api/auth/csrf").then((r) => r.json());
-
-    const res = await page.request.post("/api/auth/callback/credentials", {
-      headers: { "X-Auth-Return-Redirect": "1" },
-      form: {
-        email: "2fa@example.com",
-        password: "2FA123!",
-        totpCode: "000000",
-        csrfToken: csrf.csrfToken,
-        callbackUrl: "http://localhost:3000/en",
-      },
-    });
-    expect(res.ok()).toBeTruthy();
-    const body = await res.json();
-    expect(body.url).toContain("code=2fa_invalid");
-
-    // And the browser still has no session.
-    const session = await page.request
-      .get("/api/auth/session")
-      .then((r) => r.json());
-    expect(session?.user ?? null).toBeNull();
-  });
-
-  test("should complete login with a valid TOTP code", async () => {
-    await loginPage.login("2fa@example.com", "2FA123!");
-
-    await loginPage.page.waitForSelector('input[id="totpCode"]', {
-      timeout: 10000,
-    });
-
-    // Generate a real, currently-valid code from the seeded test secret.
-    const code = authenticator.generate("JBSWY3DPEHPK3PXP");
-    await loginPage.page.fill('input[id="totpCode"]', code);
-    await loginPage.page.click('button[type="submit"]');
-
-    // Successful 2FA login lands on the account page with a live session.
-    await loginPage.page.waitForURL(/\/account/, { timeout: 15000 });
-    const session = await loginPage.page.evaluate(async () => {
-      const res = await fetch("/api/auth/session");
-      return res.json();
-    });
-    expect(session?.user?.email).toBe("2fa@example.com");
-  });
-
-  test("should logout successfully", async ({ page, context }) => {
-    // First login
-    await loginPage.login("test@example.com", "Test123!");
-    await loginPage.waitForLoginComplete();
-
-    // Wait for login to be fully established
-    await page.waitForTimeout(2000);
-
-    // Use NextAuth logout API directly for reliability
-    await page.goto("/api/auth/signout", {
-      waitUntil: "domcontentloaded",
-      timeout: 15000,
-    });
-
-    // Wait for logout to process
-    await page.waitForTimeout(2000);
-
-    // Navigate to home page to verify logout
-    await page.goto("/en", { waitUntil: "domcontentloaded", timeout: 15000 });
-
-    // Wait for page to load
-    await page.waitForTimeout(2000);
-
-    // Verify logged out by checking if sign-in options are visible
-    await loginPage.assertLoginPageDisplayed();
-
-    // Ensure we're not redirected to dashboard
-    const currentUrl = page.url();
-    expect(currentUrl).not.toMatch(/dashboard|admin/);
-  });
-
-  test("should prevent access to protected pages when not logged in", async ({
+test("2FA user: the correct password alone shows the code step and creates no session", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  await submitCredentials(
     page,
-  }) => {
-    // Try to access dashboard directly
-    await page.goto("http://localhost:3000/en/dashboard");
+    USERS.twoFactor.email,
+    USERS.twoFactor.password,
+  );
 
-    // Should redirect to login
-    await page.waitForURL(/signin|login/, { timeout: 10000 });
-    await loginPage.assertLoginPageDisplayed();
+  const totp = page.locator("input#totpCode");
+  await expect(totp).toBeVisible();
+  // The 2FA prompt and button label are hardcoded English in
+  // credentials-form.tsx (not in messages/*.json).
+  await expect(
+    page
+      .locator("form")
+      .getByText(
+        "Enter the 6-digit code from your authenticator app to finish signing in.",
+      ),
+  ).toBeVisible();
+  await expect(submitButton(page)).toHaveText("Verify code");
+  await expect(submitButton(page)).toBeDisabled();
+  await expect(formAlert(page)).toHaveCount(0);
+
+  // The field keeps digits only; 5 digits do not enable the submit.
+  await totp.fill("12a3b4c5");
+  await expect(totp).toHaveValue("12345");
+  await expect(submitButton(page)).toBeDisabled();
+
+  await expect(page).toHaveURL(/\/en$/);
+  await expectSignedOut(page);
+});
+
+test("2FA user: a wrong code is answered with code=2fa_invalid and creates no session", async ({
+  page,
+}) => {
+  // Asserted at the HTTP level (same server, real signIn contract): a correct
+  // password plus a wrong TOTP code must come back as `2fa_invalid` and MUST
+  // NOT create a session. The UI wiring for rendering credential errors is
+  // covered by the generic-alert tests above; driving this particular submit
+  // through the dev server with Playwright stalls on a dev-server socket quirk
+  // (the same flow verified fine in a real browser).
+  const { csrfToken } = await page.request
+    .get("/api/auth/csrf")
+    .then((r) => r.json());
+  // Differs from the current code in every digit.
+  const wrongCode = currentTotp().replace(/\d/g, (d) =>
+    String((Number(d) + 5) % 10),
+  );
+
+  const res = await page.request.post("/api/auth/callback/credentials", {
+    headers: { "X-Auth-Return-Redirect": "1" },
+    form: {
+      email: USERS.twoFactor.email,
+      password: USERS.twoFactor.password,
+      totpCode: wrongCode,
+      csrfToken,
+      callbackUrl: "/en",
+    },
   });
+  expect(res.ok()).toBe(true);
+  const body = await res.json();
+  expect(new URL(body.url).searchParams.get("code")).toBe("2fa_invalid");
 
-  test("should show loading state during login", async () => {
-    await loginPage.fillLoginForm("test@example.com", "Test123!");
+  await expectSignedOut(page);
+});
 
-    // Start login and check loading state
-    const submitPromise = loginPage.submitLogin();
-    const loadingPromise = loginPage.isLoading();
+test("2FA user: a valid TOTP code completes sign-in on /en/account", async ({
+  page,
+}) => {
+  await openEmailSignIn(page);
+  await submitCredentials(
+    page,
+    USERS.twoFactor.email,
+    USERS.twoFactor.password,
+  );
 
-    const [, isLoading] = await Promise.all([submitPromise, loadingPromise]);
+  const totp = page.locator("input#totpCode");
+  await expect(totp).toBeVisible();
+  await totp.fill(currentTotp());
+  await expect(submitButton(page)).toBeEnabled();
+  await submitButton(page).click();
 
-    // Loading state might be very quick
-    if (isLoading) {
-      await loginPage.waitForLoadingComplete();
-    }
-  });
+  await expect(page).toHaveURL(/\/en\/account$/, { timeout: 20_000 });
+  await expectSignedInAs(page, USERS.twoFactor.email);
+});
 
-  test("should handle session expiry", async ({ page, context }) => {
-    // Login successfully
-    await loginPage.login("test@example.com", "Test123!");
-    await loginPage.waitForLoginComplete();
+test("the Sign out button on the authenticated home ends the session and brings back the sign-in page", async ({
+  page,
+}) => {
+  await signInViaApi(page, USERS.user);
+  await page.goto("/en");
 
-    // Clear session cookies to simulate expiry
-    await context.clearCookies();
+  const home = page.getByTestId("authenticated-home");
+  await expect(home).toHaveAttribute("data-session-email", USERS.user.email);
+  await expect(home.getByTestId("go-to-dashboard-button")).toHaveAttribute(
+    "href",
+    "/en/dashboard/user",
+  );
 
-    // Try to access protected page
-    await page.goto("http://localhost:3000/en/dashboard");
+  await home
+    .getByRole("button", { name: en.Auth.signOut, exact: true })
+    .click();
 
-    // Should redirect to login
-    await page.waitForURL(/signin|login/, { timeout: 10000 });
-    await loginPage.assertLoginPageDisplayed();
-  });
+  await expectSignedOut(page);
+  await expect(page).toHaveURL(/\/en$/);
+  await waitForSignedOutHome(page);
+  await expect(home).toHaveCount(0);
+});
 
-  test("should handle unverified email", async () => {
-    // Try to login with unverified user
-    await loginPage.login("unverified@example.com", "Unverified123!");
+test("signed out: /en/dashboard and /en/account redirect to the signed-out home", async ({
+  page,
+}) => {
+  await expectSignedOut(page);
 
-    // Business logic allows unverified users to login successfully
-    // They are redirected to account management (not blocked)
-    await loginPage.page.waitForTimeout(3000);
+  // /en/dashboard -> /en/auth/signin (server) -> /en (client replace).
+  await page.goto("/en/dashboard");
+  await expect(page).toHaveURL(/\/en$/, { timeout: 20_000 });
+  await waitForSignedOutHome(page);
 
-    const currentUrl = loginPage.page.url();
-    const isLoggedIn =
-      currentUrl.includes("/account") ||
-      currentUrl.includes("/dashboard") ||
-      (await loginPage.page
-        .locator('[data-testid="authenticated-home"]')
-        .count()) > 0;
+  // /en/account -> /en (AuthGuard, server).
+  await page.goto("/en/account");
+  await expect(page).toHaveURL(/\/en$/, { timeout: 20_000 });
+  await waitForSignedOutHome(page);
+});
 
-    // Unverified users should be able to login (business logic allows it)
-    expect(isLoggedIn).toBeTruthy();
-  });
+test("session expiry: once the session cookie is gone, /en/account redirects to the signed-out home", async ({
+  page,
+}) => {
+  await signInViaApi(page, USERS.user);
+  await page.goto("/en/account");
+  await expect(page).toHaveURL(/\/en\/account$/);
+  await expect(accountHeading(page)).toBeVisible({ timeout: 20_000 });
 
-  test("should login with Google OAuth", async () => {
-    // Check if Google OAuth button exists
-    const googleButton = await loginPage.page.locator(
-      'button:has-text("Google"), button:has-text("Continue with Google")',
-    );
+  await signOutViaCookies(page);
 
-    if ((await googleButton.count()) > 0) {
-      // OAuth would open external page, just verify button exists
-      expect(await googleButton.isVisible()).toBeTruthy();
-    } else {
-      // No Google OAuth is valid (feature might not be configured)
-      expect(true).toBeTruthy();
-    }
-  });
-
-  test("should login with GitHub OAuth", async () => {
-    // Check if GitHub OAuth button exists
-    const githubButton = await loginPage.page.locator(
-      'button:has-text("GitHub"), button:has-text("Continue with GitHub")',
-    );
-
-    if ((await githubButton.count()) > 0) {
-      // OAuth would open external page, just verify button exists
-      expect(await githubButton.isVisible()).toBeTruthy();
-    } else {
-      // No GitHub OAuth is valid (feature might not be configured)
-      expect(true).toBeTruthy();
-    }
-  });
+  await page.goto("/en/account");
+  await expect(page).toHaveURL(/\/en$/, { timeout: 20_000 });
+  await waitForSignedOutHome(page);
 });

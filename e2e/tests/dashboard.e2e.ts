@@ -1,432 +1,276 @@
 import { test, expect } from "@playwright/test";
-import { LoginPage } from "../pages/login.page";
-import { DashboardPage } from "../pages/dashboard.page";
+import en from "../../messages/en.json";
+import {
+  USERS,
+  expectSignedInAs,
+  expectSignedOut,
+  sessionUser,
+  signInViaApi,
+  waitForSignedOutHome,
+} from "../support/app";
 
-test.describe("Dashboard Functionality", () => {
-  test.setTimeout(60000); // Increase timeout to 60 seconds
-  let loginPage: LoginPage;
-  let dashboardPage: DashboardPage;
+/**
+ * Role dashboards, the authenticated home and their access rules.
+ *
+ * Every signed-in test uses signInViaApi (the real credentials callback) and
+ * then page.goto: only successful sign-ins, so this file spends no rate-limit,
+ * lockout, registration or 2FA budget.
+ *
+ * The user dashboard and admin pages hardcode English
+ * (src/app/[locale]/dashboard/user/page.tsx, src/app/[locale]/admin/page.tsx),
+ * so their strings are asserted literally. The home and account pages use
+ * next-intl, so their strings are read from messages/en.json.
+ */
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page);
-    dashboardPage = new DashboardPage(page);
+const HOME_URL = /^https?:\/\/[^/]+\/en$/;
+const USER_DASHBOARD_URL = /\/en\/dashboard\/user$/;
+const ADMIN_URL = /\/en\/admin$/;
+const ACCOUNT_URL = /\/en\/account$/;
 
-    // Login before each test - login() method handles session synchronization
-    await loginPage.goto();
-    await loginPage.login("test@example.com", "Test123!");
+// The home page and the account page render their content on the client.
+const CLIENT_RENDER = { timeout: 20_000 };
 
-    // Check for dashboard button and navigate if needed
-    const currentUrl = page.url();
-    if (
-      !currentUrl.includes("/account") &&
-      !currentUrl.includes("/dashboard")
-    ) {
-      // Wait for authenticated state to be established
-      await page.waitForSelector('[data-testid="authenticated-home"]', {
-        timeout: 15000,
-      });
+const homeWelcome = (name: string) =>
+  en.Home.welcomeBack.replace("{name}", name);
 
-      // Click "Go to Dashboard" button if present
-      const dashboardButton = page.locator(
-        '[data-testid="go-to-dashboard-button"]',
-      );
-      if ((await dashboardButton.count()) > 0) {
-        const urlBeforeClick = page.url();
-        console.log("🔗 URL before dashboard button click:", urlBeforeClick);
+test.describe("User dashboard", () => {
+  test("/en/dashboard redirects a signed-in USER to /en/dashboard/user", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
 
-        await dashboardButton.click();
+    await page.goto("/en/dashboard");
 
-        // Wait a bit for navigation to start
-        await page.waitForTimeout(2000);
-
-        const urlAfterClick = page.url();
-        console.log("🔗 URL after dashboard button click:", urlAfterClick);
-        console.log(
-          "🔍 Checking if URL matches /(account|dashboard)/ pattern:",
-          /(account|dashboard)/.test(urlAfterClick),
-        );
-
-        // Check if we're already on an account/dashboard page
-        if (/(account|dashboard)/.test(urlAfterClick)) {
-          console.log("✅ Already on correct page, no need to wait");
-        } else {
-          console.log("⏳ Waiting for URL to match /(account|dashboard)/");
-          await page.waitForURL(/(account|dashboard)/, { timeout: 15000 });
-        }
-      }
-    }
+    await expect(page).toHaveURL(USER_DASHBOARD_URL);
+    const dashboard = page.getByTestId("user-dashboard");
+    await expect(dashboard).toHaveAttribute("data-user-role", USERS.user.role);
+    // Hardcoded English in dashboard/user/page.tsx.
+    await expect(
+      dashboard.getByRole("heading", {
+        level: 1,
+        name: "User Dashboard",
+        exact: true,
+      }),
+    ).toBeVisible();
   });
 
-  test("should display dashboard after login", async ({ page }) => {
-    // Check if we're on authenticated area (account, dashboard) or showing welcome
-    const url = page.url();
-    const isAuthenticated =
-      url.includes("account") || url.includes("dashboard");
-    const hasWelcome = (await page.locator("text=/Welcome/i").count()) > 0;
+  test("user dashboard shows the signed-in user's name, email and verified status", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
 
-    expect(isAuthenticated || hasWelcome).toBeTruthy();
+    await page.goto("/en/dashboard/user");
 
-    if (url.includes("dashboard")) {
-      await dashboardPage.assertDashboardAccessible();
-    } else if (url.includes("account")) {
-      // On account page - this is also a valid authenticated state
-      console.log("✓ User successfully authenticated and on account page");
-    }
+    const dashboard = page.getByTestId("user-dashboard");
+    await expect(dashboard).toHaveAttribute(
+      "data-user-email",
+      USERS.user.email,
+    );
+    // Hardcoded English in dashboard/user/page.tsx.
+    await expect(
+      dashboard.getByText(`Welcome back, ${USERS.user.name}!`, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByText(USERS.user.email, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dashboard.getByText(USERS.user.name, { exact: true }),
+    ).toBeVisible();
+    // e2e/global-setup.ts seeds this user with emailVerified set.
+    await expect(
+      dashboard.getByText("Verified", { exact: true }),
+    ).toBeVisible();
   });
 
-  test("should show user information", async ({ page }) => {
-    // Login completed in beforeEach - no additional timeout needed
+  test("'Security Settings' link goes to /en/account with the password and 2FA sections", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
+    await page.goto("/en/dashboard/user");
 
-    // Check if login succeeded by looking for sign out button or authenticated areas
-    const isLoggedIn =
-      (await page.locator('button:has-text("Sign out")').count()) > 0 ||
-      page.url().includes("dashboard") ||
-      page.url().includes("account");
+    // Hardcoded English link text in dashboard/user/page.tsx.
+    const link = page
+      .getByTestId("user-dashboard")
+      .getByRole("link", { name: /Security Settings/ });
+    await expect(link).toHaveAttribute("href", "/en/account");
+    await link.click();
 
-    if (!isLoggedIn) {
-      // Login might have failed, skip the test
-      console.log("Login did not complete, skipping user info check");
-      expect(true).toBeTruthy();
-      return;
-    }
-
-    // Check for user info display on dashboard or welcome page
-    const hasUserInfo =
-      (await page.locator("text=test@example.com").count()) > 0 ||
-      (await page.locator("text=/Welcome.*Test User/i").count()) > 0 ||
-      (await page.locator("text=Test User").count()) > 0 ||
-      (await page.locator('h2:has-text("Welcome back, Test User!")').count()) >
-        0;
-
-    expect(hasUserInfo).toBeTruthy();
+    await expect(page).toHaveURL(ACCOUNT_URL);
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: en.Account.title,
+        exact: true,
+      }),
+    ).toBeVisible(CLIENT_RENDER);
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: en.Account.passwordManagement,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: en.Account.twoFactorAuthentication,
+        exact: true,
+      }),
+    ).toBeVisible();
   });
 
-  test("should have logout functionality", async ({ page }) => {
-    // Navigate to authenticated area (account or dashboard) using proven navigation pattern
-    console.log("Navigating to authenticated area for logout test");
-    await page.goto("/en/account", {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
+  test("'Edit Profile' link goes to /en/account with the Profile Information section", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
+    await page.goto("/en/dashboard/user");
 
-    // Role-based redirect handled by dashboard navigation
+    // Hardcoded English link text in dashboard/user/page.tsx.
+    const link = page
+      .getByTestId("user-dashboard")
+      .getByRole("link", { name: /Edit Profile/ });
+    await expect(link).toHaveAttribute("href", "/en/account");
+    await link.click();
 
-    // Find and click logout using comprehensive selectors
-    const logoutSelectors = [
-      'button:has-text("Sign out")',
-      'button:has-text("Logout")',
-      'a:has-text("Sign out")',
-      'a:has-text("Logout")',
-      '[data-testid="logout-button"]',
-      'button[aria-label*="sign out" i]',
-      'form[action*="signout"] button',
-      'form[action*="logout"] button',
-    ];
-
-    let logoutFound = false;
-    for (const selector of logoutSelectors) {
-      const element = page.locator(selector);
-      if ((await element.count()) > 0 && (await element.isVisible())) {
-        console.log(`Found logout element with selector: ${selector}`);
-        await element.click();
-        logoutFound = true;
-        break;
-      }
-    }
-
-    // If no logout found, check if we can use NextAuth signout API directly
-    if (!logoutFound) {
-      console.log(
-        "No logout button found, using NextAuth signout API directly",
-      );
-      await page.goto("/api/auth/signout");
-      await page.waitForTimeout(2000);
-
-      // Click confirm signout if present
-      const confirmButton = page.locator('button:has-text("Sign out")');
-      if ((await confirmButton.count()) > 0) {
-        await confirmButton.click();
-      }
-
-      logoutFound = true;
-    }
-
-    // Logout redirect handled automatically
-
-    // Verify logout was successful by checking we're back at home/login page
-    const currentUrl = page.url();
-    const isLoggedOut =
-      currentUrl.includes("/en") || // Home page
-      currentUrl.includes("/auth") || // Auth pages
-      (await page.locator('button:has-text("Sign in")').count()) > 0 ||
-      (await page.locator('input[name="email"]').count()) > 0;
-
-    expect(isLoggedOut).toBeTruthy();
+    await expect(page).toHaveURL(ACCOUNT_URL);
+    await expect(
+      page.getByRole("heading", {
+        level: 2,
+        name: en.Account.profile,
+        exact: true,
+      }),
+    ).toBeVisible(CLIENT_RENDER);
   });
+});
 
-  test("should maintain session on refresh", async ({ page }) => {
-    // First navigate back to home page to test session persistence there
-    await page.goto("/en", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(2000);
+test.describe("Authenticated home", () => {
+  test("session survives a reload: the home still greets the user after page.reload()", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
+    await page.goto("/en");
 
-    // Refresh the page
+    const home = page.getByTestId("authenticated-home");
+    await expect(home).toHaveAttribute(
+      "data-session-email",
+      USERS.user.email,
+      CLIENT_RENDER,
+    );
+
     await page.reload();
 
-    // Wait for session to be restored after refresh - NextAuth needs more time in CI
-    await page.waitForTimeout(5000);
-
-    // Wait for page to fully load and session to be established
-    await page.waitForLoadState("networkidle");
-
-    // Wait for any pending session API calls to complete
-    await page.waitForTimeout(2000);
-
-    // Ensure authenticated-home element is present after refresh (critical for next tests)
-    console.log("🔄 Waiting for authenticated-home element after refresh...");
-    try {
-      await page.waitForSelector('[data-testid="authenticated-home"]', {
-        timeout: 20000, // Increased timeout for session restoration
-      });
-      console.log("✅ Found authenticated-home element after refresh");
-    } catch (error) {
-      const currentUrl = page.url();
-      const hasLoginForm =
-        (await page.locator('input[name="email"]').count()) > 0;
-      const hasLoadingState =
-        (await page.locator('[data-testid="session-loading"]').count()) > 0;
-      console.log("❌ Failed to find authenticated-home after refresh:", {
-        currentUrl,
-        hasLoginForm,
-        hasLoadingState,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-
-    // Check if still logged in with more reliable detection
-    const url = page.url();
-    const hasSignOutButton =
-      (await page.locator('button:has-text("Sign out")').count()) > 0;
-    const hasWelcomeText = (await page.locator("text=/Welcome/i").count()) > 0;
-    const hasAuthenticatedHome =
-      (await page.locator('[data-testid="authenticated-home"]').count()) > 0;
-    const isOnAccountPage =
-      url.includes("/account") || url.includes("/dashboard");
-
-    const isStillLoggedIn =
-      hasSignOutButton ||
-      hasWelcomeText ||
-      hasAuthenticatedHome ||
-      isOnAccountPage;
-
-    // Debug logging
-    console.log("Session refresh debug:", {
-      url,
-      hasSignOutButton,
-      hasWelcomeText,
-      hasAuthenticatedHome,
-      isOnAccountPage,
-      isStillLoggedIn,
-    });
-
-    expect(isStillLoggedIn).toBeTruthy();
+    // Only rendered once the client session is restored with a user.
+    await expect(home).toHaveAttribute(
+      "data-session-email",
+      USERS.user.email,
+      CLIENT_RENDER,
+    );
+    await expect(
+      home.getByRole("heading", {
+        level: 2,
+        name: homeWelcome(USERS.user.name),
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expectSignedInAs(page, USERS.user.email);
   });
 
-  test("should redirect to login when accessing dashboard without auth", async ({
+  test("'Go to Dashboard' on the home takes a USER to /en/dashboard/user", async ({
     page,
-    context,
   }) => {
-    // Clear all cookies and storage to ensure logged out state
-    await context.clearCookies();
-    await context.clearPermissions();
+    await signInViaApi(page, USERS.user);
+    await page.goto("/en");
 
-    // Clear local storage as well
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
+    const link = page.getByTestId("go-to-dashboard-button");
+    await expect(link).toHaveText(en.Auth.goToDashboard, CLIENT_RENDER);
+    await expect(link).toHaveAttribute("href", "/en/dashboard/user");
+    await link.click();
+
+    await expect(page).toHaveURL(USER_DASHBOARD_URL);
+    await expect(page.getByTestId("user-dashboard")).toHaveAttribute(
+      "data-user-email",
+      USERS.user.email,
+    );
+  });
+
+  test("'Sign out' on the home ends the session and returns to the signed-out /en", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
+    await page.goto("/en");
+
+    const home = page.getByTestId("authenticated-home");
+    const signOut = home.getByRole("button", {
+      name: en.Auth.signOut,
+      exact: true,
     });
+    await expect(signOut).toBeVisible(CLIENT_RENDER);
+    await signOut.click();
 
-    // Try to access dashboard directly using proven navigation pattern
-    console.log("Attempting to access dashboard without authentication");
-    await page.goto("/en/dashboard", {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-
-    // Auth redirect handled automatically
-
-    // Check final URL - should be redirected away from dashboard
-    const currentUrl = page.url();
-    console.log("Final URL after redirect:", currentUrl);
-
-    // Should NOT be on dashboard
-    const notOnDashboard = !currentUrl.includes("dashboard");
-    expect(notOnDashboard).toBeTruthy();
-
-    // Should be on a public page (home, auth, etc.) with login options
-    const hasPublicAccess =
-      currentUrl.includes("/en") || // Home page
-      currentUrl.includes("/auth") || // Auth pages
-      (await page.locator('button:has-text("Sign in")').count()) > 0 ||
-      (await page.locator('input[name="email"]').count()) > 0 ||
-      (await page.locator('a:has-text("Sign in")').count()) > 0;
-
-    expect(hasPublicAccess).toBeTruthy();
+    await expect(home).toBeHidden(CLIENT_RENDER);
+    await waitForSignedOutHome(page);
+    await expect(page).toHaveURL(HOME_URL);
+    // The server is the judge: the session cookie is gone.
+    await expectSignedOut(page);
   });
 });
 
-test.describe("Dashboard Navigation", () => {
-  test.setTimeout(60000); // Increase timeout to 60 seconds
-  let loginPage: LoginPage;
-  let dashboardPage: DashboardPage;
+test.describe("Access control", () => {
+  // Each page redirects server-side to /en/auth/signin, which then
+  // client-replaces to /en (src/app/[locale]/auth/signin/page.tsx).
+  for (const path of ["/en/dashboard", "/en/dashboard/user", "/en/admin"]) {
+    test(`${path} without a session ends on /en showing the sign-in home`, async ({
+      page,
+    }) => {
+      await page.goto(path);
 
-  test.beforeEach(async ({ page }) => {
-    loginPage = new LoginPage(page);
-    dashboardPage = new DashboardPage(page);
+      await expect(page).toHaveURL(HOME_URL, CLIENT_RENDER);
+      await waitForSignedOutHome(page);
+      await expect(page.getByTestId("authenticated-home")).toHaveCount(0);
+    });
+  }
 
-    // Login before each test
-    await loginPage.goto();
-    await loginPage.login("test@example.com", "Test123!");
-    await page.waitForTimeout(2000);
+  test("/en/dashboard redirects an ADMIN to /en/admin, which shows the admin panel", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.admin);
+    expect((await sessionUser(page))?.role).toBe(USERS.admin.role);
 
-    // Click "Go to Dashboard" button if present
-    const dashboardButton = page.locator('button:has-text("Go to Dashboard")');
-    if ((await dashboardButton.count()) > 0) {
-      await dashboardButton.click();
-      await page.waitForURL(/dashboard/, { timeout: 10000 });
-    }
+    await page.goto("/en/dashboard");
+
+    await expect(page).toHaveURL(ADMIN_URL);
+    const panel = page.getByTestId("admin-panel");
+    // Hardcoded English in admin/page.tsx.
+    await expect(
+      panel.getByRole("heading", {
+        level: 1,
+        name: "Admin Dashboard",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(`System administration panel - ${USERS.admin.name}`, {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      panel.getByRole("link", { name: "Manage Users", exact: true }),
+    ).toHaveAttribute("href", "/en/admin/users");
   });
 
-  test("should navigate to settings page", async ({ page }) => {
-    // Check if settings link exists
-    const settingsLink = page.locator(
-      'a[href*="settings"], a[href*="account"], button:has-text("Settings")',
+  test("a USER opening /en/admin is redirected to /en/dashboard/user without the admin panel", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.user);
+
+    // Make the admin panel due: ask for it directly.
+    await page.goto("/en/admin");
+
+    await expect(page).toHaveURL(USER_DASHBOARD_URL);
+    await expect(page.getByTestId("user-dashboard")).toHaveAttribute(
+      "data-user-role",
+      USERS.user.role,
     );
-
-    if ((await settingsLink.count()) > 0) {
-      await settingsLink.first().click();
-      await page.waitForTimeout(2000);
-
-      // Settings page might redirect to account or show settings
-      const isSettingsRelatedPage =
-        page.url().includes("settings") ||
-        page.url().includes("account") ||
-        (await page.locator('h1:has-text("Settings")').count()) > 0;
-
-      expect(isSettingsRelatedPage).toBeTruthy();
-    } else {
-      // No settings link is also valid (feature not implemented yet)
-      expect(true).toBeTruthy();
-    }
-  });
-
-  test("should navigate to profile page", async ({ page }) => {
-    // Check if profile link exists
-    const profileLink = page.locator(
-      'a[href*="profile"], a[href*="account"], button:has-text("Profile")',
-    );
-
-    if ((await profileLink.count()) > 0) {
-      await profileLink.first().click();
-      await page.waitForTimeout(2000);
-
-      // Profile page might redirect to account or show profile
-      const isProfileRelatedPage =
-        page.url().includes("profile") ||
-        page.url().includes("account") ||
-        (await page.locator('h1:has-text("Profile")').count()) > 0;
-
-      expect(isProfileRelatedPage).toBeTruthy();
-    } else {
-      // No profile link is also valid (feature not implemented yet)
-      expect(true).toBeTruthy();
-    }
-  });
-
-  test("should show notifications if present", async ({ page }) => {
-    // Check for any notifications or alerts
-    const alertElements = await page.locator('[role="alert"]').count();
-    const notificationElements = await page
-      .locator(".notification, .alert, .toast")
-      .count();
-
-    // This test passes whether notifications are present or not
-    // Both states are valid - having notifications or not having them
-    const hasNotifications = alertElements > 0 || notificationElements > 0;
-
-    if (hasNotifications) {
-      // Check if the notification has actual content
-      let hasContent = false;
-      if (alertElements > 0) {
-        const text = await page.locator('[role="alert"]').first().textContent();
-        hasContent = !!(text && text.trim().length > 0);
-      }
-      if (!hasContent && notificationElements > 0) {
-        const text = await page
-          .locator(".notification, .alert, .toast")
-          .first()
-          .textContent();
-        hasContent = !!(text && text.trim().length > 0);
-      }
-      // Having empty alerts is OK - they might be placeholders
-      expect(true).toBeTruthy();
-    } else {
-      // No notifications is also a valid state
-      expect(hasNotifications).toBeFalsy();
-    }
-  });
-});
-
-test.describe("Dashboard Permissions", () => {
-  test.setTimeout(60000); // Increase timeout to 60 seconds
-  test("should show admin features for admin users", async ({ page }) => {
-    // Try to login as admin
-    const loginPage = new LoginPage(page);
-
-    await loginPage.goto();
-
-    // Try admin login - if it fails, that's OK (no admin user)
-    try {
-      await loginPage.login("admin@example.com", "Admin123!");
-      // Login method handles session synchronization
-
-      // Check if login succeeded
-      const isLoggedIn =
-        (await page.locator('button:has-text("Sign out")').count()) > 0 ||
-        page.url().includes("dashboard");
-
-      if (isLoggedIn) {
-        // Check for admin features
-        const hasAdminFeatures =
-          (await page.locator('[data-testid="admin-panel"]').count()) > 0 ||
-          (await page.locator('a[href*="/admin"]').count()) > 0 ||
-          (await page.locator("text=/Admin/i").count()) > 0;
-
-        // Admin user might not have special features yet
-        expect(true).toBeTruthy();
-      } else {
-        // No admin user exists, which is valid
-        expect(true).toBeTruthy();
-      }
-    } catch (error) {
-      // Admin user doesn't exist or login failed - that's OK
-      expect(true).toBeTruthy();
-    }
-  });
-
-  test("should not show admin features for regular users", async ({ page }) => {
-    const loginPage = new LoginPage(page);
-
-    // Login as regular user
-    await loginPage.goto();
-    await loginPage.login("test@example.com", "Test123!");
-    await page.waitForTimeout(2000);
-
-    // Check admin features are not visible
-    const hasAdminFeatures =
-      (await page.locator('[data-testid="admin-panel"]').count()) > 0 ||
-      (await page.locator('a[href*="/admin"]').count()) > 0;
-
-    expect(hasAdminFeatures).toBeFalsy();
+    await expect(page.getByTestId("admin-panel")).toHaveCount(0);
   });
 });

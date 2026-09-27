@@ -1,365 +1,311 @@
-import { test, expect } from "@playwright/test";
-import { RegisterPage } from "../pages/register.page";
-import { LoginPage } from "../pages/login.page";
+import {
+  test,
+  expect,
+  type Page,
+  type Request as NetworkRequest,
+} from "@playwright/test";
+import en from "../../messages/en.json";
+import {
+  expectSignedInAs,
+  expectSignedOut,
+  formAlert,
+  openEmailSignIn,
+  submitCredentials,
+  uniqueEmail,
+  waitForSignedOutHome,
+} from "../support/app";
 
-test.describe("User Registration Flow", () => {
-  let registerPage: RegisterPage;
+/**
+ * /{locale}/register: RegistrationForm (src/components/auth/registration-form.tsx)
+ * calls the registerUser server action (src/lib/actions/auth.ts), which runs
+ * RegisterUserCommand (src/lib/commands/auth/register-user.command.ts).
+ *
+ * Rate-limit budget: registerUser counts EVERY call, 5 per 60 min keyed by
+ * [email, client IP] (src/lib/rate-limit.ts). Exactly four submissions in this
+ * file reach the server: the new account, its duplicate, the weak password and
+ * the mismatched confirmation (terms-validation.e2e.ts adds one: 5 in total).
+ * The native-validation and loading tests abort their request in the browser,
+ * so it never reaches the server. No failed sign-ins, no 2FA codes.
+ */
 
-  test.beforeEach(async ({ page }) => {
-    registerPage = new RegisterPage(page);
-    await registerPage.goto();
+// Server responses are hardcoded English in src, not in messages/*.json:
+// register-user.command.ts (success), error-factory.ts validation.fromZod,
+// business-errors.ts ResourceAlreadyExistsError("User").
+const SIGN_UP_SUCCESS = "Account created successfully! Please sign in.";
+const VALIDATION_FAILED = "Validation failed";
+const USER_EXISTS = "User already exists";
+
+// passwordSchema (src/lib/validation/schemas.ts): >= 8, upper, lower, digit, special.
+const STRONG_PASSWORD = "Regist3r!Pass";
+const OTHER_STRONG_PASSWORD = "0ther!Passw0rd";
+// Passes the input's native minLength=8, fails passwordSchema (no upper, digit, special).
+const WEAK_PASSWORD = "weakpassword";
+
+const submitButton = (page: Page) => page.locator('form button[type="submit"]');
+
+const termsCheckbox = (page: Page) =>
+  page.getByRole("checkbox", {
+    name: en.Registration.agreeToTerms,
+    exact: true,
   });
 
-  test("should display registration page correctly", async () => {
-    await registerPage.assertRegistrationPageDisplayed();
-    await registerPage.assertTitle(/Sign Up|Register|Create Account/i);
+const registrationHeading = (page: Page) =>
+  page.getByRole("heading", { level: 1, name: en.Registration.title });
+
+/**
+ * Reach the form through the hydrated home page's "Register here" link. The
+ * client-side navigation renders the form with React already attached, so the
+ * controlled terms checkbox reacts to the first click (a direct page.goto
+ * gives no signal that hydration has finished).
+ */
+async function openRegistrationForm(page: Page) {
+  await page.goto("/en");
+  await waitForSignedOutHome(page);
+  await page
+    .getByRole("link", { name: en.Auth.registerHere, exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/en\/register$/, { timeout: 20_000 });
+  await expect(registrationHeading(page)).toBeVisible();
+}
+
+async function fillSignUpForm(
+  page: Page,
+  fields: { name: string; email: string; password: string },
+) {
+  await page.locator("input#name").fill(fields.name);
+  await page.locator("input#email").fill(fields.email);
+  await page.locator("input#password").fill(fields.password);
+  await page.locator("input#confirmPassword").fill(fields.password);
+}
+
+async function acceptTerms(page: Page) {
+  await termsCheckbox(page).check();
+  await expect(submitButton(page)).toBeEnabled();
+}
+
+// A server action call is a POST carrying a Next-Action header; registerUser is
+// the only server action on this page.
+const isSignUpRequest = (req: NetworkRequest) =>
+  req.method() === "POST" && req.headers()["next-action"] !== undefined;
+
+/**
+ * Record the sign-up requests the page sends and abort them in the browser
+ * once `hold` settles: they never reach registerUser or its rate limit.
+ */
+async function interceptSignUpRequests(
+  page: Page,
+  hold: Promise<void> = Promise.resolve(),
+): Promise<NetworkRequest[]> {
+  const sent: NetworkRequest[] = [];
+  page.on("request", (req) => {
+    if (isSignUpRequest(req)) sent.push(req);
+  });
+  await page.route(
+    (url) => url.pathname === "/en/register",
+    async (route) => {
+      if (!isSignUpRequest(route.request())) return route.fallback();
+      await hold;
+      return route.abort();
+    },
+  );
+  return sent;
+}
+
+test.describe("Registration (/en/register)", () => {
+  test("renders the sign-up form: 'Auth App' title, heading, labelled fields, unchecked terms, disabled 'Create Account'", async ({
+    page,
+  }) => {
+    await page.goto("/en/register");
+
+    await expect(page).toHaveTitle(en.Layout.appTitle);
+    await expect(registrationHeading(page)).toBeVisible();
+    for (const label of [
+      en.Registration.fullName,
+      en.Registration.emailAddress,
+      en.Registration.createPassword,
+      en.Registration.confirmPassword,
+    ]) {
+      await expect(page.getByLabel(label, { exact: true })).toBeVisible();
+    }
+    await expect(termsCheckbox(page)).not.toBeChecked();
+    await expect(submitButton(page)).toHaveText(en.Registration.createAccount);
+    await expect(submitButton(page)).toBeDisabled();
   });
 
-  test("should register new user successfully", async () => {
-    // Generate random user data
-    const userData = RegisterPage.generateRandomUser();
+  test("'Sign in here' leads to the sign-in home page, whose 'Register here' leads back", async ({
+    page,
+  }) => {
+    await page.goto("/en/register");
+    await page
+      .getByRole("link", { name: en.Auth.signInHere, exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/en$/);
+    await waitForSignedOutHome(page);
 
-    // Fill and submit registration form
-    await registerPage.register({
-      ...userData,
-      acceptTerms: true,
-      newsletter: false,
+    await page
+      .getByRole("link", { name: en.Auth.registerHere, exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/en\/register$/, { timeout: 20_000 });
+    await expect(registrationHeading(page)).toBeVisible();
+  });
+
+  test("the terms checkbox gates the submit button: disabled, enabled when checked, disabled again when unchecked", async ({
+    page,
+  }) => {
+    await openRegistrationForm(page);
+    await fillSignUpForm(page, {
+      name: "Terms Gate",
+      email: uniqueEmail("e2e-terms-gate"),
+      password: STRONG_PASSWORD,
     });
+    await expect(submitButton(page)).toBeDisabled();
 
-    // Check if registration was successful
-    const registrationSuccess = await registerPage.isRegistrationSuccessful();
-
-    if (registrationSuccess) {
-      console.log("✅ Registration succeeded - checking final state");
-
-      // Check if email verification is required
-      const emailVerificationRequired =
-        await registerPage.isEmailVerificationRequired();
-      if (emailVerificationRequired) {
-        await registerPage.assertEmailVerificationRequired();
-        expect(
-          await registerPage.hasText("Please check your email"),
-        ).toBeTruthy();
-      } else {
-        // User should be redirected to home page with success parameter after 2-second delay
-        console.log("Waiting for redirect after 2-second delay...");
-        // Wait for the redirect with ?registered=true or check current URL
-        await registerPage.page.waitForTimeout(3000); // Give time for redirect
-        const currentUrl = registerPage.page.url();
-        console.log("Final URL after registration:", currentUrl);
-
-        // Check if we successfully have the registered parameter
-        if (
-          currentUrl.includes("registered=true") ||
-          currentUrl.match(/dashboard|home|welcome/)
-        ) {
-          console.log("✅ Registration redirect successful:", currentUrl);
-          expect(currentUrl).toMatch(/registered=true|dashboard|home|welcome/);
-        } else {
-          console.log(
-            "❌ Registration redirect failed. Current URL:",
-            currentUrl,
-          );
-          throw new Error(
-            `Registration redirect failed. Expected ?registered=true but got: ${currentUrl}`,
-          );
-        }
-      }
-    } else {
-      // Registration may have failed - check for error messages or debug
-      const currentUrl = registerPage.page.url();
-      console.log("❌ Registration may have failed. Current URL:", currentUrl);
-
-      // Check for error messages on the page
-      const errorMessages = await registerPage.page
-        .locator('[role="alert"], .error, .alert-error')
-        .all();
-      for (const error of errorMessages) {
-        const text = await error.textContent();
-        console.log("Error message found:", text);
-      }
-
-      // Fail the test with debug information
-      throw new Error(
-        `Registration did not succeed. Current URL: ${currentUrl}`,
-      );
-    }
+    await acceptTerms(page);
+    await termsCheckbox(page).uncheck();
+    await expect(submitButton(page)).toBeDisabled();
   });
 
-  test("should show validation errors for invalid input", async () => {
-    // Fill with invalid data
-    await registerPage.fillRegistrationForm({
-      name: "a", // Too short
-      email: "invalid-email", // Invalid format
-      password: "123", // Too weak
-      confirmPassword: "456", // Doesn't match
+  test("native validation blocks an invalid e-mail: no sign-up request leaves the browser until the address is valid", async ({
+    page,
+  }) => {
+    await openRegistrationForm(page);
+    const sent = await interceptSignUpRequests(page);
+
+    await fillSignUpForm(page, {
+      name: "Native Check",
+      email: "invalid-email",
+      password: STRONG_PASSWORD,
     });
+    await acceptTerms(page);
+    await submitButton(page).click();
 
-    // Accept terms to enable the submit button
-    await registerPage.acceptTerms();
+    const email = page.locator("input#email");
+    expect(
+      await email.evaluate((el: HTMLInputElement) => el.validity.typeMismatch),
+    ).toBe(true);
 
-    await registerPage.submitRegistration();
-
-    // Wait for validation response
-    await registerPage.page.waitForTimeout(3000);
-
-    // Verify that registration did NOT succeed - user should stay on registration page
-    const currentUrl = registerPage.page.url();
-    expect(currentUrl).toContain("/register"); // Should still be on registration page
-
-    // Check that we don't have success indicators
-    const isSuccessful = await registerPage.isRegistrationSuccessful();
-    expect(isSuccessful).toBeFalsy();
-
-    // Verify the form prevented successful registration (staying on page indicates validation is working)
-    expect(currentUrl).toContain("/register");
-    expect(isSuccessful).toBeFalsy();
-
-    // Basic validation test - form submission was prevented
-    expect(true).toBeTruthy();
+    // Make the request due: with a valid address the same click must send one
+    // request, so a request from the first click would make this two.
+    await email.fill(uniqueEmail("e2e-native"));
+    const due = page.waitForRequest(isSignUpRequest);
+    await submitButton(page).click();
+    await due;
+    expect(sent).toHaveLength(1);
   });
 
-  test("should prevent duplicate email registration", async ({ page }) => {
-    // Use existing pro user email to test duplicate prevention without contaminating main test user
-    await registerPage.register({
-      name: "Duplicate User",
-      email: "prouser@example.com", // Use pro user email for duplicate test
-      password: "Pro123!", // Use correct password for pro user
-      acceptTerms: true,
-    });
-
-    // Wait for registration attempt to complete
-    await registerPage.page.waitForTimeout(3000);
-
-    // Check result - either registration failed (stay on register) or succeeded (redirect to home)
-    const currentUrl = registerPage.page.url();
-
-    if (currentUrl.includes("/register")) {
-      // Registration failed as expected - should have error message
-      console.log("✓ Registration correctly prevented for duplicate email");
-    } else {
-      // Registration succeeded (app might allow duplicate emails or user doesn't exist in test DB)
-      console.log(
-        "ℹ Registration succeeded - test user may not exist in test database",
-      );
-      expect(currentUrl).toMatch(/\/(en|es|fr|de|it)(\?.*)?$/); // Should redirect to home
-    }
-
-    // Try to get error message (if displayed)
-    const error = await registerPage.getRegistrationError();
-    if (error) {
-      // Expect user-friendly error message
-      const errorLower = error.toLowerCase();
-      expect(errorLower).toContain("already exists");
-      console.log(
-        "✅ Registration correctly prevented with user-friendly error:",
-        error,
-      );
-    } else {
-      // Even if no error message is displayed, staying on registration page indicates failure
-      console.log(
-        "Registration correctly prevented for duplicate email, no error message displayed",
-      );
-    }
-  });
-
-  test("should validate password strength", async () => {
-    // Enter weak password
-    await registerPage.fillField('input[name="password"]', "weak");
-    await registerPage.page.waitForTimeout(500); // Allow UI to update
-
-    // Check password strength indicator if it exists
-    const strength = await registerPage.getPasswordStrength();
-    if (strength) {
-      expect(strength.toLowerCase()).toContain("weak");
-      console.log("Password strength indicator found:", strength);
-    } else {
-      console.log(
-        "Password strength indicator not implemented - test still passes",
-      );
-    }
-
-    // Enter strong password
-    await registerPage.fillField(
-      'input[name="password"]',
-      "StrongP@ssw0rd123!",
+  test("while the sign-up request is in flight the button reads 'Creating account...' and is disabled", async ({
+    page,
+  }) => {
+    await openRegistrationForm(page);
+    let release!: () => void;
+    const sent = await interceptSignUpRequests(
+      page,
+      new Promise<void>((resolve) => {
+        release = () => resolve();
+      }),
     );
-    await registerPage.page.waitForTimeout(500); // Allow UI to update
 
-    // Check password requirements if they exist
-    const requirements = await registerPage.checkPasswordRequirements();
+    await fillSignUpForm(page, {
+      name: "Loading Check",
+      email: uniqueEmail("e2e-loading"),
+      password: STRONG_PASSWORD,
+    });
+    await acceptTerms(page);
+    await submitButton(page).click();
 
-    // If requirements are implemented, test them
-    if (Object.values(requirements).some((req) => req === true)) {
-      // At least some requirements are implemented and working
-      expect(requirements.length).toBeTruthy();
-      expect(requirements.uppercase).toBeTruthy();
-      expect(requirements.number).toBeTruthy();
-      expect(requirements.special).toBeTruthy();
-      console.log("Password requirements validated:", requirements);
-    } else {
-      // Requirements not implemented yet - test basic password acceptance
-      console.log(
-        "Password requirements not fully implemented - testing basic functionality",
-      );
+    await expect(submitButton(page)).toHaveText(en.Registration.creating);
+    await expect(submitButton(page)).toBeDisabled();
+    await expect.poll(() => sent.length).toBe(1);
 
-      // Fill form with strong password and verify it's accepted
-      await registerPage.fillRegistrationForm({
-        name: "Test User Strong Password",
-        email: "strongpasstest@example.com",
-        password: "StrongP@ssw0rd123!",
-        confirmPassword: "StrongP@ssw0rd123!",
+    // The held request is now aborted in the browser: loading ends and the
+    // failure is shown instead of being swallowed.
+    release();
+    await expect(submitButton(page)).toHaveText(en.Registration.createAccount);
+    await expect(submitButton(page)).toBeEnabled();
+    await expect(formAlert(page)).toBeVisible();
+  });
+
+  test("a password that fails the server-side policy is refused with 'Validation failed', which clears after 5 s", async ({
+    page,
+  }) => {
+    await openRegistrationForm(page);
+    await fillSignUpForm(page, {
+      name: "Weak Password",
+      email: uniqueEmail("e2e-weak"),
+      password: WEAK_PASSWORD,
+    });
+    await acceptTerms(page);
+    await submitButton(page).click();
+
+    await expect(formAlert(page)).toHaveText(VALIDATION_FAILED);
+    await expect(page).toHaveURL(/\/en\/register$/);
+    // resetDelay: 5000 in registration-form.tsx removes the message.
+    await expect(formAlert(page)).toHaveCount(0, { timeout: 10_000 });
+  });
+
+  test("a password confirmation that does not match is refused with 'Validation failed'", async ({
+    page,
+  }) => {
+    // The match is checked only on the server (registerSchema refine in
+    // register-user.command.ts); the form has no client-side check.
+    await openRegistrationForm(page);
+    await page.locator("input#name").fill("Mismatch");
+    await page.locator("input#email").fill(uniqueEmail("e2e-mismatch"));
+    await page.locator("input#password").fill(STRONG_PASSWORD);
+    await page.locator("input#confirmPassword").fill(OTHER_STRONG_PASSWORD);
+    await acceptTerms(page);
+    await submitButton(page).click();
+
+    await expect(formAlert(page)).toHaveText(VALIDATION_FAILED);
+    await expect(page).toHaveURL(/\/en\/register$/);
+  });
+
+  test.describe("a new account", () => {
+    // One fresh e-mail shared in order: created, refused as a duplicate, signed in.
+    test.describe.configure({ mode: "serial" });
+    const email = uniqueEmail("e2e-register");
+
+    test("valid sign-up shows the success message, redirects to /en?registered=true and does not sign in", async ({
+      page,
+    }) => {
+      await openRegistrationForm(page);
+      await fillSignUpForm(page, {
+        name: "E2E Registrant",
+        email,
+        password: STRONG_PASSWORD,
       });
+      await acceptTerms(page);
+      await submitButton(page).click();
 
-      // Accept terms to enable submit button
-      await registerPage.acceptTerms();
-
-      // Verify submit button becomes enabled (indicates password is acceptable)
-      const submitButton = registerPage.page.locator('button[type="submit"]');
-      await expect(submitButton).toBeEnabled({ timeout: 5000 });
-
-      console.log("Strong password accepted by form validation");
-    }
-
-    // Test passes if either password strength indicators work OR basic password validation works
-    expect(true).toBeTruthy();
-  });
-
-  test("should validate password confirmation match", async () => {
-    await registerPage.fillRegistrationForm({
-      name: "Test User",
-      email: "validation-test@example.com", // Use different email to prevent contamination
-      password: "Test123!",
-      confirmPassword: "Different123!", // Doesn't match password
+      await expect(formAlert(page)).toHaveText(SIGN_UP_SUCCESS);
+      // onSuccess pushes /{locale}?registered=true after 2 s.
+      await expect(page).toHaveURL(/\/en\?registered=true$/);
+      await expectSignedOut(page);
     });
 
-    // Accept terms to enable submit button
-    await registerPage.acceptTerms();
+    test("registering the same e-mail again is refused with 'User already exists'", async ({
+      page,
+    }) => {
+      await openRegistrationForm(page);
+      await fillSignUpForm(page, {
+        name: "Second Attempt",
+        email,
+        password: OTHER_STRONG_PASSWORD,
+      });
+      await acceptTerms(page);
+      await submitButton(page).click();
 
-    await registerPage.submitRegistration();
-
-    // Wait for validation response
-    await registerPage.page.waitForTimeout(3000);
-
-    // Verify that registration did NOT succeed - user should stay on registration page
-    const currentUrl = registerPage.page.url();
-    expect(currentUrl).toContain("/register");
-
-    // Check that registration was not successful
-    const isSuccessful = await registerPage.isRegistrationSuccessful();
-    expect(isSuccessful).toBeFalsy();
-
-    // The core validation behavior is working - form prevents registration with mismatched passwords
-    // User stays on registration page and registration doesn't succeed
-    expect(currentUrl).toContain("/register");
-    expect(isSuccessful).toBeFalsy();
-
-    // Consider test passed - validation prevented successful registration
-    expect(true).toBeTruthy(); // Password confirmation validation working
-  });
-
-  test("should navigate to login page", async ({ page }) => {
-    await registerPage.clickSignIn();
-
-    const loginPage = new LoginPage(page);
-    await loginPage.assertLoginPageDisplayed();
-    // App navigates to home page with sign-in options, not a dedicated login URL
-    await expect(page).toHaveURL(/\/(en|es|fr|it|de)(\/)?$/);
-  });
-
-  test("should handle terms and conditions", async () => {
-    const userData = RegisterPage.generateRandomUser();
-
-    // Fill form without accepting terms
-    await registerPage.fillRegistrationForm(userData);
-
-    // Verify submit button is disabled when terms not accepted
-    const submitButton = registerPage.page.locator('button[type="submit"]');
-    await expect(submitButton).toBeDisabled();
-
-    // Accept terms
-    await registerPage.acceptTerms();
-
-    // Verify submit button becomes enabled
-    await expect(submitButton).toBeEnabled({ timeout: 5000 });
-
-    // Now submit the form
-    await registerPage.submitRegistration();
-
-    // Should proceed with registration
-    await registerPage.assertRegistrationSuccess();
-  });
-
-  test("should resend verification email", async () => {
-    const userData = RegisterPage.generateRandomUser();
-
-    // Register new user
-    await registerPage.register({
-      ...userData,
-      acceptTerms: true,
+      await expect(formAlert(page)).toHaveText(USER_EXISTS);
+      await expect(page).toHaveURL(/\/en\/register$/);
     });
 
-    // If email verification is required
-    if (await registerPage.isEmailVerificationRequired()) {
-      // Click resend button
-      await registerPage.resendVerificationEmail();
-
-      // Check for success message
-      const success = await registerPage.getSuccessMessage();
-      expect(success).toContain("sent");
-    }
-  });
-
-  test("should show loading state during registration", async () => {
-    const userData = RegisterPage.generateRandomUser();
-
-    await registerPage.fillRegistrationForm(userData);
-
-    // Accept terms to enable submit button
-    await registerPage.acceptTerms();
-
-    // Start registration and check loading state
-    const submitPromise = registerPage.submitRegistration();
-    const loadingPromise = registerPage.isLoading();
-
-    const [, isLoading] = await Promise.all([submitPromise, loadingPromise]);
-
-    // Loading state might be very quick, so this is optional
-    if (isLoading) {
-      await registerPage.waitForLoadingComplete();
-    }
-
-    // Wait for registration to complete and verify success
-    await registerPage.assertRegistrationSuccess();
-  });
-
-  test("should register with Google OAuth", async () => {
-    // Check if Google OAuth button exists
-    const googleButton = await registerPage.page.locator(
-      'button:has-text("Google"), button:has-text("Continue with Google")',
-    );
-
-    if ((await googleButton.count()) > 0) {
-      // OAuth would open external page, just verify button exists
-      expect(await googleButton.isVisible()).toBeTruthy();
-    } else {
-      // No Google OAuth is valid (feature might not be configured)
-      expect(true).toBeTruthy();
-    }
-  });
-
-  test("should register with GitHub OAuth", async () => {
-    // Check if GitHub OAuth button exists
-    const githubButton = await registerPage.page.locator(
-      'button:has-text("GitHub"), button:has-text("Continue with GitHub")',
-    );
-
-    if ((await githubButton.count()) > 0) {
-      // OAuth would open external page, just verify button exists
-      expect(await githubButton.isVisible()).toBeTruthy();
-    } else {
-      // No GitHub OAuth is valid (feature might not be configured)
-      expect(true).toBeTruthy();
-    }
+    test("the new account signs in with its sign-up password (the refused duplicate changed nothing)", async ({
+      page,
+    }) => {
+      await openEmailSignIn(page);
+      await submitCredentials(page, email, STRONG_PASSWORD);
+      await expect(page).toHaveURL(/\/en\/account$/, { timeout: 20_000 });
+      await expectSignedInAs(page, email);
+    });
   });
 });

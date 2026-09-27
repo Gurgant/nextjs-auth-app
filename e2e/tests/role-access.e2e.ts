@@ -1,413 +1,232 @@
-import { test, expect, Page } from "@playwright/test";
-import { LoginPage } from "../pages/login.page";
+import { test, expect, type Page } from "@playwright/test";
+import {
+  USERS,
+  type TestUser,
+  expectSignedOut,
+  sessionUser,
+  signInViaApi,
+  signOutViaCookies,
+  waitForSignedOutHome,
+} from "../support/app";
 
-/**
- * Utility functions for enhanced error handling and stability
+/*
+ * Authorization matrix of the role-gated pages. Every gate is a server-side
+ * redirect() in the page component (src/app/[locale]/dashboard/page.tsx,
+ * dashboard/user/page.tsx, dashboard/pro/page.tsx, admin/page.tsx). Next
+ * answers it with an HTTP 307 before any page content is sent, so the tests
+ * assert that hop and where it lands, then the page's own test id. The role
+ * hierarchy is USER < PRO_USER < ADMIN (src/lib/auth/rbac.ts, hasRole).
+ *
+ * Sign-in goes through the credentials callback (signInViaApi): the subject
+ * here is authorization, not the form. Every sign-in succeeds, so no failed
+ * attempt, registration or 2FA code is spent from the rate-limit budget.
+ *
+ * The dashboard and admin pages are hardcoded English (no next-intl), so their
+ * texts are asserted literally.
  */
 
-/**
- * Retry a function with exponential backoff
- */
-async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 1000,
-): Promise<T> {
-  let lastError: Error;
+const DASHBOARD = "/en/dashboard";
+const USER_DASHBOARD = "/en/dashboard/user";
+const PRO_DASHBOARD = "/en/dashboard/pro";
+const ADMIN_PANEL = "/en/admin";
+const SIGN_IN = "/en/auth/signin";
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error as Error;
-      console.log(
-        `Attempt ${attempt + 1}/${maxRetries} failed:`,
-        (error as Error).message,
-      );
+const endsWith = (path: string) => new RegExp(`${path}$`);
 
-      if (attempt < maxRetries - 1) {
-        const delay = baseDelay * Math.pow(2, attempt);
-        console.log(`Waiting ${delay}ms before retry...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
+async function load(page: Page, path: string) {
+  const res = await page.goto(path);
+  if (!res) throw new Error(`page.goto(${path}) returned no document response`);
+  return res;
+}
+
+/** The server renders `path` itself: status 200, no redirect hop. */
+async function expectServed(page: Page, path: string) {
+  const res = await load(page, path);
+  expect(
+    res.request().redirectedFrom()?.url(),
+    `${path} was redirected`,
+  ).toBeUndefined();
+  expect(res.status()).toBe(200);
+  await expect(page).toHaveURL(endsWith(path));
+}
+
+/** The server answers `path` with an HTTP redirect straight to `target`. */
+async function expectServerRedirect(page: Page, path: string, target: string) {
+  const res = await load(page, path);
+  expect(
+    res.request().redirectedFrom()?.url(),
+    `${path} was not redirected by the server`,
+  ).toBe(new URL(path, res.url()).href);
+  expect(new URL(res.url()).pathname).toBe(target);
+}
+
+/** /en/dashboard/user rendered for `user` (the page stamps the session's role and e-mail). */
+async function expectUserDashboardFor(page: Page, user: TestUser) {
+  const dashboard = page.getByTestId("user-dashboard");
+  await expect(dashboard).toBeVisible();
+  await expect(dashboard).toHaveAttribute("data-user-role", user.role);
+  await expect(dashboard).toHaveAttribute("data-user-email", user.email);
+  await expect(
+    dashboard.getByRole("heading", { level: 1, name: "User Dashboard" }),
+  ).toBeVisible();
+}
+
+/** The one role-conditional card on /en/dashboard/user (rendered for USER only). */
+const upgradeCard = (page: Page) =>
+  page
+    .getByTestId("user-dashboard")
+    .getByRole("heading", { name: "Upgrade to Pro", exact: true });
+
+test.describe("Role-based access control", () => {
+  test.describe("signed out", () => {
+    for (const path of [
+      DASHBOARD,
+      USER_DASHBOARD,
+      PRO_DASHBOARD,
+      ADMIN_PANEL,
+    ]) {
+      test(`${path} redirects to ${SIGN_IN}, which sends the visitor on to the signed-out home /en`, async ({
+        page,
+      }) => {
+        await expectSignedOut(page);
+        await expectServerRedirect(page, path, SIGN_IN);
+        // auth/signin/page.tsx is a client page that router.replace()s to /en.
+        await expect(page).toHaveURL(/\/en$/, { timeout: 20_000 });
+        await waitForSignedOutHome(page);
+      });
     }
-  }
-
-  throw lastError!;
-}
-
-/**
- * Direct navigation utilities - more stable than button clicking
- */
-async function navigateToUserDashboard(page: Page) {
-  console.log("Navigating directly to user dashboard...");
-  // Direct navigation to user dashboard to avoid networkidle issues
-  await page.goto("/en/dashboard/user", {
-    waitUntil: "domcontentloaded",
-    timeout: 20000,
   });
 
-  console.log("Successfully navigated to user dashboard");
-}
-
-async function navigateToProDashboard(page: Page) {
-  console.log("Navigating directly to pro dashboard...");
-  // Direct navigation to pro dashboard to avoid networkidle issues
-  await page.goto("/en/dashboard/pro", {
-    waitUntil: "domcontentloaded",
-    timeout: 20000,
-  });
-
-  console.log("Successfully navigated to pro dashboard");
-}
-
-async function navigateToAdminPanel(page: Page) {
-  console.log("Navigating directly to admin panel...");
-  // Direct navigation to admin panel to avoid networkidle issues
-  await page.goto("/en/admin", {
-    waitUntil: "domcontentloaded",
-    timeout: 20000,
-  });
-
-  console.log("Successfully navigated to admin panel");
-}
-
-/**
- * Safe dashboard access after login
- */
-async function accessDashboardAfterLogin(page: Page) {
-  console.log("Accessing dashboard after login...");
-
-  // Wait a moment for session to be established
-  await page.waitForTimeout(2000);
-
-  // Navigate to dashboard using role-based navigation
-  // Note: This will redirect to appropriate dashboard based on user role
-  await page.goto("/en/dashboard", {
-    waitUntil: "networkidle",
-    timeout: 15000,
-  });
-
-  // Give additional time for any role-based redirects to complete
-  await page.waitForTimeout(2000);
-
-  console.log("Dashboard access completed");
-}
-
-test.describe("Role-Based Access Control", () => {
-  let loginPage: LoginPage;
-
-  test.beforeEach(async ({ page, context }) => {
-    console.log("Starting test setup with comprehensive cleanup...");
-
-    // Simple, effective logout approach (same as auth-simple.e2e.ts)
-    await page.goto("http://localhost:3000/api/auth/signout", {
-      waitUntil: "networkidle",
-    });
-    await page.waitForTimeout(2000);
-
-    // Navigate to home page in unauthenticated state (simple approach)
-    loginPage = new LoginPage(page);
-    await loginPage.goto();
-  });
-
-  test.describe("USER Role", () => {
-    test("should access user dashboard", async ({ page }) => {
-      // Login as regular user
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Click dashboard button if present, otherwise navigate directly
-      const dashboardButton = page.locator(
-        '[data-testid="go-to-dashboard-button"]',
-      );
-      if ((await dashboardButton.count()) > 0) {
-        await dashboardButton.click();
-        await page.waitForTimeout(2000);
-      } else {
-        // Navigate directly to dashboard - will redirect to user dashboard
-        await navigateToUserDashboard(page);
-      }
-
-      // Should be redirected to user dashboard based on USER role
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
-
-      // Verify we're on the user dashboard
-      const isOnUserDashboard = page.url().includes("/dashboard/user");
-      expect(isOnUserDashboard).toBeTruthy();
-
-      // Verify dashboard content exists (flexible check)
-      const hasContent = await page
-        .locator("main, h1, h2")
-        .first()
-        .isVisible({ timeout: 5000 });
-      expect(hasContent).toBeTruthy();
-    });
-
-    test("should be denied access to pro dashboard", async ({ page }) => {
-      // Login as regular user
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Try to access pro dashboard directly
-      await page.goto("/en/dashboard/pro");
-
-      // Should be redirected back to user dashboard (role enforcement)
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
-
-      // Verify we're on user dashboard, not pro dashboard
-      expect(page.url()).toContain("/dashboard/user");
-      expect(page.url()).not.toContain("/dashboard/pro");
-    });
-
-    test("should be denied access to admin panel", async ({ page }) => {
-      // Login as regular user
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Try to access admin panel directly
-      await page.goto("/en/admin");
-
-      // Should be redirected to user dashboard (role enforcement)
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
-
-      // Verify we're on user dashboard, not admin panel
-      expect(page.url()).toContain("/dashboard/user");
-      expect(page.url()).not.toContain("/admin");
-    });
-  });
-
-  test.describe("PRO_USER Role", () => {
-    test("should access pro dashboard", async ({ page }) => {
-      // Login as the non-2FA PRO user: these tests exercise ROLE access, and
-      // since 2FA became enforced in authorize() a password-only login as a
-      // 2FA-enabled user correctly fails.
-      await loginPage.login("prouser@example.com", "Pro123!");
-
-      // Verify login was successful by checking current URL and session
-      const currentUrl = page.url();
-      console.log("URL after login attempt:", currentUrl);
-
-      // Check if we're redirected back to signin (indicating login failure)
-      if (currentUrl.includes("/signin") || currentUrl.includes("/auth")) {
-        throw new Error(`PRO_USER login failed - redirected to: ${currentUrl}`);
-      }
-
-      // Wait a moment for session to stabilize
-      await page.waitForTimeout(2000);
-
-      // Navigate to dashboard - should redirect to PRO dashboard
-      await navigateToProDashboard(page);
-
-      // Verify we're on the pro dashboard
-      expect(page.url()).toContain("/dashboard/pro");
-
-      // Verify dashboard content exists
-      const hasContent = await page
-        .locator("main, h1, h2")
-        .first()
-        .isVisible({ timeout: 5000 });
-      expect(hasContent).toBeTruthy();
-    });
-
-    test("should access user dashboard from pro role", async ({ page }) => {
-      // Login as the non-2FA PRO user (see note above).
-      await loginPage.login("prouser@example.com", "Pro123!");
-
-      // Try to access user dashboard directly - PRO users should have access
-      await page.goto("/en/dashboard/user");
-
-      // Should successfully access user dashboard
-      await page.waitForURL("**/dashboard/user", { timeout: 5000 });
-      expect(page.url()).toContain("/dashboard/user");
-
-      // Verify dashboard content exists
-      const hasContent = await page
-        .locator("main, h1, h2")
-        .first()
-        .isVisible({ timeout: 5000 });
-      expect(hasContent).toBeTruthy();
-    });
-
-    test("should be denied access to admin panel", async ({ page }) => {
-      // Login as the non-2FA PRO user (see note above).
-      await loginPage.login("prouser@example.com", "Pro123!");
-
-      // Try to access admin panel directly
-      await page.goto("/en/admin");
-
-      // Should be redirected away from admin panel (role enforcement)
-      await page.waitForURL("**/dashboard/user", { timeout: 10000 });
-
-      // Verify we're not on admin panel
-      expect(page.url()).not.toContain("/admin");
-      expect(page.url()).toContain("/dashboard/user");
-    });
-  });
-
-  test.describe("ADMIN Role", () => {
-    test("should access admin panel", async ({ page }) => {
-      // Login as admin
-      await loginPage.login("admin@example.com", "Admin123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Navigate to dashboard - should redirect to admin panel
-      await navigateToAdminPanel(page);
-
-      // Verify we're on the admin panel
-      expect(page.url()).toContain("/admin");
-
-      // Verify admin content exists
-      const hasContent = await page
-        .locator("main, h1, h2")
-        .first()
-        .isVisible({ timeout: 5000 });
-      expect(hasContent).toBeTruthy();
-    });
-
-    test("should access all dashboards", async ({ page }) => {
-      // Login as admin
-      await loginPage.login("admin@example.com", "Admin123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Test access to pro dashboard (ADMIN should have access)
-      await page.goto("/en/dashboard/pro");
-      await page.waitForURL("**/dashboard/pro", { timeout: 5000 });
-      expect(page.url()).toContain("/dashboard/pro");
-
-      // Test access to user dashboard (ADMIN should have access)
-      await page.goto("/en/dashboard/user");
-      await page.waitForURL("**/dashboard/user", { timeout: 5000 });
-      expect(page.url()).toContain("/dashboard/user");
-
-      // Return to admin panel
-      await page.goto("/en/admin", {
-        waitUntil: "domcontentloaded",
-        timeout: 10000,
+  test.describe("/en/dashboard picks the dashboard for the role", () => {
+    const cases: { user: TestUser; target: string; testId: string }[] = [
+      { user: USERS.user, target: USER_DASHBOARD, testId: "user-dashboard" },
+      { user: USERS.pro, target: PRO_DASHBOARD, testId: "pro-dashboard" },
+      { user: USERS.admin, target: ADMIN_PANEL, testId: "admin-panel" },
+    ];
+    for (const { user, target, testId } of cases) {
+      test(`${user.role} is redirected from ${DASHBOARD} to ${target}`, async ({
+        page,
+      }) => {
+        await signInViaApi(page, user);
+        expect((await sessionUser(page))?.role).toBe(user.role);
+        await expectServerRedirect(page, DASHBOARD, target);
+        await expect(page.getByTestId(testId)).toBeVisible();
       });
-      await page.waitForURL("**/admin", { timeout: 5000 });
-      expect(page.url()).toContain("/admin");
-    });
-
-    test("should see user management features", async ({ page }) => {
-      // Login as admin
-      await loginPage.login("admin@example.com", "Admin123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Navigate to admin panel
-      await page.goto("/en/admin", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-
-      // Wait for admin panel to load
-      await page.waitForURL("**/admin", { timeout: 10000 });
-
-      // Check for admin content
-      const hasContent = await page
-        .locator("main, h1, h2")
-        .first()
-        .isVisible({ timeout: 5000 });
-      expect(hasContent).toBeTruthy();
-
-      // Verify we're on admin panel
-      expect(page.url()).toContain("/admin");
-    });
+    }
   });
 
-  test.describe("Role Navigation", () => {
-    test("should redirect from base dashboard to role-specific dashboard", async ({
+  test.describe("USER", () => {
+    test.beforeEach(async ({ page }) => {
+      await signInViaApi(page, USERS.user);
+    });
+
+    test("is served /en/dashboard/user, stamped with role USER, with the Upgrade to Pro card", async ({
       page,
     }) => {
-      // Login as regular user
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Navigate to base dashboard - should redirect based on role
-      await navigateToUserDashboard(page);
-
-      // Should be redirected to user dashboard based on USER role
-
-      // Verify we're on user dashboard
-      expect(page.url()).toContain("/dashboard/user");
+      await expectServed(page, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.user);
+      await expect(upgradeCard(page)).toBeVisible();
     });
 
-    test("should show appropriate navigation based on role", async ({
+    test("is redirected from /en/dashboard/pro to /en/dashboard/user", async ({
       page,
     }) => {
-      test.setTimeout(120000); // 2 minutes for complex multi-user navigation test
-      // Login as admin
-      await loginPage.login("admin@example.com", "Admin123!");
-      // Login method handles session synchronization - no timeout needed
+      await expectServerRedirect(page, PRO_DASHBOARD, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.user);
+      await expect(page.getByTestId("pro-dashboard")).toHaveCount(0);
+    });
 
-      // Navigate to dashboard - should go to admin panel
-      await navigateToAdminPanel(page);
-      expect(page.url()).toContain("/admin");
-
-      // Logout and login as regular user to test role restrictions
-      await loginPage.performLogout();
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Navigate to dashboard - should go to user dashboard
-      await navigateToUserDashboard(page);
-
-      // Try to access admin - should be denied/redirected
-      await page.goto("/en/admin");
-      await page.waitForURL("**/dashboard/user", { timeout: 5000 });
-
-      // Verify we're redirected to user dashboard, not admin
-      expect(page.url()).toContain("/dashboard/user");
-      expect(page.url()).not.toContain("/admin");
+    test("is redirected from /en/admin to /en/dashboard/user", async ({
+      page,
+    }) => {
+      await expectServerRedirect(page, ADMIN_PANEL, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.user);
+      await expect(page.getByTestId("admin-panel")).toHaveCount(0);
     });
   });
 
-  test.describe("Unauthorized Access", () => {
-    test("should redirect to login when accessing protected routes without auth", async ({
+  test.describe("PRO_USER", () => {
+    test.beforeEach(async ({ page }) => {
+      await signInViaApi(page, USERS.pro);
+    });
+
+    test("is served /en/dashboard/pro", async ({ page }) => {
+      await expectServed(page, PRO_DASHBOARD);
+      const dashboard = page.getByTestId("pro-dashboard");
+      await expect(dashboard).toBeVisible();
+      await expect(
+        dashboard.getByRole("heading", { level: 1, name: "Pro Dashboard" }),
+      ).toBeVisible();
+    });
+
+    test("is served /en/dashboard/user, stamped with role PRO_USER, without the Upgrade to Pro card", async ({
       page,
     }) => {
-      // Try to access user dashboard without login
-      await page.goto("/en/dashboard/user", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-
-      // Should redirect to login page or home page
-      const redirectedCorrectly =
-        page.url().includes("/auth/signin") ||
-        page.url().includes("/en") ||
-        page.url().includes("/login");
-      expect(redirectedCorrectly).toBeTruthy();
-
-      // Try to access admin panel without login
-      await page.goto("/en/admin", {
-        waitUntil: "domcontentloaded",
-        timeout: 15000,
-      });
-
-      // Should redirect to login page or home page
-      const adminRedirectCorrect =
-        page.url().includes("/auth/signin") ||
-        page.url().includes("/en") ||
-        page.url().includes("/login");
-      expect(adminRedirectCorrect).toBeTruthy();
+      await expectServed(page, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.pro);
+      await expect(upgradeCard(page)).toHaveCount(0);
     });
 
-    test("should handle role changes correctly", async ({ page }) => {
-      // Login as user
-      await loginPage.login("test@example.com", "Test123!");
-      // Login method handles session synchronization - no timeout needed
-
-      // Navigate to dashboard - should redirect to user dashboard
-      await navigateToUserDashboard(page);
-
-      // Verify role is enforced by trying to access restricted area
-      await page.goto("/en/admin");
-      await page.waitForURL("**/dashboard/user", { timeout: 5000 });
-
-      // User should stay on their dashboard
-      expect(page.url()).toContain("/dashboard/user");
-      expect(page.url()).not.toContain("/admin");
+    test("is redirected from /en/admin to /en/dashboard/user", async ({
+      page,
+    }) => {
+      await expectServerRedirect(page, ADMIN_PANEL, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.pro);
+      await expect(page.getByTestId("admin-panel")).toHaveCount(0);
     });
+  });
+
+  test.describe("ADMIN", () => {
+    test.beforeEach(async ({ page }) => {
+      await signInViaApi(page, USERS.admin);
+    });
+
+    test("is served /en/admin: admin panel with the Administrator badge and the five most recent users", async ({
+      page,
+    }) => {
+      await expectServed(page, ADMIN_PANEL);
+      const panel = page.getByTestId("admin-panel");
+      await expect(panel).toBeVisible();
+      await expect(
+        panel.getByRole("heading", { level: 1, name: "Admin Dashboard" }),
+      ).toBeVisible();
+      // Role badge: getRoleDisplayName("ADMIN") in src/lib/auth/rbac.ts.
+      await expect(
+        panel.getByText("Administrator", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        panel.getByText(`System administration panel - ${USERS.admin.name}`),
+      ).toBeVisible();
+      // "Recent Users" lists the newest accounts with take: 5; global-setup
+      // seeds 6 users and no spec deletes any, so the table is always full.
+      await expect(
+        panel.getByRole("heading", { name: "Recent Users", exact: true }),
+      ).toBeVisible();
+      await expect(panel.locator("table tbody tr")).toHaveCount(5);
+    });
+
+    test("is served /en/dashboard/pro and /en/dashboard/user (stamped with role ADMIN)", async ({
+      page,
+    }) => {
+      await expectServed(page, PRO_DASHBOARD);
+      await expect(page.getByTestId("pro-dashboard")).toBeVisible();
+
+      await expectServed(page, USER_DASHBOARD);
+      await expectUserDashboardFor(page, USERS.admin);
+      await expect(upgradeCard(page)).toHaveCount(0);
+    });
+  });
+
+  test("after switching the session from ADMIN to USER, /en/admin redirects to /en/dashboard/user", async ({
+    page,
+  }) => {
+    await signInViaApi(page, USERS.admin);
+    await expectServed(page, ADMIN_PANEL);
+    await expect(page.getByTestId("admin-panel")).toBeVisible();
+
+    await signOutViaCookies(page);
+    await signInViaApi(page, USERS.user);
+    await expectServerRedirect(page, ADMIN_PANEL, USER_DASHBOARD);
+    await expectUserDashboardFor(page, USERS.user);
   });
 });
