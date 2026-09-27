@@ -10,8 +10,11 @@ interface WebVitalData {
   userAgent: string;
 }
 
-// In-memory storage for demo purposes
-// In production, use a proper database or analytics service
+// In-memory storage for demo purposes (use an analytics service in
+// production). The endpoint accepts anonymous POSTs, so the store is a
+// bounded ring: without the cap any client could grow server memory forever.
+const MAX_STORED_METRICS = 1000;
+const WEB_VITALS = new Set(["CLS", "INP", "FCP", "LCP", "TTFB"]);
 const performanceMetrics: WebVitalData[] = [];
 
 export async function POST(request: NextRequest) {
@@ -20,7 +23,11 @@ export async function POST(request: NextRequest) {
     const data: WebVitalData = await request.json();
 
     // Validate the data
-    if (!data.metric || typeof data.value !== "number") {
+    if (
+      !WEB_VITALS.has(data.metric) ||
+      typeof data.value !== "number" ||
+      !Number.isFinite(data.value)
+    ) {
       return NextResponse.json(
         { error: "Invalid metric data" },
         { status: 400 },
@@ -35,6 +42,12 @@ export async function POST(request: NextRequest) {
     };
 
     performanceMetrics.push(metricEntry);
+    if (performanceMetrics.length > MAX_STORED_METRICS) {
+      performanceMetrics.splice(
+        0,
+        performanceMetrics.length - MAX_STORED_METRICS,
+      );
+    }
 
     // Console visibility only while developing
     if (process.env.NODE_ENV === "development") {
