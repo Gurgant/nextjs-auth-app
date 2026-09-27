@@ -1,43 +1,61 @@
 # Deployment
 
-This is a starter, not a hosted product — there is no one-click deploy button
-and no claims about platforms it "runs on". What follows is the honest minimum
-you need to take it to production.
+This is a starter from a study project, not a hosted product — there is no
+one-click deploy button. What follows is the minimum you need to take it to
+production.
 
 ## Build & run
 
 ```bash
-pnpm build          # next build (standalone Next.js app)
-pnpm start          # serve the production build
+pnpm install
+pnpm prisma:generate   # the client lives in src/generated/ (not committed, not generated on install)
+pnpm build
+pnpm start             # serve the production build (needs node_modules)
 ```
 
-Anything that runs Node 20+ and can reach PostgreSQL works: a VPS with a
-process manager, a container platform, or Vercel (the app is a standard
-Next.js App Router project; provision PostgreSQL separately, e.g. Neon or
-Supabase).
+On Vercel or another CI, use `pnpm prisma:generate && pnpm build` as the build
+command. The output is a regular Next.js build (no `output: "standalone"`). Anything
+that runs Node 20+ and can reach PostgreSQL can host it: a VPS with a process
+manager, a container platform, or Vercel with an external PostgreSQL (e.g.
+Neon or Supabase). Note that on serverless or multi-instance hosting the
+in-memory rate limits apply per instance (see `SECURITY.md`).
 
 ## Environment
 
-Set every variable from `.env.example` with production values. The server
-validates configuration at boot (`src/lib/env.ts`) and **refuses to start** if
-something critical is missing — in production that includes:
+Set the variables from `.env.example` with production values. When the server
+starts it validates the configuration (`src/lib/env.ts`); if something is
+wrong it serves nothing — every request fails — and logs the names of the
+offending variables (measured with `next start`). In production that means:
 
-- `DATABASE_URL` — PostgreSQL with TLS (`sslmode=require`) recommended
-- `AUTH_SECRET` (≥ 32 chars) — `openssl rand -base64 32`
-- `ENCRYPTION_KEY` (exactly 64 hex chars) — `openssl rand -hex 32`
-- `NEXTAUTH_URL` — your **https://** origin
-- `RESEND_API_KEY` + `EMAIL_FROM` — without them e-mail sending is simulated
-  (fine in dev, not in production)
+- `DATABASE_URL` — PostgreSQL, preferably with TLS (`sslmode=require`)
+- `ENCRYPTION_KEY` — exactly 64 hex characters: `openssl rand -hex 32`
+- `AUTH_SECRET` (or `NEXTAUTH_SECRET`), ≥ 32 characters:
+  `openssl rand -base64 32`
+- the published example secrets are refused: the `.env.example` / CI values
+  of `AUTH_SECRET`, `NEXTAUTH_SECRET` and `ENCRYPTION_KEY`, and the
+  `RESEND_API_KEY` placeholders; other example values (such as the local
+  database password) are not checked
+
+Not enforced, but needed in practice:
+
+- `NEXTAUTH_URL` — your `https://` origin (validated as https when set);
+  e-mail links are built from it and fall back to `http://localhost:3000`
+- `RESEND_API_KEY` — while it is unset, e-mail sending is **simulated**
+  (logged, reported as sent) even in production
+- `EMAIL_FROM` — a sender on a domain verified in Resend; the default
+  `noreply@authapp.com` will be rejected
+
+Validation runs when the server initialises (at start-up under `next dev`, on
+the first request under `next start`), never during `next build`.
 
 ## Schema
 
-The starter uses `prisma db push` for simplicity. For a real deployment,
-generate a migration baseline first (`prisma migrate dev`) and use
-`prisma migrate deploy` in your release pipeline.
+The starter uses `prisma db push`. For a real deployment, generate a migration
+baseline first (`prisma migrate dev`) and use `prisma migrate deploy` in your
+release pipeline.
 
 ## Before you go live
 
-Work through the **Production Hardening Checklist in `SECURITY.md`** — it
-covers HTTPS, the rate-limiter's in-memory scope (use a shared store when
-scaling horizontally), CSP tightening, trusted `X-Forwarded-For`, and secret
-rotation. The known limitations listed there are real; read them.
+Work through the **Production Hardening Checklist in `SECURITY.md`** and read
+its Known Limitations: session revocation, 2FA on Google sign-in, in-memory
+rate limits, the encryption scheme, and the demo content listed in the README.

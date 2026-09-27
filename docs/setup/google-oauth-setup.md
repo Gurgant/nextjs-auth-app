@@ -1,7 +1,9 @@
 # Google OAuth Setup (optional)
 
-Google sign-in is **optional** — the app runs fine with credentials-only
-authentication. To enable it you need OAuth credentials from Google Cloud.
+Google sign-in is **optional**. Without both `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` the Google provider is not registered, the Google
+button is not shown and the home page offers the e-mail form directly. To
+enable it you need OAuth credentials from Google Cloud.
 
 ## 1. Create OAuth credentials
 
@@ -35,10 +37,14 @@ Do not wrap the values in extra quotes and restart `pnpm dev` afterwards.
 
 - **`redirect_uri_mismatch`** — the redirect URI in Google Cloud must match
   `<origin>/api/auth/callback/google` exactly (scheme, host, port).
-- **`Configuration` error page** — one of the two variables is missing or
-  empty; the app requires both to enable the provider.
+- **Every page errors and the log mentions `GOOGLE_CLIENT_ID /
+GOOGLE_CLIENT_SECRET`** — only one of the two variables is set; set both or
+  neither.
+- **No Google button** — the provider is registered only when both variables
+  are non-empty; restart the server after editing `.env`.
 - **Consent screen in Testing mode** — only listed test users can sign in;
   either add your account or publish the consent screen.
 
 Accounts created via Google can later add a password (account linking) from
-the account page.
+the account page. Note that Google sign-ins are **not** asked for a TOTP code,
+even when the user has enabled 2FA — see `SECURITY.md`.

@@ -1,7 +1,8 @@
 # Contributing
 
-Thanks for taking an interest. This project is a maintained auth starter —
-small, focused contributions are very welcome.
+Thanks for taking an interest. This is a personal study project, maintained on
+a best-effort basis — small, focused contributions are welcome, but reviews may
+take a while.
 
 ## Getting started
 
@@ -17,9 +18,10 @@ breaks for you, that itself is a bug worth reporting.
 3. Make the checks pass locally:
 
    ```bash
+   pnpm db:push:test # once: schema on the test DB (:5433)
    pnpm check        # eslint + tsc --noEmit
-   pnpm test         # Jest suite
-   pnpm test:e2e     # Playwright suite (needs the docker test DB)
+   pnpm test         # Jest suite (needs the test DB; pnpm test:unit does not)
+   pnpm test:e2e     # Playwright suite, always against the test DB
    ```
 
 4. The pre-commit hook runs Prettier, the translation validator, typecheck and
@@ -28,8 +30,14 @@ breaks for you, that itself is a bug worth reporting.
 ## Conventions
 
 - TypeScript strict; no new `any` (the linter warns — don't add to the pile).
-- Server actions validate input with Zod and derive identity from `auth()`,
-  never from client-supplied ids.
+- Server actions validate input with Zod (in the action or its command) and
+  derive identity from `auth()`, never from client-supplied ids.
+- Client Components import role helpers from `@/lib/auth/roles`, never from
+  server modules (`@/lib/auth`, `@/lib/auth/rbac`, `@/lib/security`, …). CI
+  fails if the client chunks contain one of three server-only markers, but it
+  cannot detect every server module — keep those imports out yourself.
+- Tests must be able to fail: no `expect(true)`, no swallowed errors, no
+  assertions hidden behind `if (count > 0)` (see `docs/TESTING.md`).
 - If you touch UI strings, update **all five** locale files in `messages/`
   (`pnpm validate-translations` enforces key parity).
 - Security-sensitive changes (auth flows, headers, crypto, rate limiting)
