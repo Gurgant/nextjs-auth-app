@@ -91,7 +91,10 @@ export default defineConfig({
   webServer: {
     command: "pnpm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: true, // Always reuse to prevent port conflicts
+    // A dev server you started yourself reads .env (your development DB), so
+    // reusing it is opt-in: E2E_REUSE_SERVER=1, only for a server started on the
+    // test database. By default a busy :3000 is an error, not a silent reuse.
+    reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
     timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
     stdout: "pipe",
     stderr: "pipe",

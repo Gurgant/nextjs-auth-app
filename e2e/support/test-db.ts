@@ -20,9 +20,24 @@ export function resolveE2EDatabaseUrl(
   return env.E2E_DATABASE_URL || env.DATABASE_URL || DEFAULT_TEST_DATABASE_URL;
 }
 
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+/** host:port/database, with loopback spellings and the default port unified. */
+export function databaseIdentity(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = LOOPBACK.has(u.hostname) ? "loopback" : u.hostname;
+    return `${host}:${u.port || "5432"}/${u.pathname.replace(/^\//, "")}`;
+  } catch {
+    return url.trim();
+  }
+}
+
 /**
  * Refuse to reset the database that .env points at: that is the development
- * database, and the E2E setup/teardown delete every row they touch.
+ * database, and the E2E setup/teardown delete every row they touch. The
+ * comparison is on host, port and database name, so "localhost" and
+ * "127.0.0.1" or extra query parameters do not slip past it.
  */
 export function assertNotDevelopmentDatabase(
   url: string,
@@ -30,7 +45,7 @@ export function assertNotDevelopmentDatabase(
 ): void {
   if (!fs.existsSync(envFile)) return;
   const devUrl = dotenv.parse(fs.readFileSync(envFile)).DATABASE_URL;
-  if (devUrl && devUrl.trim() === url.trim()) {
+  if (devUrl && databaseIdentity(devUrl) === databaseIdentity(url)) {
     throw new Error(
       "E2E refuses to reset the database that .env's DATABASE_URL points at " +
         "(your development data). Run it against the test database, e.g. " +
