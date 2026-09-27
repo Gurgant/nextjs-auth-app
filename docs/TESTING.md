@@ -53,14 +53,18 @@ recreates the fixture users), the dev server it starts, and the teardown
 (which deletes all rows): the `DATABASE_URL` you pass in the shell, or the
 docker test DB on port 5433. It never uses the `DATABASE_URL` from `.env`,
 and it **refuses to start** if the chosen database is the one `.env` points at
-(your development data). See `e2e/support/test-db.ts`.
+(your development data; compared by host, port and database name). See
+`e2e/support/test-db.ts`.
 
-Playwright starts the dev server itself, or reuses one already listening on
-`:3000` — in that case make sure it was started with the **same test
-database**:
+Playwright starts its own dev server. If something already listens on
+`:3000` it stops with an error instead of reusing it (a `pnpm dev` you started
+reads `.env` and would point the app at your development data). To reuse a
+server on purpose — faster when iterating — start it on the **same test
+database** and opt in:
 
 ```bash
 DATABASE_URL="postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db" pnpm dev
+E2E_REUSE_SERVER=1 pnpm test:e2e
 ```
 
 The fixture user with 2FA has its TOTP secret encrypted with your
@@ -88,10 +92,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   browser boundary.
 - Rate-limit budget: one full run performs 5 registrations and 4 failed
   sign-ins, inside the limits (registration: 5 per hour per IP; the 6th would
-  be refused). The counters live in the dev server's memory: with a dev server
-  you keep running between runs, they can carry over — restart it (or let
-  Playwright start a fresh one) if sign-up tests start failing with "Too many
-  sign-up attempts".
+  be refused). The counters live in the dev server's memory: with a reused
+  server (`E2E_REUSE_SERVER=1`) they can carry over between runs — restart it
+  if sign-up tests start failing with "Too many sign-up attempts".
 
 A mutation check was run on the rewritten suite: disabling 2FA enforcement in
 `authorize()`, hiding the invalid-credentials alert, or removing the role

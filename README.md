@@ -59,8 +59,9 @@ Playwright tests.
   The user dashboard's "Upgrade to Pro" and "Help & Support" cards and the
   error page's "Contact support" link also point to missing pages.
 - **Real data**: user counts, recent users and security events on the admin
-  page, and the user's own profile. The dashboards show the copy of the
-  profile taken into the session at sign-in, so edits appear there after the
+  page; sign-in methods and 2FA status on the account page. The dashboards and
+  the account page's profile card (name, e-mail) show the copy taken into the
+  session at sign-in: a name change is saved, but appears there only after the
   next sign-in.
 - **Not implemented**: password reset; entering a backup code in the sign-in
   form (codes are generated, stored and verified on the server, but the form
@@ -141,19 +142,19 @@ Google sign-in is optional — set it up with
 The main variables live in [`.env.example`](.env.example) with a comment
 each. Summary:
 
-| Variable                          | Required                        | Purpose                                                     |
-| --------------------------------- | ------------------------------- | ----------------------------------------------------------- |
-| `DATABASE_URL`                    | always                          | PostgreSQL connection string                                |
-| `ENCRYPTION_KEY`                  | always (64 hex chars)           | passphrase for encrypting 2FA secrets and backup codes      |
-| `AUTH_SECRET` / `NEXTAUTH_SECRET` | always (≥ 32 chars)             | key material for the encrypted session token                |
-| `NEXTAUTH_URL`                    | recommended (https in prod)     | canonical origin; e-mail links use it (else localhost)      |
-| `GOOGLE_CLIENT_ID` / `_SECRET`    | optional (both or none)         | Google sign-in                                              |
-| `RESEND_API_KEY`, `EMAIL_FROM`    | optional                        | real e-mail delivery; while the key is unset it's simulated |
-| `AUTH_RATE_LIMIT`                 | optional (default 10)           | failed sign-ins per minute, per e-mail and per IP           |
-| `MAX_LOGIN_ATTEMPTS`              | optional (default 5)            | consecutive failures before a temporary lock                |
-| `ACCOUNT_LOCKOUT_DURATION`        | optional (default 15, minutes)  | lock duration                                               |
-| `SESSION_MAX_AGE`                 | optional (default 604800, secs) | session idle timeout (300 – 2 592 000)                      |
-| `BCRYPT_ROUNDS`                   | optional (4–15)                 | hashing cost for registration and password change           |
+| Variable                          | Required                        | Purpose                                                                                                      |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                    | always                          | PostgreSQL connection string                                                                                 |
+| `ENCRYPTION_KEY`                  | always (64 hex chars)           | passphrase for encrypting 2FA secrets and backup codes                                                       |
+| `AUTH_SECRET` / `NEXTAUTH_SECRET` | always (≥ 32 chars)             | key material for the encrypted session token                                                                 |
+| `NEXTAUTH_URL`                    | recommended (https in prod)     | canonical origin; e-mail links use it (else localhost)                                                       |
+| `GOOGLE_CLIENT_ID` / `_SECRET`    | optional (both or none)         | Google sign-in                                                                                               |
+| `RESEND_API_KEY`, `EMAIL_FROM`    | optional                        | real e-mail delivery; while the key is unset it's simulated                                                  |
+| `AUTH_RATE_LIMIT`                 | optional (default 10)           | failed sign-ins per minute, per e-mail and per IP                                                            |
+| `MAX_LOGIN_ATTEMPTS`              | optional (default 5)            | consecutive failures before a temporary lock                                                                 |
+| `ACCOUNT_LOCKOUT_DURATION`        | optional (default 15, minutes)  | lock duration                                                                                                |
+| `SESSION_MAX_AGE`                 | optional (default 604800, secs) | session idle timeout (300 – 2 592 000)                                                                       |
+| `BCRYPT_ROUNDS`                   | optional (4–15, default 12)     | hashing cost for registration and password change; not checked at start-up (out-of-range values are ignored) |
 
 `LOG_LEVEL` is also read (by the logger). Configuration is validated when the
 server starts (`src/lib/env.ts`): with an invalid configuration the process
@@ -172,7 +173,8 @@ src/
 ├── components/            # auth forms, account management, layouts, UI kit
 ├── hooks/                 # client hooks (account data, roles, Google availability)
 ├── lib/
-│   ├── actions/           # server actions (account actions take identity from auth())
+│   ├── actions/           # server actions (account actions take identity from auth();
+│   │                      #  the public send-verification-e-mail action uses the given address)
 │   ├── auth/              # role helpers (roles.ts), server guards (rbac.ts), lockout policy
 │   ├── auth-config.ts     # Auth.js configuration, credentials authorize()
 │   ├── repositories/      # user repository (credentials check, lockout)
@@ -198,8 +200,10 @@ pnpm test:e2e                           # Playwright — 79 tests against the te
 pnpm check                              # eslint + tsc --noEmit
 ```
 
-The E2E run always uses the test database (or the `DATABASE_URL` you pass in
-the shell) and refuses to reset the database your `.env` points at. It seeds
+The E2E run starts its own dev server on the test database (or on the
+`DATABASE_URL` you pass in the shell), stops if something already listens on
+`:3000` (stop the `pnpm dev` from the Quick Start first), and refuses to reset
+the database your `.env` points at (same host, port and database name). It seeds
 its own users (including one with an encrypted 2FA secret), generates real
 TOTP codes, and works with or without Google configured. Details, coverage
 and caveats: [docs/TESTING.md](docs/TESTING.md).
@@ -207,8 +211,10 @@ and caveats: [docs/TESTING.md](docs/TESTING.md).
 ## Deployment
 
 `pnpm install && pnpm prisma:generate && pnpm build && pnpm start` on
-anything that runs Node 20+ with PostgreSQL reachable (the Prisma client is
-generated into `src/generated/`, which is not committed). Read
+anything that runs Node 20+ with PostgreSQL reachable, after applying the
+schema to that database (`pnpm prisma:push` with the production
+`DATABASE_URL`, or your own migrations). The Prisma client is generated into
+`src/generated/`, which is not committed. Read
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and — before going live — the
 **Production Hardening Checklist** in [SECURITY.md](SECURITY.md).
 

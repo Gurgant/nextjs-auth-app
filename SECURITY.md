@@ -63,9 +63,15 @@ the default branch; run the latest `main`.
   active lock is not extended; a successful sign-in resets the counter; the
   lock is recorded as an `account_locked` security event. Google sign-in and
   existing sessions are not affected by the lock.
-- Unknown e-mails cost the same bcrypt comparison as real ones.
-- **CSPRNG tokens** for e-mail verification and account linking:
-  `crypto.randomBytes` with rejection sampling to avoid modulo bias.
+- Unknown e-mails (and accounts without a password) are compared against a
+  dummy hash of cost `BCRYPT_ROUNDS`, so they take as long as accounts hashed
+  at that cost. With `BCRYPT_ROUNDS` other than 12, accounts hashed at cost 12
+  (a password added to a Google account, seeded users) answer at a different
+  speed.
+- **CSPRNG tokens** from `crypto.randomBytes`: e-mail-verification tokens are
+  drawn from a 62-character alphabet with rejection sampling (no modulo
+  bias); backup codes use the same generator, upper-cased; account-link tokens
+  are 32 random bytes, hex-encoded.
 
 ### Authorization
 
@@ -83,17 +89,18 @@ the default branch; run the latest `main`.
 In-memory, best-effort limits keyed by **account or e-mail _and_ client IP**
 (blocked if either key is over its limit):
 
-| Flow                                                   | Limit                             |
-| ------------------------------------------------------ | --------------------------------- |
-| Failed credential sign-ins                             | `AUTH_RATE_LIMIT` (10) per minute |
-| Failed 2FA codes                                       | 5 per 15 min, per account         |
-| Registration                                           | 5 per hour                        |
-| Verification e-mails                                   | 5 per 15 min                      |
-| Wrong passwords when linking / unlinking / changing it | 5 per 15 min                      |
+| Flow                                              | Limit                             |
+| ------------------------------------------------- | --------------------------------- |
+| Failed credential sign-ins                        | `AUTH_RATE_LIMIT` (10) per minute |
+| Failed 2FA codes                                  | 5 per 15 min, per account         |
+| Registration                                      | 5 per hour                        |
+| Verification e-mails                              | 5 per 15 min                      |
+| Wrong passwords when linking / unlinking (shared) | 5 per 15 min                      |
+| Password-change attempts (every attempt counts)   | 5 per 15 min                      |
 
 Sign-in answers with the generic invalid-credentials error (`2fa_invalid` for a
 throttled 2FA code). The link / unlink API routes answer **HTTP 429 +
-`Retry-After`**; server actions return a "Too many … attempts" message. The
+`Retry-After`**; server actions return a "Too many …" message. The
 client IP is the first parseable entry of `X-Forwarded-For` (IPv4 or IPv6, any
 notation), then `X-Real-IP`, then `X-Client-IP`; with none of them there is no
 IP key and only the account / e-mail key applies.
@@ -108,9 +115,9 @@ IP key and only the account / e-mail key applies.
   - Required in **every** environment: `DATABASE_URL`, `ENCRYPTION_KEY`
     (exactly 64 hex characters) and a session secret (`AUTH_SECRET` or
     `NEXTAUTH_SECRET`, ≥ 32 characters).
-  - In production `NEXTAUTH_URL`, when set, must be `https://`; Google
-    credentials must be set together or not at all; `SESSION_MAX_AGE` must be
-    300 – 2 592 000 seconds.
+  - In every environment Google credentials must be set together or not at
+    all and `SESSION_MAX_AGE` must be 300 – 2 592 000 seconds; in production
+    `NEXTAUTH_URL`, when set, must also be `https://`.
   - **Published example secrets are refused in production**: the `.env.example`
     and CI values of `AUTH_SECRET` / `NEXTAUTH_SECRET` and `ENCRYPTION_KEY`,
     and the `RESEND_API_KEY` placeholders (`re_...`, `your-resend-api-key`).
@@ -144,9 +151,12 @@ The `SecurityEvent` table records: 2FA enabled / disabled; verification e-mail
 sent and e-mail verified (both stored as `email_verified`, told apart by
 `details`); account-link initiation (`account_link_initiated`, written after
 the password check, before the Google step), unlinking (`account_unlinked`),
-wrong passwords when linking / unlinking; account lockouts. **Not recorded**
-(console or in-memory only): sign-ins, failed sign-ins, the completed Google
-link, password changes, adding a password, backup-code use, account deletion.
+wrong passwords when linking / unlinking; the confirmation page
+`/link-account/confirm/[token]` (`account_linked` — it only sets the
+`hasGoogleAccount` flag and does not prove that a Google account was linked);
+account lockouts. **Not recorded** (console or in-memory only): sign-ins,
+failed sign-ins, the completed Google OAuth link, password changes, adding a
+password, backup-code use, account deletion.
 Security events are deleted together with the account (`onDelete: Cascade`),
 and the link / unlink events store the raw `X-Forwarded-For` header.
 
