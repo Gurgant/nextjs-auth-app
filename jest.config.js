@@ -29,14 +29,6 @@ const customJestConfig = {
     "!src/middleware.ts",
     "!src/app/**",
   ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-  },
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

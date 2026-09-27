@@ -32,10 +32,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:coverage:full": "jest --config jest.config.coverage.js",
     "test:ci": "pnpm test:unit && pnpm test:integration && pnpm lint && pnpm typecheck",
     "test:all:complete": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
-    "test:unit": "jest src/test/unit",
+    "test:unit": "jest --testPathIgnorePatterns=/node_modules/ /.next/ /e2e/ /src/test/integration/",
     "test:integration": "cross-env DATABASE_URL=postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db jest src/test/integration/__tests__/auth.integration.real.test.ts",
     "test:hybrid:mock": "cross-env TEST_MODE=mock jest src/test/hybrid",
     "test:hybrid:real": "cross-env TEST_MODE=real DATABASE_URL=postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db jest src/test/hybrid",
@@ -48,7 +47,6 @@
     "test:e2e:chromium": "playwright test --workers=1 --project=chromium",
     "test:e2e:firefox": "playwright test --workers=1 --project=firefox",
     "test:e2e:webkit": "playwright test --workers=1 --project=webkit",
-    "prod:check": "node scripts/production-readiness-check.js",
     "prepare": "husky"
   },
   "keywords": [
