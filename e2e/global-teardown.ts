@@ -1,5 +1,9 @@
 import { FullConfig } from "@playwright/test";
 import { PrismaClient } from "../src/generated/prisma/index";
+import {
+  assertNotDevelopmentDatabase,
+  resolveE2EDatabaseUrl,
+} from "./support/test-db";
 
 /**
  * Global teardown for Playwright E2E tests
@@ -8,16 +12,11 @@ import { PrismaClient } from "../src/generated/prisma/index";
 async function globalTeardown(config: FullConfig) {
   console.log("🧹 Starting Playwright global teardown...");
 
-  // Initialize database connection to test DB
-  const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url:
-          process.env.DATABASE_URL ||
-          "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
-      },
-    },
-  });
+  // Same database as the setup (E2E_DATABASE_URL, set by playwright.config.ts);
+  // never the development database.
+  const url = resolveE2EDatabaseUrl();
+  assertNotDevelopmentDatabase(url);
+  const prisma = new PrismaClient({ datasources: { db: { url } } });
 
   try {
     // Connect to test database

@@ -4,10 +4,17 @@ import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
 import * as dotenv from "dotenv";
 import { requireEncryptionKey } from "../src/lib/env-rules";
+import {
+  assertNotDevelopmentDatabase,
+  resolveE2EDatabaseUrl,
+} from "./support/test-db";
 
-// Load the same .env the dev server reads, WITHOUT overriding variables already
-// present in the environment (so an explicit DATABASE_URL for the test DB wins).
-// Needed for ENCRYPTION_KEY: seeded 2FA secrets must be encrypted with the same
+// Resolved by playwright.config.ts before .env is loaded below.
+const E2E_DATABASE_URL = resolveE2EDatabaseUrl();
+
+// Load .env WITHOUT overriding variables already present in the environment.
+// Only needed for ENCRYPTION_KEY (the .env DATABASE_URL is the development DB
+// and is deliberately not used here): seeded 2FA secrets must be encrypted with the same
 // key the app uses, or TOTP validation can never succeed. Keep the key in .env
 // (not only in .env.local), since this file reads .env alone.
 dotenv.config();
@@ -28,15 +35,10 @@ async function globalSetup(config: FullConfig) {
   process.env.NEXTAUTH_SECRET =
     process.env.NEXTAUTH_SECRET || "test-secret-for-e2e";
 
-  // Initialize database
+  // Never reset the development database (the one .env points at).
+  assertNotDevelopmentDatabase(E2E_DATABASE_URL);
   const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url:
-          process.env.DATABASE_URL ||
-          "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
-      },
-    },
+    datasources: { db: { url: E2E_DATABASE_URL } },
   });
 
   try {

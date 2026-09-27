@@ -1,5 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 import * as os from "os";
+import { resolveE2EDatabaseUrl } from "./e2e/support/test-db";
+
+// Resolved before anything reads .env (see e2e/support/test-db.ts) and shared
+// with global setup/teardown and the dev server through the environment.
+const E2E_DATABASE_URL = resolveE2EDatabaseUrl();
+process.env.E2E_DATABASE_URL = E2E_DATABASE_URL;
 
 /**
  * Playwright configuration.
@@ -76,8 +82,8 @@ export default defineConfig({
 
   // Web server for development and CI.
   // Environment is passed ONLY via `env` (inline VAR=value prefixes are
-  // bash-only and break on Windows). DATABASE_URL defaults to the docker test
-  // DB (port 5433) and can be overridden from the shell.
+  // bash-only and break on Windows). The database is E2E_DATABASE_URL: the
+  // shell's DATABASE_URL or the docker test DB (port 5433), never the .env one.
   //
   // ⚠️ Never set NODE_ENV=test on the dev server: next.config.ts would serve
   // the production CSP (no 'unsafe-eval'), which silently breaks hydration in
@@ -90,9 +96,7 @@ export default defineConfig({
     stdout: "pipe",
     stderr: "pipe",
     env: {
-      DATABASE_URL:
-        process.env.DATABASE_URL ||
-        "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
+      DATABASE_URL: E2E_DATABASE_URL,
       // CI-specific optimizations
       ...(process.env.CI && {
         NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
