@@ -119,15 +119,49 @@ export function generateBackupCodes(count: number = 8): string[] {
   return codes;
 }
 
-// Validate IP address format
-export function isValidIP(ip: string): boolean {
-  const ipv4Regex =
-    /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-  return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+const IPV4 =
+  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+const IPV6_GROUP = /^[0-9a-fA-F]{1,4}$/;
+
+// IPv6 in any valid notation: full, compressed ("2001:db8::1", "::1") or with
+// an embedded IPv4 tail ("::ffff:203.0.113.7"). Pure code on purpose: this
+// module also ends up in bundles where Node's `net` is unavailable.
+function isIPv6(ip: string): boolean {
+  let s = ip;
+  const tail = /(\d{1,3}(?:\.\d{1,3}){3})$/.exec(s);
+  if (tail) {
+    if (!IPV4.test(tail[1])) return false;
+    s = `${s.slice(0, -tail[1].length)}0:0`; // an IPv4 tail fills two groups
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return false;
+  const groups = (part: string) => (part === "" ? [] : part.split(":"));
+  if (halves.length === 1) {
+    const all = groups(s);
+    return all.length === 8 && all.every((g) => IPV6_GROUP.test(g));
+  }
+  const [head, rest] = halves.map(groups);
+  return (
+    head.length + rest.length <= 7 &&
+    [...head, ...rest].every((g) => IPV6_GROUP.test(g))
+  );
 }
 
-// Extract client IP from request headers
+// Validate IP address format: IPv4 or IPv6 in any valid notation, including
+// the compressed IPv6 form proxies normally send ("2001:db8::1").
+export function isValidIP(ip: string): boolean {
+  return IPV4.test(ip) || isIPv6(ip);
+}
+
+// "::ffff:203.0.113.7" and "203.0.113.7" are the same client: one key.
+function normalizeIP(ip: string): string {
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
+  return mapped ? mapped[1] : ip;
+}
+
+// Extract client IP from request headers. The first valid X-Forwarded-For
+// entry is client-supplied unless a trusted proxy overwrites the header (see
+// SECURITY.md); the account/email key is the primary rate-limit key.
 export function getClientIP(headers: Headers): string | undefined {
   const forwarded = headers.get("x-forwarded-for");
   const realIP = headers.get("x-real-ip");
@@ -136,11 +170,11 @@ export function getClientIP(headers: Headers): string | undefined {
   if (forwarded) {
     const ips = forwarded.split(",").map((ip) => ip.trim());
     const validIP = ips.find((ip) => isValidIP(ip));
-    if (validIP) return validIP;
+    if (validIP) return normalizeIP(validIP);
   }
 
-  if (realIP && isValidIP(realIP)) return realIP;
-  if (clientIP && isValidIP(clientIP)) return clientIP;
+  if (realIP && isValidIP(realIP)) return normalizeIP(realIP);
+  if (clientIP && isValidIP(clientIP)) return normalizeIP(clientIP);
 
   return undefined;
 }
