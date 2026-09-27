@@ -4,3 +4,8 @@ playwright-report/** linguist-generated=true
 test-results/** linguist-generated=true
 # Screenshots are documentation, not source
 docs/screenshots/** linguist-documentation=true
+
+# LF in every checkout (Prettier and the pre-commit hook expect LF; without
+# this, Git for Windows (core.autocrlf=true) checks files out as CRLF and
+# `pnpm format:check` fails on a fresh clone). Binary files are auto-detected.
+* text=auto eol=lf
