@@ -44,8 +44,23 @@ export const currentTotp = (secret: string = USERS.twoFactor.totpSecret) =>
 export const uniqueEmail = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
+/**
+ * GET that retries only on a transport error (the dev server can reset a
+ * connection while it compiles a route on first hit), never on a response:
+ * the caller still asserts on whatever the server answered.
+ */
+async function getWithTransportRetry(page: Page, url: string, attempts = 3) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await page.request.get(url);
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+    }
+  }
+}
+
 export async function isGoogleEnabled(page: Page): Promise<boolean> {
-  const res = await page.request.get("/api/auth/providers");
+  const res = await getWithTransportRetry(page, "/api/auth/providers");
   expect(res.ok()).toBeTruthy();
   return "google" in (await res.json());
 }
@@ -54,7 +69,7 @@ export async function isGoogleEnabled(page: Page): Promise<boolean> {
 export async function sessionUser(
   page: Page,
 ): Promise<{ email?: string; role?: string; name?: string } | null> {
-  const res = await page.request.get("/api/auth/session");
+  const res = await getWithTransportRetry(page, "/api/auth/session");
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   return body?.user ?? null;
