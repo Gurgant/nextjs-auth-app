@@ -21,12 +21,13 @@ export async function GET(_request: NextRequest) {
         message: "Database connection successful",
       };
     } catch (error) {
+      // The driver message can name the host, port or user: log it, never
+      // return it from this public endpoint.
+      console.error("Health check: database unreachable:", error);
       checks.database = {
         status: "unhealthy",
         responseTime: Date.now() - startTime,
-        message:
-          error instanceof Error ? error.message : "Database connection failed",
-        error: process.env.NODE_ENV === "development" ? error : undefined,
+        message: "Database connection failed (see server logs)",
       };
       overallStatus = "unhealthy";
     }

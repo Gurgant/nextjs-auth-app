@@ -57,10 +57,15 @@ it("is 200 when the database and configuration are fine, whatever the heap ratio
   expect(body.checks.memory.heapUsagePercent).toBe(95);
 });
 
-it("is 503 when the database is unreachable", async () => {
-  queryRaw.mockRejectedValue(new Error("connect ECONNREFUSED"));
+it("is 503 when the database is unreachable, without echoing the driver error", async () => {
+  queryRaw.mockRejectedValue(
+    new Error("connect ECONNREFUSED db.internal:5432 (user app_owner)"),
+  );
   const res = await GET(request());
   expect(res.status).toBe(503);
+  const text = JSON.stringify(await res.json());
+  expect(text).not.toContain("db.internal");
+  expect(text).not.toContain("app_owner");
 });
 
 it("is 503 when required configuration is missing, without naming it", async () => {
