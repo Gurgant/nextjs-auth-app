@@ -1,5 +1,7 @@
 # Next.js Auth Starter
 
+[![CI](https://github.com/Gurgant/nextjs-auth-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Gurgant/nextjs-auth-app/actions/workflows/ci.yml)
+
 A self-hostable authentication starter for **Next.js 15**: e-mail + password
 sign-in with **TOTP two-factor authentication enforced on the server**,
 optional Google sign-in, role-based access control and five-locale
