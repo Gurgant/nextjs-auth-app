@@ -2,7 +2,7 @@
 
 ## [Unreleased] — 2026
 
-Security and honesty pass after a code audit (details in the commit history
+Security and accuracy pass after a code audit (details in the commit history
 and in `SECURITY.md`).
 
 ### 🔒 Security
