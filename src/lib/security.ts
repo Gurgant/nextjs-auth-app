@@ -1,6 +1,7 @@
 import CryptoJS from "crypto-js";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { requireEncryptionKey } from "@/lib/env-rules";
 
 // Encryption for data at rest (2FA secrets, backup codes).
@@ -58,7 +59,7 @@ export interface SecurityEventData {
     | "account_locked"
     | "account_unlocked";
   details?: string;
-  metadata?: Record<string, any>;
+  metadata?: Prisma.InputJsonObject;
   ipAddress?: string;
   userAgent?: string;
   success?: boolean;

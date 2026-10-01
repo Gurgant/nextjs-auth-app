@@ -29,7 +29,7 @@ interface ErrorContextData {
   component?: string;
   action?: string;
   userId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const ErrorContext = createContext<ErrorContext | undefined>(undefined);
@@ -163,7 +163,7 @@ export function useErrorWrapper() {
   const { handleError } = useErrorContext();
 
   return useCallback(
-    <T extends (...args: any[]) => Promise<any>>(
+    <T extends (...args: never[]) => Promise<unknown>>(
       fn: T,
       context?: ErrorContextData,
     ): T => {

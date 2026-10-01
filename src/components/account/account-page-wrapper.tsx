@@ -1,6 +1,13 @@
 "use client";
 
-import { Suspense, lazy, memo, Component, useEffect } from "react";
+import {
+  Suspense,
+  lazy,
+  memo,
+  Component,
+  useEffect,
+  type ErrorInfo,
+} from "react";
 import { useTranslations } from "next-intl";
 import { trackAccountPageMetrics } from "@/lib/performance/web-vitals";
 
@@ -82,13 +89,13 @@ const AccountLoadingFallback = memo(function AccountLoadingFallback() {
 class AccountErrorBoundary extends Component<
   {
     children: React.ReactNode;
-    onError?: (error: Error, errorInfo: any) => void;
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
   },
   { hasError: boolean; error: Error | null }
 > {
   constructor(props: {
     children: React.ReactNode;
-    onError?: (error: Error, errorInfo: any) => void;
+    onError?: (error: Error, errorInfo: ErrorInfo) => void;
   }) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -98,7 +105,7 @@ class AccountErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Account page error:", error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }

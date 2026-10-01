@@ -27,7 +27,7 @@ async function migrateAllUsers() {
 
     for (const user of users) {
       const hasGoogleAccount = user.accounts.some(
-        (account: any) => account.provider === "google",
+        (account) => account.provider === "google",
       );
       const hasPassword = !!user.password;
       const hasEmailAccount = hasPassword;

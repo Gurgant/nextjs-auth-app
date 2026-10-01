@@ -19,8 +19,14 @@ export interface CommandBusOptions {
   enableLogging?: boolean;
 }
 
+interface SanitizableOutput {
+  token?: unknown;
+  data?: { token?: unknown } | null;
+  [key: string]: unknown;
+}
+
 export class CommandBus {
-  private handlers = new Map<string, ICommand<any, any>>();
+  private handlers = new Map<string, ICommand<unknown, unknown>>();
   private middleware: ICommandMiddleware[] = [];
   private history: CommandHistory;
   private options: CommandBusOptions;
@@ -39,7 +45,7 @@ export class CommandBus {
   /**
    * Register a command handler
    */
-  register<TCommand extends ICommand<any, any>>(
+  register<TCommand extends ICommand<unknown, unknown>>(
     CommandClass: new () => TCommand,
   ): void {
     const instance = new CommandClass();
@@ -53,7 +59,9 @@ export class CommandBus {
   /**
    * Register multiple command handlers
    */
-  registerMany(commandClasses: Array<new () => ICommand<any, any>>): void {
+  registerMany(
+    commandClasses: Array<new () => ICommand<unknown, unknown>>,
+  ): void {
     commandClasses.forEach((CommandClass) => this.register(CommandClass));
   }
 
@@ -74,7 +82,9 @@ export class CommandBus {
     metadata?: Partial<CommandMetadata>,
   ): Promise<TOutput> {
     const commandName = CommandClass.name;
-    const handler = this.handlers.get(commandName);
+    const handler = this.handlers.get(commandName) as
+      | ICommand<TInput, TOutput>
+      | undefined;
 
     if (!handler) {
       throw new Error(`No handler registered for command: ${commandName}`);
@@ -272,7 +282,7 @@ export class CommandBus {
   /**
    * Check if a command is registered
    */
-  hasCommand(CommandClass: new () => ICommand<any, any>): boolean {
+  hasCommand(CommandClass: new () => ICommand<unknown, unknown>): boolean {
     return this.handlers.has(CommandClass.name);
   }
 
@@ -286,10 +296,12 @@ export class CommandBus {
   /**
    * Sanitize sensitive input data for events
    */
-  private sanitizeInput(input: any): any {
+  private sanitizeInput(input: unknown): unknown {
     if (!input) return input;
 
-    const sanitized = { ...input };
+    const sanitized: Record<string, unknown> = {
+      ...(input as Record<string, unknown>),
+    };
     const sensitiveFields = [
       "password",
       "confirmPassword",
@@ -311,10 +323,10 @@ export class CommandBus {
   /**
    * Sanitize sensitive output data for events
    */
-  private sanitizeOutput(output: any): any {
+  private sanitizeOutput(output: unknown): unknown {
     if (!output) return output;
 
-    const sanitized = { ...output };
+    const sanitized = { ...(output as SanitizableOutput) };
 
     if (sanitized.token) {
       sanitized.token = "[REDACTED]";

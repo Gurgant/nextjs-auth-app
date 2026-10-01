@@ -99,7 +99,7 @@ export async function createSuccessResponseI18n(
   messageKey: string,
   locale?: string,
   fallbackMessage?: string,
-  data?: any,
+  data?: unknown,
 ): Promise<SuccessResponse> {
   const translatedMessage = locale
     ? await translateSuccess(locale, messageKey, fallbackMessage || messageKey)

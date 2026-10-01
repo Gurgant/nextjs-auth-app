@@ -1,6 +1,7 @@
 import { BaseError, ErrorContext } from "./base/base-error";
 import { ErrorCode } from "./base/error-codes";
 import { ErrorFactory } from "./error-factory";
+import type { ErrorDetails } from "./types/error-details";
 import { z } from "zod";
 
 /**
@@ -52,7 +53,7 @@ export class ErrorBuilder {
   /**
    * Add custom context data
    */
-  withContext(context: Record<string, any>): this {
+  withContext(context: Record<string, unknown>): this {
     this.context = { ...this.context, ...context };
     return this;
   }
@@ -109,7 +110,7 @@ export class ErrorBuilder {
     fromZod: (zodError: z.ZodError) =>
       ErrorFactory.validation.fromZod(zodError, this.context),
 
-    invalidInput: (field: string, value?: any, expectedType?: string) =>
+    invalidInput: (field: string, value?: unknown, expectedType?: string) =>
       ErrorFactory.validation.invalidInput(
         field,
         value,
@@ -146,7 +147,7 @@ export class ErrorBuilder {
         this.context,
       ),
 
-    duplicate: (field: string, value: any) =>
+    duplicate: (field: string, value: unknown) =>
       ErrorFactory.validation.duplicate(field, value, this.context),
   };
 
@@ -154,7 +155,7 @@ export class ErrorBuilder {
    * Build business error
    */
   business = {
-    ruleViolation: (rule: string, message: string, details?: any) =>
+    ruleViolation: (rule: string, message: string, details?: ErrorDetails) =>
       ErrorFactory.business.ruleViolation(rule, message, details, this.context),
 
     operationNotAllowed: (operation: string, reason: string) =>
@@ -167,7 +168,10 @@ export class ErrorBuilder {
     notFound: (resourceType: string, resourceId?: string | number) =>
       ErrorFactory.business.notFound(resourceType, resourceId, this.context),
 
-    alreadyExists: (resourceType: string, identifier: Record<string, any>) =>
+    alreadyExists: (
+      resourceType: string,
+      identifier: Record<string, unknown>,
+    ) =>
       ErrorFactory.business.alreadyExists(
         resourceType,
         identifier,
@@ -289,7 +293,7 @@ export class ErrorAssertions {
    */
   static assertErrorType<T extends BaseError>(
     error: unknown,
-    ErrorClass: new (...args: any[]) => T,
+    ErrorClass: new (...args: never[]) => T,
   ): asserts error is T {
     if (!(error instanceof ErrorClass)) {
       throw new Error(

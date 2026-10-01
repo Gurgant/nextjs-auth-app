@@ -58,12 +58,12 @@ export function TwoFactorSetup({
     locale,
     {
       onSuccess: (data) => {
-        if (data?.backupCodes) {
+        if ((data as { backupCodes?: string[] } | undefined)?.backupCodes) {
           setSetupData((prev) =>
             prev
               ? {
                   ...prev,
-                  backupCodes: data.backupCodes,
+                  backupCodes: (data as { backupCodes: string[] }).backupCodes,
                 }
               : null,
           );
@@ -96,7 +96,7 @@ export function TwoFactorSetup({
       const result = await setupTwoFactorAuth(user.id);
 
       if (result.success && result.data) {
-        setSetupData(result.data);
+        setSetupData(result.data as NonNullable<typeof setupData>);
         setStep("verify");
       } else {
         setSetupResult(result);

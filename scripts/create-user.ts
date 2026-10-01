@@ -29,8 +29,8 @@ async function createUser() {
     console.log("\nYou can now login with:");
     console.log(`Email: ${email}`);
     console.log(`Password: ${password}`);
-  } catch (error: any) {
-    if (error?.code === "P2002") {
+  } catch (error: unknown) {
+    if ((error as { code?: unknown } | null | undefined)?.code === "P2002") {
       console.error("User with this email already exists!");
     } else {
       console.error("Error creating user:", error);

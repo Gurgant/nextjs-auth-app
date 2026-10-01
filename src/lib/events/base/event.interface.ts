@@ -10,7 +10,7 @@ export interface EventMetadata {
   version?: number;
 }
 
-export interface IEvent<TPayload = any> {
+export interface IEvent<TPayload = unknown> {
   readonly type: string;
   readonly payload: TPayload;
   readonly metadata: EventMetadata;

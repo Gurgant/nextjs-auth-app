@@ -15,7 +15,7 @@ export interface LogEntry {
   requestId?: string;
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   error?: {
     name: string;
     message: string;
@@ -175,7 +175,7 @@ class Logger {
   // Security-specific logging
   security(
     event: string,
-    details: Record<string, any>,
+    details: Record<string, unknown>,
     options: Partial<LogEntry> = {},
   ): void {
     this.warn(`Security event: ${event}`, {
@@ -193,7 +193,7 @@ class Logger {
   auth(
     event: string,
     userId?: string,
-    details: Record<string, any> = {},
+    details: Record<string, unknown> = {},
     options: Partial<LogEntry> = {},
   ): void {
     this.info(`Auth event: ${event}`, {
@@ -258,7 +258,7 @@ export function createRequestLogger(
       }),
     security: (
       event: string,
-      details: Record<string, any>,
+      details: Record<string, unknown>,
       options: Partial<LogEntry> = {},
     ) =>
       logger.security(event, details, {
@@ -270,7 +270,7 @@ export function createRequestLogger(
     auth: (
       event: string,
       userId?: string,
-      details: Record<string, any> = {},
+      details: Record<string, unknown> = {},
       options: Partial<LogEntry> = {},
     ) =>
       logger.auth(event, userId, details, {

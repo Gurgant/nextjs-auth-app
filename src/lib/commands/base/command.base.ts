@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { ICommand, CommandMetadata } from "./command.interface";
 import { ActionResponse } from "@/lib/utils/form-responses";
 
-export abstract class BaseCommand<TInput = any, TOutput = ActionResponse>
+export abstract class BaseCommand<TInput = unknown, TOutput = ActionResponse>
   implements ICommand<TInput, TOutput>
 {
   abstract readonly name: string;

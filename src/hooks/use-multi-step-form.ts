@@ -3,21 +3,21 @@
 import { useState, useCallback, useMemo } from "react";
 import type { ZodSchema } from "zod";
 
-export interface FormStep<T = any> {
+export interface FormStep<T = Record<string, unknown>> {
   id: string;
   label: string;
   schema?: ZodSchema<T>;
   canSkip?: boolean;
 }
 
-export interface UseMultiStepFormOptions<T = any> {
+export interface UseMultiStepFormOptions<T = Record<string, unknown>> {
   steps: FormStep<T>[];
   initialStep?: number;
   onStepChange?: (stepIndex: number, stepId: string) => void;
-  onComplete?: (data: Record<string, any>) => void;
+  onComplete?: (data: Record<string, unknown>) => void;
 }
 
-export interface UseMultiStepFormReturn<T = any> {
+export interface UseMultiStepFormReturn<T = Record<string, unknown>> {
   currentStep: number;
   currentStepData: FormStep<T>;
   totalSteps: number;

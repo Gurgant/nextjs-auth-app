@@ -5,8 +5,8 @@ interface AuditLog {
   commandName: string;
   commandId: string;
   userId?: string;
-  input: any;
-  output?: any;
+  input: unknown;
+  output?: unknown;
   error?: string;
   duration?: number;
   metadata: CommandMetadata;
@@ -25,8 +25,8 @@ export class AuditMiddleware implements ICommandMiddleware {
 
   async after(
     commandName: string,
-    input: any,
-    output: any,
+    input: unknown,
+    output: unknown,
     metadata: CommandMetadata,
     duration: number,
   ): Promise<void> {
@@ -46,7 +46,7 @@ export class AuditMiddleware implements ICommandMiddleware {
 
   async onError(
     commandName: string,
-    input: any,
+    input: unknown,
     error: Error,
     metadata: CommandMetadata,
   ): Promise<void> {
@@ -87,10 +87,12 @@ export class AuditMiddleware implements ICommandMiddleware {
   /**
    * Sanitize sensitive input data
    */
-  private sanitizeInput(input: any): any {
+  private sanitizeInput(input: unknown): unknown {
     if (!input) return input;
 
-    const sanitized = { ...input };
+    const sanitized: Record<string, unknown> = {
+      ...(input as Record<string, unknown>),
+    };
 
     // Remove sensitive fields
     const sensitiveFields = [
@@ -113,10 +115,12 @@ export class AuditMiddleware implements ICommandMiddleware {
   /**
    * Sanitize sensitive output data
    */
-  private sanitizeOutput(output: any): any {
+  private sanitizeOutput(output: unknown): unknown {
     if (!output) return output;
 
-    const sanitized = { ...output };
+    const sanitized: Record<string, unknown> = {
+      ...(output as Record<string, unknown>),
+    };
 
     // Remove sensitive fields from output
     if (sanitized.token) {

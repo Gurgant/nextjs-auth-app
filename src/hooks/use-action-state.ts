@@ -10,7 +10,7 @@ export interface UseActionStateOptions {
   /**
    * Callback fired on successful action
    */
-  onSuccess?: (data?: any) => void | Promise<void>;
+  onSuccess?: (data?: unknown) => void | Promise<void>;
 
   /**
    * Callback fired on error

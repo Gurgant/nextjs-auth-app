@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET(_request: NextRequest) {
   const startTime = Date.now();
-  const checks: Record<string, any> = {};
+  const checks: Record<string, unknown> = {};
   let overallStatus = "healthy";
 
   try {

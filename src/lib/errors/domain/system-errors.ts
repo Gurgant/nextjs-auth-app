@@ -143,7 +143,7 @@ export class ExternalServiceError extends BaseError {
     service: string,
     operation: string,
     statusCode?: number,
-    responseBody?: any,
+    responseBody?: unknown,
     cause?: Error,
     context?: ErrorContext,
   ) {
@@ -171,7 +171,7 @@ export class ApiError extends BaseError {
     endpoint: string,
     method: string,
     statusCode: number,
-    responseBody?: any,
+    responseBody?: unknown,
     context?: ErrorContext,
   ) {
     super(

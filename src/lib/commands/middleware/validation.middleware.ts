@@ -16,7 +16,7 @@ export class ValidationMiddleware implements ICommandMiddleware {
 
   async before(
     commandName: string,
-    input: any,
+    input: unknown,
     metadata: CommandMetadata,
   ): Promise<boolean> {
     const schema = this.schemas.get(commandName);

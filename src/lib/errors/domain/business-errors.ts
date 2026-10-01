@@ -1,5 +1,6 @@
 import { BaseError, ErrorContext } from "../base/base-error";
 import { ErrorCode } from "../base/error-codes";
+import type { ErrorDetails } from "../types/error-details";
 
 /**
  * Business rule violation error
@@ -8,7 +9,7 @@ export class BusinessRuleViolationError extends BaseError {
   constructor(
     rule: string,
     message: string,
-    details?: any,
+    details?: ErrorDetails,
     context?: ErrorContext,
   ) {
     super(
@@ -62,7 +63,7 @@ export class ResourceNotFoundError extends BaseError {
 export class ResourceAlreadyExistsError extends BaseError {
   constructor(
     resourceType: string,
-    identifier: Record<string, any>,
+    identifier: Record<string, unknown>,
     context?: ErrorContext,
   ) {
     super(

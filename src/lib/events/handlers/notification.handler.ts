@@ -18,7 +18,7 @@ interface Notification {
   recipient: string;
   subject: string;
   message: string;
-  data?: Record<string, any>;
+  data?: unknown;
   priority: "low" | "normal" | "high" | "urgent";
   sentAt?: Date;
   status: "pending" | "sent" | "failed";

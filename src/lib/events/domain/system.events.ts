@@ -5,8 +5,8 @@ import { EventMetadata } from "../base/event.interface";
 export interface CommandExecutedPayload {
   commandName: string;
   commandId: string;
-  input: any;
-  output: any;
+  input: unknown;
+  output: unknown;
   success: boolean;
   duration: number;
   executedAt: Date;
@@ -17,7 +17,7 @@ export interface CommandFailedPayload {
   commandId: string;
   error: string;
   errorStack?: string;
-  input: any;
+  input: unknown;
   failedAt: Date;
 }
 
@@ -39,7 +39,7 @@ export interface ApplicationStartedPayload {
   version: string;
   environment: string;
   startedAt: Date;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface ApplicationStoppedPayload {
@@ -62,7 +62,7 @@ export interface ErrorOccurredPayload {
   errorType: string;
   message: string;
   stack?: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   severity: "low" | "medium" | "high" | "critical";
   occurredAt: Date;
 }

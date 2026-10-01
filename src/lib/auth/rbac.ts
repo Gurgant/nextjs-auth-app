@@ -36,11 +36,11 @@ export function requireRole(requiredRole: Role) {
 /**
  * API route handler wrapper that requires specific role
  */
-export function withRole(
+export function withRole<Args extends unknown[]>(
   requiredRole: Role,
-  handler: (request: NextRequest, ...args: any[]) => Promise<Response>,
+  handler: (request: NextRequest, ...args: Args) => Promise<Response>,
 ) {
-  return async (request: NextRequest, ...args: any[]) => {
+  return async (request: NextRequest, ...args: Args) => {
     const session = await auth();
 
     if (!session?.user) {

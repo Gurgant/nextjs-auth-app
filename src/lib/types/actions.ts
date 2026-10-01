@@ -1,6 +1,6 @@
 // Standard action response types
 
-export type SuccessResponse<T = any> = {
+export type SuccessResponse<T = unknown> = {
   success: true;
   data?: T;
   message?: string;
@@ -13,7 +13,7 @@ export type ErrorResponse = {
   errors?: Record<string, string>;
 };
 
-export type ActionResponse<T = any> = SuccessResponse<T> | ErrorResponse;
+export type ActionResponse<T = unknown> = SuccessResponse<T> | ErrorResponse;
 
 // Type guards
 export function isSuccessResponse<T>(

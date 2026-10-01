@@ -43,7 +43,7 @@ export class ValidationError extends BaseError {
 export class InvalidInputError extends BaseError {
   constructor(
     field: string,
-    value?: any,
+    value?: unknown,
     expectedType?: string,
     context?: ErrorContext,
   ) {
@@ -123,7 +123,7 @@ export class ValueOutOfRangeError extends BaseError {
  * Duplicate value error
  */
 export class DuplicateValueError extends BaseError {
-  constructor(field: string, value: any, context?: ErrorContext) {
+  constructor(field: string, value: unknown, context?: ErrorContext) {
     super(
       ErrorCode.DUPLICATE_VALUE,
       `Duplicate value for ${field}: ${value}`,
@@ -137,7 +137,7 @@ export class DuplicateValueError extends BaseError {
  * Schema validation error
  */
 export class SchemaValidationError extends ValidationError {
-  constructor(schema: z.ZodSchema, data: any, context?: ErrorContext) {
+  constructor(schema: z.ZodSchema, data: unknown, context?: ErrorContext) {
     const result = schema.safeParse(data);
     const errors = !result.success ? result.error : undefined;
 
@@ -156,7 +156,7 @@ export class FieldValidationError extends BaseError {
     field: string,
     validationRule: string,
     message: string,
-    actualValue?: any,
+    actualValue?: unknown,
     context?: ErrorContext,
   ) {
     super(

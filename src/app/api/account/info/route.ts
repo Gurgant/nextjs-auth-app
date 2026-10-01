@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getUserWithAccountDetails } from "@/lib/data-access/user-repository";
+import type { UserWithAccountDetails } from "@/lib/repositories/user/user.repository.interface";
 
 // Security state (2FA, linked providers) must never be served stale.
 export const dynamic = "force-dynamic";
@@ -95,19 +96,19 @@ export async function GET(_request: NextRequest) {
   }
 }
 
-function determinePrimaryAuthMethod(user: any): string {
+function determinePrimaryAuthMethod(user: UserWithAccountDetails): string {
   // Determine primary auth method based on account creation patterns
   if (user.accounts.length > 0) {
     const googleAccount = user.accounts.find(
-      (acc: any) => acc.provider === "google",
+      (acc) => acc.provider === "google",
     );
     if (googleAccount && !user.password) {
       return "google";
     }
     if (googleAccount && user.password) {
-      // Both methods available, use the oldest one as primary
-      const passwordSetAt = user.passwordSetAt || user.createdAt;
-      return passwordSetAt > googleAccount.createdAt ? "google" : "email";
+      // Both methods available. Account has no creation date, so the older
+      // method cannot be determined: deciding by age needs a schema change.
+      return "email";
     }
   }
 

@@ -11,7 +11,7 @@ import { eventBus } from "@/lib/events";
 import { ErrorOccurredEvent } from "@/lib/events/domain/system.events";
 
 export interface ErrorContext {
-  [key: string]: any;
+  [key: string]: unknown;
   userId?: string;
   requestId?: string;
   correlationId?: string;
@@ -215,7 +215,7 @@ export abstract class BaseError extends Error {
       id: string;
       code: string;
       message: string;
-      details?: any;
+      details?: import("../types/error-details").ErrorDetails;
       suggestedAction?: string;
     };
   } {

@@ -278,7 +278,10 @@ describe("Advanced Authentication Actions", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data?.backupCodesCount).toBe(3);
+        expect(
+          (result.data as { backupCodesCount?: number } | undefined)
+            ?.backupCodesCount,
+        ).toBe(3);
       }
     });
   });

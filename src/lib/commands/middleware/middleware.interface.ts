@@ -9,7 +9,7 @@ export interface ICommandMiddleware {
    */
   before?(
     commandName: string,
-    input: any,
+    input: unknown,
     metadata: CommandMetadata,
   ): Promise<boolean | void>;
 
@@ -18,8 +18,8 @@ export interface ICommandMiddleware {
    */
   after?(
     commandName: string,
-    input: any,
-    output: any,
+    input: unknown,
+    output: unknown,
     metadata: CommandMetadata,
     duration: number,
   ): Promise<void>;
@@ -29,7 +29,7 @@ export interface ICommandMiddleware {
    */
   onError?(
     commandName: string,
-    input: any,
+    input: unknown,
     error: Error,
     metadata: CommandMetadata,
   ): Promise<void>;
