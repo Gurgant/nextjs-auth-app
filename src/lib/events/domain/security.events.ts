@@ -10,7 +10,7 @@ export interface SuspiciousActivityPayload {
     | "brute_force"
     | "session_hijacking"
     | "invalid_token";
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
   severity: "low" | "medium" | "high" | "critical";
@@ -67,7 +67,7 @@ export interface SecurityAlertPayload {
   alertType: string;
   severity: "info" | "warning" | "error" | "critical";
   message: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   affectedUsers?: string[];
   alertedAt: Date;
 }

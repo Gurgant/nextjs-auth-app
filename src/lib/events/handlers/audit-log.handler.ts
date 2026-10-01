@@ -33,7 +33,7 @@ interface AuditLogEntry {
   eventId: string;
   userId?: string;
   action: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   severity: AuditSeverity;
   ipAddress?: string;
   userAgent?: string;
@@ -204,7 +204,7 @@ export class AuditLogHandler implements IEventHandler {
         return {
           ...baseEntry,
           action: event.type,
-          details: event.payload,
+          details: event.payload as Record<string, unknown>,
           severity: "info",
         };
     }

@@ -9,7 +9,7 @@ export interface PerformanceMetric {
   name: string;
   duration: number;
   timestamp: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   memoryUsage?: {
     before: NodeJS.MemoryUsage;
     after: NodeJS.MemoryUsage;
@@ -44,7 +44,7 @@ class PerformanceMonitor {
   async measure<T>(
     name: string,
     fn: () => Promise<T>,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<T> {
     const start = Date.now();
     const memBefore = process.memoryUsage();
@@ -140,7 +140,11 @@ class PerformanceMonitor {
   /**
    * Measure synchronous function execution
    */
-  measureSync<T>(name: string, fn: () => T, metadata?: Record<string, any>): T {
+  measureSync<T>(
+    name: string,
+    fn: () => T,
+    metadata?: Record<string, unknown>,
+  ): T {
     const start = Date.now();
     const memBefore = process.memoryUsage();
 
