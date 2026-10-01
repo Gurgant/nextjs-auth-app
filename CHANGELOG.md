@@ -31,6 +31,14 @@ and in `SECURITY.md`).
 - The Playwright suite runs in CI (`e2e` job) with Playwright retries off;
   the helpers' silent retry of session requests is gone
 
+### 🧹 Types
+
+- No explicit `any` is left in `src/` and `scripts/` (160 removed); the lint
+  rule is now an error
+- `/api/account/info`: for a user with both a password and Google,
+  `primaryAuthMethod` no longer compares against a column that does not
+  exist; the answer is unchanged (`email`)
+
 ### 📝 Docs
 
 - README, SECURITY.md and docs/ checked claim by claim against the code;

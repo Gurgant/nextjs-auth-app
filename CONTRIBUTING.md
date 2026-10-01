@@ -33,7 +33,7 @@ breaks for you, that itself is a bug worth reporting.
 
 ## Conventions
 
-- TypeScript strict; no new `any` (the linter warns — don't add to the pile).
+- TypeScript strict; no `any` (the linter rejects it outside test files).
 - Server actions validate input with Zod (in the action or its command) and
   derive identity from `auth()`, never from client-supplied ids.
 - Client Components import role helpers from `@/lib/auth/roles`, never from
