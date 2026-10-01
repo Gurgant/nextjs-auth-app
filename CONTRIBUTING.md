@@ -26,6 +26,10 @@ breaks for you, that itself is a bug worth reporting.
 
 4. The pre-commit hook runs Prettier, the translation validator, typecheck and
    lint — don't bypass it.
+5. CI runs typecheck, lint, Jest, the build and the Playwright suite on every
+   pull request. Playwright retries are off and the E2E helpers retry no
+   request: if a test fails only sometimes, fix the test or the code instead
+   of re-running until it passes.
 
 ## Conventions
 

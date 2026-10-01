@@ -78,8 +78,25 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 
 - Specs live in `e2e/tests/*.e2e.ts` on top of one small helper module,
   `e2e/support/app.ts`. Every helper either reaches the state it promises or
-  fails; nothing swallows an error (session and provider requests are retried
-  only on a transport error, never on a response).
+  fails; nothing swallows an error and no request is retried.
+- API requests go through `apiGet` / `apiPost`, which send
+  `Connection: close`. Playwright's request client keeps connections alive and
+  `next dev` closes an idle one after about 6 s; a request sent on that socket
+  at that moment fails with `ECONNRESET`. Measured against `next dev`, after
+  an idle gap of 5.985–6.045 s: 14 of 260 requests failed by default, 0 of 260
+  with `Connection: close`. Without connection reuse there is nothing to
+  retry; an earlier helper that silently repeated such a request is gone.
+- A test never asks `/api/auth/session` while a sign-out it triggered in the
+  browser is still in flight: every session request that carries a valid
+  cookie gets it re-issued, so its late response can put the cookie back.
+  The sign-out test first waits for the signed-out page, then asks the
+  server. Measured over 20 repetitions: 4 failures with the session poll
+  right after the click, 0 with the wait first.
+- What remains are bounded waits for a state, not second attempts at an
+  assertion: `expect.poll` on the session endpoint and on a request counter,
+  and one `toPass` loop that re-ticks the terms checkbox until the form is
+  hydrated (`terms-validation.e2e.ts`); the behaviour under test is asserted
+  after it, once.
 - Assertions are web-first (`toBeVisible`, `toHaveText`, `toHaveURL`) and the
   session endpoint is the source of truth for signed-in / signed-out.
 - UI text that comes from `messages/*.json` is read from there. Strings that
@@ -99,3 +116,34 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 A mutation check was run on the rewritten suite: disabling 2FA enforcement in
 `authorize()`, hiding the invalid-credentials alert, or removing the role
 redirect on `/dashboard/pro` each makes the corresponding tests fail.
+
+### In CI
+
+The `e2e` job of [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+runs the whole suite on every push to `main` and every pull request: Chromium,
+one worker, `next dev`, a PostgreSQL 16 service container, Node 22 — the same
+Node as the `checks` job.
+
+**Playwright test retries are off** (`retries: 0` in `playwright.config.ts`,
+locally and in CI) and the helpers retry no request: a test that passes only
+on a second attempt is unstable and fails the job instead of being reported
+as passed. The run stops by itself after 20 minutes (`globalTimeout`), before
+the job's 30-minute limit. Both jobs are pinned to `ubuntu-24.04`: Playwright
+1.55.1 has no Chromium build for a newer runner image.
+
+Measured on 2026-10-01 with this configuration (`ubuntu-24.04`, Node 22.23.3,
+[run 36887540296](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36887540296)):
+79 passed, 0 failed, 4.3 min for the Playwright run and 6 min 7 s for the
+whole job, 64 s of which to install Chromium. One green run shows that the
+job works; it does not prove that no test is unstable — the history of the
+`e2e` job in the
+[Actions tab](https://github.com/Gurgant/nextjs-auth-app/actions/workflows/ci.yml)
+is the evidence for that.
+
+The failure path was observed once on purpose, on a scratch branch with one
+deliberately failing test
+([run 36887638598](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36887638598)):
+the job ended as failed with `1 failed`, `79 passed`, the annotation pointed
+at the failing line, and the `playwright-test-results` artifact (kept for 7
+days) held the test's `trace.zip`, `test-failed-1.png`, `video.webm` and
+`error-context.md`.

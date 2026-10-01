@@ -28,6 +28,8 @@ and in `SECURITY.md`).
 
 - Playwright suite rewritten so every test can fail (79 tests); Jest grows
   from 292 to 431 tests for the security changes
+- The Playwright suite runs in CI (`e2e` job) with Playwright retries off;
+  the helpers' silent retry of session requests is gone
 
 ### 📝 Docs
 
