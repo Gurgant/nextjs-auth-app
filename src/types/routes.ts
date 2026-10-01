@@ -3,6 +3,8 @@
  * This file provides type-safe navigation throughout the application
  */
 
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+
 /**
  * Static application routes
  */
@@ -205,7 +207,11 @@ export class SafeNavigation {
    * Type-safe router push with validation
    * Accepts Next.js AppRouterInstance and validates routes before navigation
    */
-  static push(router: any, path: string, fallback: StaticRoute = "/") {
+  static push(
+    router: AppRouterInstance,
+    path: string,
+    fallback: StaticRoute = "/",
+  ) {
     const safePath = RouteValidator.getSafeRoute(path, fallback);
     router.push(safePath);
   }
@@ -214,7 +220,11 @@ export class SafeNavigation {
    * Type-safe router replace with validation
    * Accepts Next.js AppRouterInstance and validates routes before navigation
    */
-  static replace(router: any, path: string, fallback: StaticRoute = "/") {
+  static replace(
+    router: AppRouterInstance,
+    path: string,
+    fallback: StaticRoute = "/",
+  ) {
     const safePath = RouteValidator.getSafeRoute(path, fallback);
     router.replace(safePath);
   }

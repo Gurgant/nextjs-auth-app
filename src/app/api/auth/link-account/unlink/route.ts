@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { getClientIP } from "@/lib/security";
 import {
@@ -88,7 +89,7 @@ export async function DELETE(request: NextRequest) {
 
     // Find the account to unlink
     const accountToUnlink = user.accounts.find(
-      (acc: any) => acc.provider === provider,
+      (acc) => acc.provider === provider,
     );
     if (!accountToUnlink) {
       return NextResponse.json(
@@ -100,7 +101,7 @@ export async function DELETE(request: NextRequest) {
     // Check if user has at least one other auth method
     const hasCredentials = !!user.password;
     const hasOtherProviders =
-      user.accounts.filter((acc: any) => acc.provider !== provider).length > 0;
+      user.accounts.filter((acc) => acc.provider !== provider).length > 0;
 
     if (!hasCredentials && !hasOtherProviders) {
       return NextResponse.json(
@@ -110,14 +111,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Perform the unlink operation
-    await prisma.$transaction(async (tx: any) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete the account
       await tx.account.delete({
         where: { id: accountToUnlink.id },
       });
 
       // Update user flags
-      const updateData: any = {};
+      const updateData: Prisma.UserUpdateInput = {};
       if (provider === "google") {
         updateData.hasGoogleAccount = false;
 

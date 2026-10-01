@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { auth } from "@/lib/auth";
 import { recordAttempt, RATE_LIMITS } from "@/lib/rate-limit";
 import {
@@ -387,7 +388,7 @@ export async function confirmAccountLinking(
       | "email";
 
     // Update user account linking status
-    const updateData: any = {};
+    const updateData: Prisma.UserUpdateInput = {};
     if (linkType === "google") {
       updateData.hasGoogleAccount = true;
     } else if (linkType === "email") {
@@ -770,7 +771,7 @@ export async function getEnhancedUserAccountInfo(
     }
 
     const hasGoogleAccount = user.accounts.some(
-      (account: any) => account.provider === "google",
+      (account) => account.provider === "google",
     );
     const hasPassword = !!user.password;
 

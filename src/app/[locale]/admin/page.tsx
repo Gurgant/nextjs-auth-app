@@ -207,7 +207,7 @@ export default async function AdminDashboardPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {recentUsers.map((user: any) => (
+                  {recentUsers.map((user) => (
                     <tr key={user.id} className="border-b">
                       <td className="py-2 text-sm">{user.email}</td>
                       <td className="py-2">

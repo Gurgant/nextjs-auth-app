@@ -18,6 +18,7 @@ import { getLockoutPolicy } from "@/lib/auth/lockout";
 import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import type {
   JWTCallbackParams,
   SessionCallbackParams,
@@ -377,12 +378,12 @@ export const authOptions = {
         isNewUser: message.isNewUser,
       });
     },
-    async signOut(message: any) {
+    async signOut(message: { token?: JWT | null; session?: unknown }) {
       console.log("User signed out:", {
         userId: message.token?.sub,
       });
     },
-    async createUser(message: any) {
+    async createUser(message: { user: User; account?: Account | null }) {
       console.log("New user created:", {
         userId: message.user?.id,
         provider: message.account?.provider,
@@ -403,7 +404,7 @@ export const authOptions = {
         }
       }
     },
-    async linkAccount(message: any) {
+    async linkAccount(message: { user: User; account: Account }) {
       console.log("Account linked:", {
         userId: message.user?.id,
         provider: message.account?.provider,

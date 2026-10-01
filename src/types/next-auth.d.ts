@@ -71,7 +71,7 @@ declare module "next-auth/jwt" {
 export interface SignInEventMessage {
   user: User;
   account?: Account | null;
-  profile?: any;
+  profile?: unknown;
   isNewUser?: boolean;
 }
 
@@ -87,7 +87,7 @@ export interface CreateUserEventMessage {
 export interface LinkAccountEventMessage {
   user: User;
   account: Account;
-  profile?: any;
+  profile?: unknown;
 }
 
 export interface SessionEventMessage {
@@ -102,10 +102,10 @@ export interface JWTCallbackParams {
   token: JWT;
   user?: User;
   account?: Account | null;
-  profile?: any;
+  profile?: unknown;
   trigger?: "signIn" | "signUp" | "update";
   isNewUser?: boolean;
-  session?: any;
+  session?: unknown;
 }
 
 export interface SessionCallbackParams {
@@ -117,9 +117,9 @@ export interface SessionCallbackParams {
 export interface SignInCallbackParams {
   user: User;
   account: Account | null;
-  profile?: any;
+  profile?: unknown;
   email?: {
     verificationRequest?: boolean;
   };
-  credentials?: any;
+  credentials?: Record<string, unknown>;
 }
