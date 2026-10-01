@@ -6,7 +6,7 @@ export class LoggingMiddleware implements ICommandMiddleware {
 
   async before(
     commandName: string,
-    input: any,
+    input: unknown,
     metadata: CommandMetadata,
   ): Promise<void> {
     console.log(`[Command:${commandName}] Starting execution`, {
@@ -19,8 +19,8 @@ export class LoggingMiddleware implements ICommandMiddleware {
 
   async after(
     commandName: string,
-    input: any,
-    output: any,
+    input: unknown,
+    output: unknown,
     metadata: CommandMetadata,
     duration: number,
   ): Promise<void> {
@@ -28,13 +28,14 @@ export class LoggingMiddleware implements ICommandMiddleware {
       commandId: metadata.commandId,
       userId: metadata.userId,
       duration: `${duration}ms`,
-      success: output?.success !== false,
+      success:
+        (output as { success?: unknown } | null | undefined)?.success !== false,
     });
   }
 
   async onError(
     commandName: string,
-    input: any,
+    input: unknown,
     error: Error,
     metadata: CommandMetadata,
   ): Promise<void> {

@@ -7,7 +7,7 @@ export interface CommandMetadata {
   locale?: string;
 }
 
-export interface ICommand<TInput = any, TOutput = any> {
+export interface ICommand<TInput = unknown, TOutput = unknown> {
   readonly name: string;
   readonly description: string;
   readonly canUndo: boolean;
@@ -18,11 +18,11 @@ export interface ICommand<TInput = any, TOutput = any> {
   redo?(): Promise<void>;
 }
 
-export interface ICommandHandler<TInput = any, TOutput = any> {
+export interface ICommandHandler<TInput = unknown, TOutput = unknown> {
   handle(input: TInput, metadata?: CommandMetadata): Promise<TOutput>;
 }
 
-export interface CommandResult<T = any> {
+export interface CommandResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -30,9 +30,9 @@ export interface CommandResult<T = any> {
 }
 
 export interface ExecutedCommand {
-  command: ICommand<any, any>;
-  input: any;
-  output: any;
+  command: ICommand<unknown, unknown>;
+  input: unknown;
+  output: unknown;
   metadata: CommandMetadata;
   timestamp: Date;
   undoable: boolean;
