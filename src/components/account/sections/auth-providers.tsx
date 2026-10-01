@@ -2,12 +2,13 @@
 
 import { memo } from "react";
 import { useTranslations } from "next-intl";
+import type { LoginMethod } from "@/lib/auth/last-login-method";
 
 interface AuthProvidersProps {
   accountInfo: {
     hasGoogleAccount?: boolean;
     hasPassword?: boolean;
-    primaryAuthMethod?: string;
+    lastLoginMethod?: LoginMethod | null;
     createdAt?: string;
     passwordSetAt?: string;
   } | null;
@@ -111,9 +112,12 @@ export const AuthProviders = memo(function AuthProviders({
                           accountInfo.createdAt!,
                         ).toLocaleDateString(),
                       })}
-                      {accountInfo?.primaryAuthMethod === "google" && (
-                        <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          {t("primaryMethod")}
+                      {accountInfo?.lastLoginMethod === "google" && (
+                        <span
+                          className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+                          data-testid="last-used-google"
+                        >
+                          {t("lastUsedMethod")}
                         </span>
                       )}
                     </>
@@ -162,14 +166,12 @@ export const AuthProviders = memo(function AuthProviders({
                           accountInfo.passwordSetAt || accountInfo.createdAt!,
                         ).toLocaleDateString(),
                       })}
-                      {accountInfo?.primaryAuthMethod === "email" && (
-                        <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-                          {t("primaryMethod")}
-                        </span>
-                      )}
-                      {accountInfo?.hasGoogleAccount && (
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                          {t("backupMethod")}
+                      {accountInfo?.lastLoginMethod === "credentials" && (
+                        <span
+                          className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full"
+                          data-testid="last-used-credentials"
+                        >
+                          {t("lastUsedMethod")}
                         </span>
                       )}
                     </>

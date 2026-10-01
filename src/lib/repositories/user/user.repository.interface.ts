@@ -24,7 +24,7 @@ export interface UpdateUserDTO {
   // Account-metadata columns (see prisma/schema.prisma User model)
   hasGoogleAccount?: boolean;
   hasEmailAccount?: boolean;
-  primaryAuthMethod?: string | null;
+  lastLoginMethod?: string | null;
   passwordSetAt?: Date | null;
   lastPasswordChange?: Date | null;
   lastLoginAt?: Date | null;

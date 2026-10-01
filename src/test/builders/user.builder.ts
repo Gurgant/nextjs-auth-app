@@ -24,7 +24,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       lastLoginIp: null,
       hasEmailAccount: false,
       hasGoogleAccount: false,
-      primaryAuthMethod: "email",
+      lastLoginMethod: null,
       passwordSetAt: null,
       lastPasswordChange: null,
       requiresPasswordChange: false,
@@ -124,20 +124,14 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
    * Add Google account
    */
   withGoogleAccount(): this {
-    return this.with("hasGoogleAccount", true).with(
-      "primaryAuthMethod",
-      "google",
-    );
+    return this.with("hasGoogleAccount", true);
   }
 
   /**
    * Add email account
    */
   withEmailAccount(): this {
-    return this.with("hasEmailAccount", true).with(
-      "primaryAuthMethod",
-      "email",
-    );
+    return this.with("hasEmailAccount", true);
   }
 
   /**
@@ -247,7 +241,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
     return this.verified()
       .active()
       .with("hasGoogleAccount", provider === "google")
-      .with("primaryAuthMethod", provider)
+      .with("lastLoginMethod", provider)
       .with("password", null);
   }
 

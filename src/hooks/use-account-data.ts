@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import type { LoginMethod } from "@/lib/auth/last-login-method";
 
 interface AccountData {
   hasGoogleAccount: boolean;
@@ -9,7 +10,7 @@ interface AccountData {
   hasEmailAccount: boolean;
   emailVerified: boolean | null;
   twoFactorEnabled: boolean;
-  primaryAuthMethod?: string;
+  lastLoginMethod?: LoginMethod | null;
   createdAt?: string;
   passwordSetAt?: string;
   backupCodesCount?: number;

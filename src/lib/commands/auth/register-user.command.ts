@@ -103,7 +103,6 @@ export class RegisterUserCommand extends BaseCommand<
       await userRepo.update(user.id, {
         hasEmailAccount: true,
         hasGoogleAccount: false,
-        primaryAuthMethod: "email",
         passwordSetAt: new Date(),
         lastPasswordChange: new Date(),
       });

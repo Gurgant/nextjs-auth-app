@@ -29,7 +29,6 @@ interface AccountLinkingProps {
   accountInfo: {
     hasGoogleAccount: boolean;
     hasEmailAccount: boolean;
-    primaryAuthMethod?: string;
   };
   onAccountLinked: () => void;
 }

@@ -268,7 +268,6 @@ export async function addPasswordToGoogleUser(
       lastPasswordChange: new Date(),
       hasEmailAccount: true,
       hasGoogleAccount: true, // Ensure Google account flag is set
-      primaryAuthMethod: userWithAccounts.primaryAuthMethod || "google",
     });
 
     console.log("Password added for Google user:", { userId: authedUserId });
@@ -374,22 +373,10 @@ export async function migrateUserAccountMetadata(
     const hasPassword = !!userWithAccounts.password;
     const hasEmailAccount = hasPassword;
 
-    // Determine primary auth method
-    let primaryAuthMethod = null;
-    if (hasGoogleAccount && hasPassword) {
-      // If both, keep existing or default to google
-      primaryAuthMethod = userWithAccounts?.primaryAuthMethod || "google";
-    } else if (hasGoogleAccount) {
-      primaryAuthMethod = "google";
-    } else if (hasPassword) {
-      primaryAuthMethod = "email";
-    }
-
     // Update user with metadata
     await userRepo.update(authedUserId, {
       hasGoogleAccount,
       hasEmailAccount,
-      primaryAuthMethod,
       passwordSetAt:
         userWithAccounts.password && !userWithAccounts.passwordSetAt
           ? userWithAccounts.createdAt
@@ -405,7 +392,6 @@ export async function migrateUserAccountMetadata(
       userId: authedUserId,
       hasGoogleAccount,
       hasEmailAccount,
-      primaryAuthMethod,
     });
 
     return await createSuccessResponseI18n(
@@ -470,7 +456,7 @@ export async function getUserAccountInfo(_userId?: string) {
           hasGoogleAccount: updatedUserWithAccounts.hasGoogleAccount,
           hasPassword: !!updatedUserWithAccounts.password,
           hasEmailAccount: updatedUserWithAccounts.hasEmailAccount,
-          primaryAuthMethod: updatedUserWithAccounts.primaryAuthMethod,
+          lastLoginMethod: updatedUserWithAccounts.lastLoginMethod,
           passwordSetAt: updatedUserWithAccounts.passwordSetAt,
           lastPasswordChange: updatedUserWithAccounts.lastPasswordChange,
           lastLoginAt: updatedUserWithAccounts.lastLoginAt,
@@ -493,7 +479,7 @@ export async function getUserAccountInfo(_userId?: string) {
         userWithAccounts.hasEmailAccount !== null
           ? userWithAccounts.hasEmailAccount
           : hasPassword,
-      primaryAuthMethod: userWithAccounts.primaryAuthMethod,
+      lastLoginMethod: userWithAccounts.lastLoginMethod,
       passwordSetAt: userWithAccounts.passwordSetAt,
       lastPasswordChange: userWithAccounts.lastPasswordChange,
       lastLoginAt: userWithAccounts.lastLoginAt,
