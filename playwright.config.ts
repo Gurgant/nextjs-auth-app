@@ -29,7 +29,9 @@ export default defineConfig({
 
   // CI specific settings
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // No retries, in CI either: a test that only passes on a second attempt is
+  // unstable and has to show up as a failure, not be hidden by a retry.
+  retries: 0,
 
   // Optimized worker configuration for performance
   workers: process.env.CI
@@ -39,8 +41,9 @@ export default defineConfig({
       : Math.max(1, Math.min(4, Math.floor(os.cpus().length / 2))), // Smart worker count based on CPU cores
 
   // Reporter configuration
+  // In CI: one line per test plus the totals in the log, and GitHub annotations.
   reporter: process.env.CI
-    ? "github"
+    ? [["list"], ["github"]]
     : [
         ["list"],
         ["html", { outputFolder: "playwright-report", open: "never" }],
@@ -57,8 +60,8 @@ export default defineConfig({
     // Base URL
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
 
-    // Trace settings
-    trace: "on-first-retry",
+    // Trace settings (there are no retries, so keep the trace of a failure)
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
 
@@ -98,14 +101,10 @@ export default defineConfig({
     timeout: process.env.CI ? 180 * 1000 : 120 * 1000, // Longer timeout in CI
     stdout: "pipe",
     stderr: "pipe",
+    // Everything else (session secret, ENCRYPTION_KEY, NEXTAUTH_URL) comes from
+    // the environment the run already has: .env locally, the workflow in CI.
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
-      // CI-specific optimizations
-      ...(process.env.CI && {
-        NEXTAUTH_SECRET: "ci-test-secret-key-for-testing-only",
-        NEXTAUTH_URL: "http://localhost:3000",
-        PORT: "3000",
-      }),
     },
   },
 
