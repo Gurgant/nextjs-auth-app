@@ -64,7 +64,7 @@ export class UserFactory extends Factory<User> {
       lastLoginAt: new Date(),
       hasEmailAccount: true,
       hasGoogleAccount: false,
-      primaryAuthMethod: "email",
+      lastLoginMethod: "credentials",
       passwordSetAt: new Date(),
       lastPasswordChange: new Date(),
       requiresPasswordChange: false,
@@ -89,7 +89,7 @@ export class UserFactory extends Factory<User> {
     return this.build({
       hasGoogleAccount: provider === "google",
       hasEmailAccount: false,
-      primaryAuthMethod: provider,
+      lastLoginMethod: provider,
       password: null,
       passwordSetAt: null,
       lastPasswordChange: null,

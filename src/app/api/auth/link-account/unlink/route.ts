@@ -121,11 +121,10 @@ export async function DELETE(request: NextRequest) {
       const updateData: Prisma.UserUpdateInput = {};
       if (provider === "google") {
         updateData.hasGoogleAccount = false;
-
-        // If Google was the primary auth method, switch to email
-        if (user.primaryAuthMethod === "google" && hasCredentials) {
-          updateData.primaryAuthMethod = "email";
-        }
+      }
+      // "Last used" must not point at a method that is no longer linked.
+      if (user.lastLoginMethod === provider) {
+        updateData.lastLoginMethod = null;
       }
 
       const updatedUser = await tx.user.update({

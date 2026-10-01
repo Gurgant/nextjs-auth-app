@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-09-27; run the commands
+Three layers. The numbers below were measured on 2026-10-01; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                           |
 | ----------- | --------------------- | ----- | -------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 415   | lib, hooks, components, actions, API route handlers      |
+| Unit        | Jest (jsdom / node)   | 451   | lib, hooks, components, actions, API route handlers      |
 | Integration | Jest + test DB        | 16    | UserRepository, registration, lockout on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 79    | sign-in, 2FA, registration, RBAC, i18n in a real browser |
+| End-to-end  | Playwright (Chromium) | 82    | sign-in, 2FA, registration, RBAC, i18n in a real browser |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (431 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (415) — no DB
+pnpm test             # every Jest suite (467 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (451) — no DB
 pnpm test:integration # the real-DB integration file only (port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -132,9 +132,9 @@ the job's 30-minute limit. Both jobs are pinned to `ubuntu-24.04`: Playwright
 1.55.1 has no Chromium build for a newer runner image.
 
 Measured on 2026-10-01 with this configuration (`ubuntu-24.04`, Node 22.23.3,
-[run 36887540296](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36887540296)):
-79 passed, 0 failed, 4.3 min for the Playwright run and 6 min 7 s for the
-whole job, 64 s of which to install Chromium. One green run shows that the
+[run 36907254274](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36907254274)):
+82 passed, 0 failed, 4.5 min for the Playwright run and 6 min 22 s for the
+whole job, 70 s of which to install Chromium. One green run shows that the
 job works; it does not prove that no test is unstable — the history of the
 `e2e` job in the
 [Actions tab](https://github.com/Gurgant/nextjs-auth-app/actions/workflows/ci.yml)
@@ -143,7 +143,8 @@ is the evidence for that.
 The failure path was observed once on purpose, on a scratch branch with one
 deliberately failing test
 ([run 36887638598](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36887638598)):
-the job ended as failed with `1 failed`, `79 passed`, the annotation pointed
+the job ended as failed with `1 failed`, `79 passed` (the suite had 79 tests
+then), the annotation pointed
 at the failing line, and the `playwright-test-results` artifact (kept for 7
 days) held the test's `trace.zip`, `test-failed-1.png`, `video.webm` and
 `error-context.md`.

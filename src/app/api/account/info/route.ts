@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getUserWithAccountDetails } from "@/lib/data-access/user-repository";
-import type { UserWithAccountDetails } from "@/lib/repositories/user/user.repository.interface";
+import {
+  parseLoginMethod,
+  type LoginMethod,
+} from "@/lib/auth/last-login-method";
 
 // Security state (2FA, linked providers) must never be served stale.
 export const dynamic = "force-dynamic";
@@ -12,7 +15,8 @@ interface OptimizedAccountInfo {
   hasEmailAccount: boolean;
   emailVerified: boolean | null;
   twoFactorEnabled: boolean;
-  primaryAuthMethod?: string;
+  /** The method of the last successful sign-in, null if none is recorded. */
+  lastLoginMethod: LoginMethod | null;
   createdAt: string;
   passwordSetAt?: string;
   backupCodesCount?: number;
@@ -57,7 +61,7 @@ export async function GET(_request: NextRequest) {
         hasEmailAccount: !!userWithDetails.password,
         emailVerified: !!userWithDetails.emailVerified,
         twoFactorEnabled: userWithDetails.twoFactorEnabled || false,
-        primaryAuthMethod: determinePrimaryAuthMethod(userWithDetails),
+        lastLoginMethod: parseLoginMethod(userWithDetails.lastLoginMethod),
         createdAt: userWithDetails.createdAt.toISOString(),
         passwordSetAt: userWithDetails.passwordSetAt?.toISOString(),
         backupCodesCount: userWithDetails.backupCodes?.length || 0,
@@ -94,27 +98,4 @@ export async function GET(_request: NextRequest) {
       { status: 500, headers: { "Cache-Control": "private, no-store" } },
     );
   }
-}
-
-function determinePrimaryAuthMethod(user: UserWithAccountDetails): string {
-  // Determine primary auth method based on account creation patterns
-  if (user.accounts.length > 0) {
-    const googleAccount = user.accounts.find(
-      (acc) => acc.provider === "google",
-    );
-    if (googleAccount && !user.password) {
-      return "google";
-    }
-    if (googleAccount && user.password) {
-      // Both methods available. Account has no creation date, so the older
-      // method cannot be determined: deciding by age needs a schema change.
-      return "email";
-    }
-  }
-
-  if (user.password) {
-    return "email";
-  }
-
-  return "unknown";
 }

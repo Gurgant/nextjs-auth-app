@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { SignInButton } from "@/components/auth/sign-in-button";
 import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
+import { useLastLoginMethod } from "@/hooks/use-last-login-method";
+import { LastUsedBadge } from "@/components/auth/last-used-badge";
 import { CredentialsForm } from "@/components/auth/credentials-form";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
@@ -20,6 +22,9 @@ export default function HomePage() {
   // Without Google configured, the email form is the only way in: show it
   // directly instead of a one-option chooser.
   const googleEnabled = useGoogleSignInEnabled();
+  // Only shown in the two-option chooser: with one method there is nothing
+  // to tell apart.
+  const lastLoginMethod = useLastLoginMethod();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [sessionEstablished, setSessionEstablished] = useState(false);
   const params = useParams();
@@ -270,7 +275,12 @@ export default function HomePage() {
                     {tAuth("chooseSignInMethod")}
                   </p>
                 </div>
-                <SignInButton />
+                <div className="relative">
+                  <SignInButton />
+                  {googleEnabled && lastLoginMethod === "google" && (
+                    <LastUsedBadge method="google" />
+                  )}
+                </div>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-gray-200" />
@@ -281,13 +291,18 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowCredentials(true)}
-                  className="w-full text-blue-600 hover:text-blue-700 font-medium py-3 px-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 border border-blue-200 hover:border-blue-300"
-                  data-testid="sign-in-with-email-toggle"
-                >
-                  {tAuth("signInWithEmail")}
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCredentials(true)}
+                    className="w-full text-blue-600 hover:text-blue-700 font-medium py-3 px-4 rounded-xl hover:bg-blue-50 transition-colors duration-200 border border-blue-200 hover:border-blue-300"
+                    data-testid="sign-in-with-email-toggle"
+                  >
+                    {tAuth("signInWithEmail")}
+                  </button>
+                  {googleEnabled && lastLoginMethod === "credentials" && (
+                    <LastUsedBadge method="credentials" />
+                  )}
+                </div>
               </div>
             )}
           </div>

@@ -375,7 +375,6 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
             accountInfo={{
               hasGoogleAccount: accountInfo.hasGoogleAccount,
               hasEmailAccount: accountInfo.hasPassword,
-              primaryAuthMethod: accountInfo.primaryAuthMethod,
             }}
             onAccountLinked={refetchAccountInfo}
           />

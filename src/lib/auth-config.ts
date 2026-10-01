@@ -15,6 +15,8 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limit";
 import { getLockoutPolicy } from "@/lib/auth/lockout";
+import { parseLoginMethod } from "@/lib/auth/last-login-method";
+import { rememberLoginMethod } from "@/lib/auth/remember-login-method";
 import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
@@ -313,9 +315,6 @@ export const authOptions = {
             await userRepo.update(existingUser.id, {
               hasGoogleAccount: hasGoogleAccount,
               hasEmailAccount: hasPassword,
-              primaryAuthMethod:
-                existingUser.primaryAuthMethod ||
-                (account.provider === "google" ? "google" : "email"),
               lastLoginAt: new Date(),
               // Auto-verify email for Google login (Google OAuth ensures email verification)
               emailVerified:
@@ -371,12 +370,20 @@ export const authOptions = {
     },
   },
   events: {
+    // Fires once per successful sign-in, for every provider (for credentials
+    // only after the password and, when enabled, the 2FA code were accepted).
     async signIn(message: SignInEventMessage) {
+      const provider = message.account?.provider || "credentials";
       console.log("User signed in:", {
         userId: message.user.id,
-        provider: message.account?.provider || "credentials",
+        provider,
         isNewUser: message.isNewUser,
       });
+
+      const method = parseLoginMethod(provider);
+      if (method) {
+        await rememberLoginMethod(message.user.id, method);
+      }
     },
     async signOut(message: { token?: JWT | null; session?: unknown }) {
       console.log("User signed out:", {

@@ -62,7 +62,6 @@ async function main() {
         password: passwordHash,
         emailVerified: new Date(),
         hasEmailAccount: true,
-        primaryAuthMethod: "email",
       },
     });
 

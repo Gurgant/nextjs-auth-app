@@ -176,6 +176,15 @@ export async function signInViaApi(
   await expectSignedInAs(page, user.email);
 }
 
+/**
+ * The "last used sign-in method" cookie of this browser context, or null.
+ * The name is the one in src/lib/auth/last-login-method.ts.
+ */
+export async function lastLoginMethodCookie(page: Page) {
+  const cookies = await page.context().cookies();
+  return cookies.find((c) => c.name === "last-login-method") ?? null;
+}
+
 /** Drop the session cookie; the next request is anonymous. */
 export async function signOutViaCookies(page: Page) {
   await page.goto("about:blank"); // stop the app's background requests first

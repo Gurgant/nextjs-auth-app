@@ -72,6 +72,14 @@ the default branch; run the latest `main`.
   drawn from a 62-character alphabet with rejection sampling (no modulo
   bias); backup codes use the same generator, upper-cased; account-link tokens
   are 32 random bytes, hex-encoded.
+- **Last sign-in method.** A successful sign-in stores the method
+  (`credentials` or `google`) on the user row and in the cookie
+  `last-login-method` (1 year, `SameSite=Lax`, `Secure` in production). The
+  cookie is **not HttpOnly on purpose**: the sign-in page reads it to mark the
+  option used last, and it only ever holds one of those two words — never an
+  account identifier. It is validated on read; any other value is ignored. On
+  a shared browser it tells the next person which method was used last.
+  Signing out does not remove it.
 
 ### Authorization
 
@@ -175,7 +183,11 @@ Read these before deploying. They are real, not hypothetical.
   **signing out** clears the cookie in that browser only. `SESSION_MAX_AGE` is a
   **sliding idle timeout**: every `GET /api/auth/session` (the app's session
   provider polls every 5 minutes and on window focus) re-issues the token, so an
-  open tab keeps its session alive. The only kill switch today is **rotating
+  open tab keeps its session alive. For the same reason a session request that
+  is still in flight when a sign-out completes gets its cookie re-issued and
+  can leave that browser signed in (measured in the E2E suite, where a test
+  that polled the session during its own sign-out undid it in 4 of 20 runs).
+  The only kill switch today is **rotating
   the session secret**, which signs out everyone. Per-user revocation needs a
   check in the `jwt` callback (re-read the user or a token version on each
   session check) at the cost of one database lookup.

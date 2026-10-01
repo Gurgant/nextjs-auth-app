@@ -61,7 +61,7 @@ model User {
   lockedUntil               DateTime?
   loginAttempts             Int                      @default(0)
   passwordSetAt             DateTime?
-  primaryAuthMethod         String?
+  lastLoginMethod           String?
   requiresPasswordChange    Boolean                  @default(false)
   backupCodes               String[]
   emailVerificationRequired Boolean                  @default(true)

@@ -10,6 +10,7 @@ import {
   expectSignedOut,
   formAlert,
   isGoogleEnabled,
+  lastLoginMethodCookie,
   openEmailSignIn,
   signInViaApi,
   signOutViaCookies,
@@ -205,6 +206,8 @@ test("a wrong password for a seeded user shows the same generic alert and create
   );
   await expect(page).toHaveURL(/\/en$/);
   await expectSignedOut(page);
+  // A failed sign-in is not remembered as the last method used.
+  expect(await lastLoginMethodCookie(page)).toBeNull();
 });
 
 test("valid credentials show the loading button, then land on /en/account with a live session", async ({

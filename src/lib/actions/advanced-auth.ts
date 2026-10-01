@@ -788,7 +788,7 @@ export async function getEnhancedUserAccountInfo(
         hasGoogleAccount,
         hasPassword,
         hasEmailAccount: hasPassword,
-        primaryAuthMethod: user.primaryAuthMethod,
+        lastLoginMethod: user.lastLoginMethod,
         twoFactorEnabled: user.twoFactorEnabled,
         twoFactorEnabledAt: user.twoFactorEnabledAt,
         backupCodesCount: user.backupCodes.length,

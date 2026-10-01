@@ -58,6 +58,40 @@ it("returns the real 2FA state, never cacheable", async () => {
   expect(body.data.backupCodesCount).toBe(2);
 });
 
+const userRow = (lastLoginMethod: string | null) => ({
+  accounts: [{ provider: "google" }],
+  password: "hash",
+  emailVerified: new Date(),
+  twoFactorEnabled: false,
+  createdAt: new Date("2025-07-30T00:00:00Z"),
+  passwordSetAt: null,
+  backupCodes: [],
+  lastLoginMethod,
+});
+
+it.each(["credentials", "google"])(
+  "returns the stored last sign-in method (%s)",
+  async (method) => {
+    mockGetUser.mockResolvedValue(userRow(method));
+
+    const body = await (await GET(request())).json();
+
+    expect(body.data.lastLoginMethod).toBe(method);
+    expect(body.data).not.toHaveProperty("primaryAuthMethod");
+  },
+);
+
+it.each([
+  ["nothing is stored", null],
+  ["the stored value is not a known method", "email"],
+])("returns a null last sign-in method when %s", async (_label, stored) => {
+  mockGetUser.mockResolvedValue(userRow(stored));
+
+  const body = await (await GET(request())).json();
+
+  expect(body.data.lastLoginMethod).toBeNull();
+});
+
 it("reports a database failure instead of inventing account data", async () => {
   mockGetUser.mockRejectedValue(new Error("connection refused"));
 

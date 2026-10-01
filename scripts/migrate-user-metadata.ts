@@ -32,21 +32,10 @@ async function migrateAllUsers() {
       const hasPassword = !!user.password;
       const hasEmailAccount = hasPassword;
 
-      // Determine primary auth method
-      let primaryAuthMethod = null;
-      if (hasGoogleAccount && hasPassword) {
-        primaryAuthMethod = user.primaryAuthMethod || "google";
-      } else if (hasGoogleAccount) {
-        primaryAuthMethod = "google";
-      } else if (hasPassword) {
-        primaryAuthMethod = "email";
-      }
-
       // Check if migration is needed
       const needsMigration =
         user.hasGoogleAccount !== hasGoogleAccount ||
         user.hasEmailAccount !== hasEmailAccount ||
-        user.primaryAuthMethod !== primaryAuthMethod ||
         (user.password && !user.passwordSetAt) ||
         (user.password && !user.lastPasswordChange);
 
@@ -56,7 +45,6 @@ async function migrateAllUsers() {
           data: {
             hasGoogleAccount,
             hasEmailAccount,
-            primaryAuthMethod,
             passwordSetAt:
               user.password && !user.passwordSetAt
                 ? user.createdAt
@@ -72,7 +60,6 @@ async function migrateAllUsers() {
         console.log(`✅ Migrated user: ${user.email}`);
         console.log(`   - Google Account: ${hasGoogleAccount}`);
         console.log(`   - Email Account: ${hasEmailAccount}`);
-        console.log(`   - Primary Method: ${primaryAuthMethod}`);
 
         migratedCount++;
       } else {
