@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma";
 import { IRepository } from "./repository.interface";
 import { PaginatedResult, PaginationOptions, QueryOptions } from "../types";
 
@@ -13,18 +14,19 @@ export type PrismaTransactionClient = Omit<
 /**
  * Base type for Prisma model delegates
  */
-export type PrismaModelDelegate = {
-  findUnique: (args: any) => Promise<any>;
-  findFirst: (args: any) => Promise<any>;
-  findMany: (args: any) => Promise<any[]>;
-  create: (args: any) => Promise<any>;
-  createMany: (args: any) => Promise<any>;
-  update: (args: any) => Promise<any>;
-  delete: (args: any) => Promise<any>;
-  count: (args: any) => Promise<number>;
-  upsert: (args: any) => Promise<any>;
-  updateMany: (args: any) => Promise<any>;
-  deleteMany: (args: any) => Promise<any>;
+// Method syntax is deliberate: methods are compared bivariantly, so a Prisma delegate stays assignable with `args: unknown`.
+export type PrismaModelDelegate<T> = {
+  findUnique(args: unknown): Promise<T | null>;
+  findFirst(args: unknown): Promise<T | null>;
+  findMany(args: unknown): Promise<T[]>;
+  create(args: unknown): Promise<T>;
+  createMany(args: unknown): Promise<Prisma.BatchPayload>;
+  update(args: unknown): Promise<T>;
+  delete(args: unknown): Promise<T>;
+  count(args: unknown): Promise<number>;
+  upsert(args: unknown): Promise<T>;
+  updateMany(args: unknown): Promise<Prisma.BatchPayload>;
+  deleteMany(args: unknown): Promise<Prisma.BatchPayload>;
 };
 
 export abstract class PrismaRepository<T, ID = string>
@@ -32,7 +34,7 @@ export abstract class PrismaRepository<T, ID = string>
 {
   constructor(protected readonly prisma: PrismaClient) {}
 
-  abstract get model(): PrismaModelDelegate;
+  abstract get model(): PrismaModelDelegate<T>;
 
   async findById(id: ID): Promise<T | null> {
     return await this.model.findUnique({

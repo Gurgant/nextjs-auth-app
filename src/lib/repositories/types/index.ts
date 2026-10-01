@@ -13,7 +13,7 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
-export interface QueryOptions<T = any> {
+export interface QueryOptions<T = unknown> {
   where?: Partial<T>;
   include?: Record<string, boolean>;
   orderBy?: Record<string, "asc" | "desc">;
