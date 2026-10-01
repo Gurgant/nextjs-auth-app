@@ -50,7 +50,7 @@ const getMetrics = async (_request: NextRequest) => {
       databaseStats = {
         userCount,
         sessionCount,
-        recentSecurityEvents: recentSecurityEvents.map((event: any) => ({
+        recentSecurityEvents: recentSecurityEvents.map((event) => ({
           type: event.eventType,
           success: event.success,
           timestamp: event.createdAt,
