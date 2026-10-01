@@ -45,22 +45,31 @@ export const uniqueEmail = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
 /**
- * GET that retries only on a transport error (the dev server can reset a
- * connection while it compiles a route on first hit), never on a response:
- * the caller still asserts on whatever the server answered.
+ * API requests of the suite go through apiGet / apiPost, which never reuse a
+ * connection and never retry. `page.request` keeps connections alive, and
+ * `next dev` closes an idle one after about 6 s: a request sent on that socket
+ * at that moment fails with ECONNRESET. Measured with Playwright's request
+ * client against `next dev`, after an idle gap of 5.985–6.045 s: 14 of 260
+ * requests failed by default, 0 of 260 with `Connection: close`. Removing the
+ * cause is what makes a retry unnecessary: any transport error fails the test.
  */
-async function getWithTransportRetry(page: Page, url: string, attempts = 3) {
-  for (let attempt = 1; ; attempt++) {
-    try {
-      return await page.request.get(url);
-    } catch (error) {
-      if (attempt >= attempts) throw error;
-    }
-  }
+const NO_KEEP_ALIVE = { Connection: "close" };
+
+type PostOptions = NonNullable<Parameters<Page["request"]["post"]>[1]>;
+
+export function apiGet(page: Page, url: string) {
+  return page.request.get(url, { headers: NO_KEEP_ALIVE });
+}
+
+export function apiPost(page: Page, url: string, options: PostOptions = {}) {
+  return page.request.post(url, {
+    ...options,
+    headers: { ...options.headers, ...NO_KEEP_ALIVE },
+  });
 }
 
 export async function isGoogleEnabled(page: Page): Promise<boolean> {
-  const res = await getWithTransportRetry(page, "/api/auth/providers");
+  const res = await apiGet(page, "/api/auth/providers");
   expect(res.ok()).toBeTruthy();
   return "google" in (await res.json());
 }
@@ -69,7 +78,7 @@ export async function isGoogleEnabled(page: Page): Promise<boolean> {
 export async function sessionUser(
   page: Page,
 ): Promise<{ email?: string; role?: string; name?: string } | null> {
-  const res = await getWithTransportRetry(page, "/api/auth/session");
+  const res = await apiGet(page, "/api/auth/session");
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   return body?.user ?? null;
@@ -150,10 +159,10 @@ export async function signInViaApi(
   // Leave the app first: its background session polling shares the cookie
   // jar and can re-set the CSRF cookie between our GET and POST (MissingCSRF).
   await page.goto("about:blank");
-  const { csrfToken } = await page.request
-    .get("/api/auth/csrf")
-    .then((r) => r.json());
-  const res = await page.request.post("/api/auth/callback/credentials", {
+  const { csrfToken } = await apiGet(page, "/api/auth/csrf").then((r) =>
+    r.json(),
+  );
+  const res = await apiPost(page, "/api/auth/callback/credentials", {
     headers: { "X-Auth-Return-Redirect": "1" },
     form: {
       email: user.email,

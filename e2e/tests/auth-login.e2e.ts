@@ -3,6 +3,8 @@ import type { Page } from "@playwright/test";
 import en from "../../messages/en.json";
 import {
   USERS,
+  apiGet,
+  apiPost,
   currentTotp,
   expectSignedInAs,
   expectSignedOut,
@@ -44,7 +46,7 @@ const accountHeading = (page: Page) =>
 async function rawSessionUser(
   page: Page,
 ): Promise<Record<string, unknown> | null> {
-  const res = await page.request.get("/api/auth/session");
+  const res = await apiGet(page, "/api/auth/session");
   expect(res.ok()).toBe(true);
   const body = await res.json();
   return body?.user ?? null;
@@ -118,7 +120,7 @@ test("providers are exactly credentials (+ google when configured) and the Googl
   page,
 }) => {
   const google = await isGoogleEnabled(page);
-  const res = await page.request.get("/api/auth/providers");
+  const res = await apiGet(page, "/api/auth/providers");
   expect(res.ok()).toBe(true);
   const providers = await res.json();
   // No other provider (e.g. GitHub) is registered in src/lib/auth-config.ts.
@@ -295,15 +297,15 @@ test("2FA user: a wrong code is answered with code=2fa_invalid and creates no se
   // covered by the generic-alert tests above; driving this particular submit
   // through the dev server with Playwright stalls on a dev-server socket quirk
   // (the same flow verified fine in a real browser).
-  const { csrfToken } = await page.request
-    .get("/api/auth/csrf")
-    .then((r) => r.json());
+  const { csrfToken } = await apiGet(page, "/api/auth/csrf").then((r) =>
+    r.json(),
+  );
   // Differs from the current code in every digit.
   const wrongCode = currentTotp().replace(/\d/g, (d) =>
     String((Number(d) + 5) % 10),
   );
 
-  const res = await page.request.post("/api/auth/callback/credentials", {
+  const res = await apiPost(page, "/api/auth/callback/credentials", {
     headers: { "X-Auth-Return-Redirect": "1" },
     form: {
       email: USERS.twoFactor.email,
@@ -357,10 +359,14 @@ test("the Sign out button on the authenticated home ends the session and brings 
     .getByRole("button", { name: en.Auth.signOut, exact: true })
     .click();
 
-  await expectSignedOut(page);
-  await expect(page).toHaveURL(/\/en$/);
+  // Let the browser finish its own sign-out before asking the server. Every
+  // GET /api/auth/session that carries a valid cookie re-issues it, so a
+  // request sent while the sign-out is in flight can put the cookie back.
   await waitForSignedOutHome(page);
   await expect(home).toHaveCount(0);
+  await expect(page).toHaveURL(/\/en$/);
+  // The server is the judge: the session cookie is gone.
+  await expectSignedOut(page);
 });
 
 test("signed out: /en/dashboard and /en/account redirect to the signed-out home", async ({

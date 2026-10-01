@@ -78,8 +78,25 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 
 - Specs live in `e2e/tests/*.e2e.ts` on top of one small helper module,
   `e2e/support/app.ts`. Every helper either reaches the state it promises or
-  fails; nothing swallows an error (session and provider requests are retried
-  only on a transport error, never on a response).
+  fails; nothing swallows an error and no request is retried.
+- API requests go through `apiGet` / `apiPost`, which send
+  `Connection: close`. Playwright's request client keeps connections alive and
+  `next dev` closes an idle one after about 6 s; a request sent on that socket
+  at that moment fails with `ECONNRESET`. Measured against `next dev`, after
+  an idle gap of 5.985–6.045 s: 14 of 260 requests failed by default, 0 of 260
+  with `Connection: close`. Without connection reuse there is nothing to
+  retry; an earlier helper that silently repeated such a request is gone.
+- A test never asks `/api/auth/session` while a sign-out it triggered in the
+  browser is still in flight: every session request that carries a valid
+  cookie gets it re-issued, so its late response can put the cookie back.
+  The sign-out test first waits for the signed-out page, then asks the
+  server. Measured over 20 repetitions: 4 failures with the session poll
+  right after the click, 0 with the wait first.
+- What remains are bounded waits for a state, not second attempts at an
+  assertion: `expect.poll` on the session endpoint and on a request counter,
+  and one `toPass` loop that re-ticks the terms checkbox until the form is
+  hydrated (`terms-validation.e2e.ts`); the behaviour under test is asserted
+  after it, once.
 - Assertions are web-first (`toBeVisible`, `toHaveText`, `toHaveURL`) and the
   session endpoint is the source of truth for signed-in / signed-out.
 - UI text that comes from `messages/*.json` is read from there. Strings that
@@ -107,10 +124,12 @@ runs the whole suite on every push to `main` and every pull request: Chromium,
 one worker, `next dev`, a PostgreSQL 16 service container, Node 22 — the same
 Node as the `checks` job.
 
-**Retries are off** (`retries: 0` in `playwright.config.ts`, locally and in
-CI): a test that passes only on a second attempt is unstable and fails the
-job instead of being reported as passed. When a test fails, its trace,
-screenshot and video are uploaded as the `playwright-test-results` artifact.
+**Playwright test retries are off** (`retries: 0` in `playwright.config.ts`,
+locally and in CI) and the helpers retry no request: a test that passes only
+on a second attempt is unstable and fails the job instead of being reported
+as passed. The run stops by itself after 20 minutes (`globalTimeout`), before
+the job's 30-minute limit. Both jobs are pinned to `ubuntu-24.04`: Playwright
+1.55.1 has no Chromium build for a newer runner image.
 
 Measured on the first run of that job (2026-10-01, `ubuntu-latest`,
 Node 22.23.3,

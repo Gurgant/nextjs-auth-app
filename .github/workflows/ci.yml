@@ -14,8 +14,11 @@ env:
   ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 jobs:
+  # Both jobs are pinned to ubuntu-24.04, not ubuntu-latest: the pinned
+  # Playwright has no browser build for a newer image, so the runner is
+  # upgraded on purpose, together with Playwright.
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
@@ -73,9 +76,10 @@ jobs:
           fi
 
   # The Playwright suite, in a real browser against `next dev` and its own
-  # PostgreSQL. No retries (playwright.config.ts): an unstable test fails the job.
+  # PostgreSQL. Playwright test retries are off (playwright.config.ts) and the
+  # helpers retry no request: a test that fails once fails the job.
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     services:
@@ -119,7 +123,7 @@ jobs:
         run: pnpm test:e2e
 
       - name: Upload traces, screenshots and videos of failed tests
-        if: failure()
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results

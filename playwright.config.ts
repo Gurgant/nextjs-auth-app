@@ -19,6 +19,11 @@ export default defineConfig({
   // Optimized timeout settings for performance
   timeout: process.env.CI ? 90 * 1000 : 45 * 1000, // Shorter timeouts for faster failure detection
 
+  // In CI the whole run must end on its own, with Playwright's summary and a
+  // failing exit code, well before the job's 30-minute limit: a job that hits
+  // that limit is cancelled, not failed.
+  globalTimeout: process.env.CI ? 20 * 60 * 1000 : 0,
+
   // Expect timeout
   expect: {
     timeout: process.env.CI ? 15 * 1000 : 10 * 1000, // Faster expectations in local dev
