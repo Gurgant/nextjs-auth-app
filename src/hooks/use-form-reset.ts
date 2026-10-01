@@ -72,7 +72,7 @@ export function useFormReset<T extends HTMLFormElement = HTMLFormElement>(
    * Log helper for debugging
    */
   const log = useCallback(
-    (message: string, ...args: any[]) => {
+    (message: string, ...args: unknown[]) => {
       if (debug) {
         console.log(`[useFormReset:${formName}] ${message}`, ...args);
       }
@@ -239,7 +239,7 @@ export function useMultipleFormReset<T extends Record<string, HTMLFormElement>>(
 
   // Log helper for debugging
   const log = useCallback(
-    (message: string, ...args: any[]) => {
+    (message: string, ...args: unknown[]) => {
       if (debug) {
         console.log(
           `[useMultipleFormReset:${baseFormName}] ${message}`,
@@ -260,10 +260,10 @@ export function useMultipleFormReset<T extends Record<string, HTMLFormElement>>(
           formRef.current.reset();
 
           // Clear custom validity states
-          const inputs = formRef.current.querySelectorAll(
-            "input, select, textarea",
-          );
-          inputs.forEach((input: any) => {
+          const inputs = formRef.current.querySelectorAll<
+            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          >("input, select, textarea");
+          inputs.forEach((input) => {
             if (input.setCustomValidity) {
               input.setCustomValidity("");
             }

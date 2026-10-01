@@ -23,7 +23,7 @@ export interface ErrorResponse extends BaseResponse {
  */
 export interface SuccessResponse extends BaseResponse {
   success: true;
-  data?: any;
+  data?: unknown;
 }
 
 /**
@@ -84,7 +84,7 @@ export function createErrorResponse(
  * // With data
  * return createSuccessResponse("User created", { userId: user.id });
  */
-export function createSuccessResponse<T = any>(
+export function createSuccessResponse<T = unknown>(
   message: string,
   data?: T,
 ): SuccessResponse & { data?: T } {
@@ -296,7 +296,7 @@ export async function withErrorHandling<T extends ActionResponse>(
 export function logActionError(
   actionName: string,
   error: unknown,
-  context?: Record<string, any>,
+  context?: Record<string, unknown>,
 ): void {
   console.error(`[${actionName}] Error:`, {
     error,
