@@ -71,10 +71,9 @@ const eslintConfig = [
       ],
       "@typescript-eslint/no-require-imports": "off",
       "@typescript-eslint/no-empty-object-type": "off",
-      // `as any` casts are gone from src; remaining explicit `any`
-      // annotations (mostly generic infrastructure) surface as warnings
-      // until they are typed properly.
-      "@typescript-eslint/no-explicit-any": "warn",
+      // No explicit `any` is left in src or scripts, so a new one is an
+      // error (tests and config files are exempt, see below).
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/ban-ts-comment": "error",
       "@typescript-eslint/explicit-function-return-type": "off",
       "@typescript-eslint/explicit-module-boundary-types": "off",

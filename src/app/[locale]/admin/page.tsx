@@ -233,7 +233,7 @@ export default async function AdminDashboardPage({
               Recent Security Events
             </h2>
             <div className="space-y-3">
-              {recentSecurityEvents.map((event: any) => (
+              {recentSecurityEvents.map((event) => (
                 <div key={event.id} className="p-3 bg-gray-50 rounded">
                   <div className="flex justify-between items-start">
                     <div>
