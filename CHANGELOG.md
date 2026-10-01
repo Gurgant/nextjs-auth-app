@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — 2026
+## [v2.0.0] - 2026-10-01
 
 Security and accuracy pass after a code audit (details in the commit history
 and in `SECURITY.md`).
