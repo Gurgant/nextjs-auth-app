@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-09-27; run the commands
+Three layers. The numbers below were measured on 2026-10-01; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                           |
 | ----------- | --------------------- | ----- | -------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 415   | lib, hooks, components, actions, API route handlers      |
+| Unit        | Jest (jsdom / node)   | 451   | lib, hooks, components, actions, API route handlers      |
 | Integration | Jest + test DB        | 16    | UserRepository, registration, lockout on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 79    | sign-in, 2FA, registration, RBAC, i18n in a real browser |
+| End-to-end  | Playwright (Chromium) | 82    | sign-in, 2FA, registration, RBAC, i18n in a real browser |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (431 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (415) — no DB
+pnpm test             # every Jest suite (467 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (451) — no DB
 pnpm test:integration # the real-DB integration file only (port 5433)
 pnpm test:coverage    # with a coverage report
 ```

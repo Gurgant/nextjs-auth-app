@@ -1,5 +1,35 @@
 # Changelog
 
+## [v2.1.0] - 2026-10-01
+
+### ✨ Features
+
+- The sign-in method used last is remembered on every successful sign-in and
+  shown as a "Last used" badge: on the account page, and on the sign-in page
+  when Google is configured (two options to choose from). The sign-in page
+  reads it from a cookie that holds only the method name (see `SECURITY.md`).
+
+### 🔧 Changed
+
+- `User.primaryAuthMethod` is replaced by `User.lastLoginMethod`
+  (`credentials` or `google`). The old column was written at the first
+  sign-in and never updated, and the account page showed a separately computed
+  value; there is now one source. `/api/account/info` returns
+  `lastLoginMethod` instead of `primaryAuthMethod`.
+- The account page no longer shows the "Primary" and "Backup" badges.
+- Unlinking Google clears `lastLoginMethod` if Google was the method used last.
+
+### ⬆️ Upgrading a database from v2.0.0
+
+- The schema drops a column. `pnpm prisma:push` refuses when a row still has
+  a value in `primaryAuthMethod`; in that case run this once:
+  `pnpm exec prisma db push --accept-data-loss`.
+  A new database needs nothing.
+
+### 🧪 Tests
+
+- Jest: 467 tests (was 431). Playwright: 82 tests (was 79).
+
 ## [v2.0.0] - 2026-10-01
 
 Security and accuracy pass after a code audit (details in the commit history
