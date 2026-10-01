@@ -99,3 +99,24 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 A mutation check was run on the rewritten suite: disabling 2FA enforcement in
 `authorize()`, hiding the invalid-credentials alert, or removing the role
 redirect on `/dashboard/pro` each makes the corresponding tests fail.
+
+### In CI
+
+The `e2e` job of [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+runs the whole suite on every push to `main` and every pull request: Chromium,
+one worker, `next dev`, a PostgreSQL 16 service container, Node 22 — the same
+Node as the `checks` job.
+
+**Retries are off** (`retries: 0` in `playwright.config.ts`, locally and in
+CI): a test that passes only on a second attempt is unstable and fails the
+job instead of being reported as passed. When a test fails, its trace,
+screenshot and video are uploaded as the `playwright-test-results` artifact.
+
+Measured on the first run of that job (2026-10-01, `ubuntu-latest`,
+Node 22.23.3,
+[run 36877934660](https://github.com/Gurgant/nextjs-auth-app/actions/runs/36877934660)):
+79 passed, 0 failed, 4.3 min for the tests and 5 min 25 s for the whole job,
+23 s of which to install Chromium. One green run shows that the job works; it
+does not prove that no test is unstable — the history of the `e2e` job in the
+[Actions tab](https://github.com/Gurgant/nextjs-auth-app/actions/workflows/ci.yml)
+is the evidence for that.
