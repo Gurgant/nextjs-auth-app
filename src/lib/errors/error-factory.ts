@@ -4,6 +4,7 @@ import * as AuthErrors from "./domain/auth-errors";
 import * as ValidationErrors from "./domain/validation-errors";
 import * as BusinessErrors from "./domain/business-errors";
 import * as SystemErrors from "./domain/system-errors";
+import type { ErrorDetails } from "./types/error-details";
 import { z } from "zod";
 
 /**
@@ -81,7 +82,7 @@ export class ErrorFactory {
 
     invalidInput: (
       field: string,
-      value?: any,
+      value?: unknown,
       expectedType?: string,
       context?: ErrorContext,
     ) =>
@@ -123,17 +124,17 @@ export class ErrorFactory {
         context,
       ),
 
-    duplicate: (field: string, value: any, context?: ErrorContext) =>
+    duplicate: (field: string, value: unknown, context?: ErrorContext) =>
       new ValidationErrors.DuplicateValueError(field, value, context),
 
-    schema: (schema: z.ZodSchema, data: any, context?: ErrorContext) =>
+    schema: (schema: z.ZodSchema, data: unknown, context?: ErrorContext) =>
       new ValidationErrors.SchemaValidationError(schema, data, context),
 
     field: (
       field: string,
       rule: string,
       message: string,
-      value?: any,
+      value?: unknown,
       context?: ErrorContext,
     ) =>
       new ValidationErrors.FieldValidationError(
@@ -157,7 +158,7 @@ export class ErrorFactory {
     ruleViolation: (
       rule: string,
       message: string,
-      details?: any,
+      details?: ErrorDetails,
       context?: ErrorContext,
     ) =>
       new BusinessErrors.BusinessRuleViolationError(
@@ -187,7 +188,7 @@ export class ErrorFactory {
 
     alreadyExists: (
       resourceType: string,
-      identifier: Record<string, any>,
+      identifier: Record<string, unknown>,
       context?: ErrorContext,
     ) =>
       new BusinessErrors.ResourceAlreadyExistsError(
@@ -346,7 +347,7 @@ export class ErrorFactory {
       service: string,
       operation: string,
       statusCode?: number,
-      responseBody?: any,
+      responseBody?: unknown,
       cause?: Error,
       context?: ErrorContext,
     ) =>
@@ -363,7 +364,7 @@ export class ErrorFactory {
       endpoint: string,
       method: string,
       statusCode: number,
-      responseBody?: any,
+      responseBody?: unknown,
       context?: ErrorContext,
     ) =>
       new SystemErrors.ApiError(
@@ -440,7 +441,7 @@ export class ErrorFactory {
   static fromCode(
     code: ErrorCode,
     message: string,
-    details?: any,
+    details?: ErrorDetails,
     context?: ErrorContext,
   ): BaseError {
     // This is a fallback method - prefer using specific factory methods
@@ -476,7 +477,7 @@ export class ErrorFactory {
    */
   static is<T extends BaseError>(
     error: unknown,
-    ErrorClass: new (...args: any[]) => T,
+    ErrorClass: new (...args: never[]) => T,
   ): error is T {
     return error instanceof ErrorClass;
   }
