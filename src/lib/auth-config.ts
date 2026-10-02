@@ -31,9 +31,6 @@ import type {
   JWTCallbackParams,
   SessionCallbackParams,
   SignInEventMessage,
-  // Note: Additional event message types available for future use:
-  // SignOutEventMessage, CreateUserEventMessage, LinkAccountEventMessage, SessionEventMessage
-  // These can be imported from "@/types/next-auth" when implementing comprehensive auth event handling
 } from "@/types/next-auth";
 
 // This file contains the core auth configuration without environment variable checks

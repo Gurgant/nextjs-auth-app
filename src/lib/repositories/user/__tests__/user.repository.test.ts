@@ -44,6 +44,11 @@ describe("UserRepository password writes", () => {
     expect(stored).not.toBe("Plain123!");
     expect(await bcrypt.compare("Plain123!", stored)).toBe(true);
     expect(bcrypt.getRounds(stored)).toBe(5);
+    // A new password ends the user's sessions, in the same write.
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate.mock.calls[0][0].data.sessionVersion).toEqual({
+      increment: 1,
+    });
   });
 
   it("update() without a password passes the data through unchanged", async () => {

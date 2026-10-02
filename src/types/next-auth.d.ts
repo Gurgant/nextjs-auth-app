@@ -83,26 +83,6 @@ export interface SignInEventMessage {
   isNewUser?: boolean;
 }
 
-export interface SignOutEventMessage {
-  token: JWT;
-  session?: Session | null;
-}
-
-export interface CreateUserEventMessage {
-  user: User;
-}
-
-export interface LinkAccountEventMessage {
-  user: User;
-  account: Account;
-  profile?: unknown;
-}
-
-export interface SessionEventMessage {
-  token: JWT;
-  session?: Session;
-}
-
 /**
  * Callback parameter types for enhanced type safety
  */
@@ -122,12 +102,3 @@ export interface SessionCallbackParams {
   user?: User;
 }
 
-export interface SignInCallbackParams {
-  user: User;
-  account: Account | null;
-  profile?: unknown;
-  email?: {
-    verificationRequest?: boolean;
-  };
-  credentials?: Record<string, unknown>;
-}

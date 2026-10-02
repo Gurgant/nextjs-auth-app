@@ -93,15 +93,11 @@ jest.mock("@/lib/repositories", () => ({
           data: { lastLoginAt: new Date() },
         });
       },
-      updatePassword: async (id: string, password: string) => {
-        return prisma.user.update({
-          where: { id },
-          data: {
-            password,
-            lastPasswordChange: new Date(),
-          },
-        });
-      },
+      updatePassword: (
+        id: string,
+        hash: string,
+        options: { revokeSessions: boolean },
+      ) => new UserRepository(prisma).updatePassword(id, hash, options),
       delete: async (id: string) => {
         await prisma.$transaction([
           prisma.account.deleteMany({ where: { userId: id } }),
@@ -474,6 +470,8 @@ describe("Authentication Integration Tests (Real Database)", () => {
       expect(isOldPasswordValid).toBe(false);
 
       expect(updatedUser?.lastPasswordChange).toBeTruthy();
+      // The command asked for the sessions to end.
+      expect(updatedUser?.sessionVersion).toBe(1);
     }, 15000); // 15 second timeout for password change with multiple bcrypt operations
   });
 

@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-01; run the commands
+Three layers. The numbers below were measured on 2026-10-02; run the commands
 to check them yourself.
 
-| Layer       | Runner                | Count | What it covers                                           |
-| ----------- | --------------------- | ----- | -------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 451   | lib, hooks, components, actions, API route handlers      |
-| Integration | Jest + test DB        | 16    | UserRepository, registration, lockout on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 82    | sign-in, 2FA, registration, RBAC, i18n in a real browser |
+| Layer       | Runner                | Count | What it covers                                                            |
+| ----------- | --------------------- | ----- | ------------------------------------------------------------------------- |
+| Unit        | Jest (jsdom / node)   | 697   | lib, hooks, components, actions, API route handlers                       |
+| Integration | Jest + test DB        | 24    | UserRepository, registration, lockout, session checks on real PostgreSQL  |
+| End-to-end  | Playwright (Chromium) | 88    | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (467 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (451) — no DB
+pnpm test             # every Jest suite (721 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (697) — no DB
 pnpm test:integration # the real-DB integration file only (port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -34,9 +34,12 @@ URL (e.g. `15433`) or adjust that file:
 DATABASE_URL="postgresql://postgres:postgres123@127.0.0.1:15433/nextjs_auth_db" pnpm test
 ```
 
-Coverage (measured): **8 % of statements** of the files matched by
+Coverage (measured): **43 % of statements** of the files matched by
 `collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
-and route handlers), `src/middleware.ts` and `index.ts` barrels. The tests
+and route handlers), `src/middleware.ts`, `index.ts` barrels and the generated
+Prisma client (`src/generated/**`). Until v2.1.0 the generated client was
+counted as well, which made up most of the statements: counted that way, the
+same run gives 9 %. The tests
 concentrate on the authentication and security modules; large parts of the UI
 and of the event / error infrastructure have no unit tests. There is no
 coverage threshold.
@@ -110,8 +113,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   into the test database), so the seeded users stay as the other specs
   expect them.
 - What remains are bounded waits for a state, not second attempts at an
-  assertion: `expect.poll` on the session endpoint and on a request counter,
-  and one `toPass` loop that re-ticks the terms checkbox until the form is
+  assertion: `expect.poll` on the session endpoint, on a request counter and on
+  the `NEXT_LOCALE` cookie, and one `toPass` loop that re-ticks the terms
+  checkbox until the form is
   hydrated (`terms-validation.e2e.ts`); the behaviour under test is asserted
   after it, once. Before the first test there is one more bounded wait, the
   warm-up of the global setup (see below).
@@ -216,7 +220,9 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   wait fails that test, as it should.
 
 Measured on 2026-10-02 with the warm-up and the guard, on the same machine
-(`CI=1 pnpm test:e2e`, three full runs): 82 passed each time, and every
+(`CI=1 pnpm test:e2e`, three full runs), before the six tests of
+`session-revocation.e2e.ts` were added (the suite had 82 tests then): 82
+passed each time, and every
 "Compiled" line of the dev server came before the first test (12, 13 and 12
 lines, none after it). The warm-up took 33.5 s, 34.5 s and 29.9 s. The ten
 requests were answered, in list order, with 200, 200, 200, 307, 401, 307, 200,
