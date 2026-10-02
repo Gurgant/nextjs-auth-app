@@ -60,6 +60,10 @@ Session checks need the table `RevokedSession` and the column
 data-loss prompt). Push the schema **before** starting the new code: without
 the table every session check fails, and a failed check means "not signed in".
 Sessions issued before the upgrade are refused, so every user signs in once.
+If the app connects as a restricted database user, grant it `SELECT`,
+`INSERT` and `DELETE` on `"RevokedSession"` after the push: without `SELECT`
+every session check fails, without `INSERT` a sign-out revokes nothing (not
+measured: the test database is used with its owner).
 
 ## Before you go live
 

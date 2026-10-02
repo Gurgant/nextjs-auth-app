@@ -233,7 +233,15 @@ Read these before deploying. They are real, not hypothetical.
     `RevokedSession` table renamed away so that every query on it fails: the
     sign-out answered 200 and cleared the cookie in that browser, Auth.js
     logged `SignOutError`, no row was written, and a copy of the token was
-    accepted again once the table was back.
+    accepted again once the table was back. When the lookups succeed and only
+    the write of the revocation row fails, the sign-out answers the same way
+    and revokes nothing, and the log line is `EventError`, not
+    `SignOutError` (read in the source of `@auth/core` 0.41.3, not
+    measured).
+  - **A revocation row is kept for 30 days**, the longest `SESSION_MAX_AGE`
+    the app accepts, whatever the configured value is: a copy of the token
+    minted before the lifetime was lowered still carries the longer one, and
+    the row has to outlive it. Expired rows are deleted at the next sign-out.
   - **A response already sent cannot be recalled.** `SESSION_MAX_AGE` is a
     **sliding idle timeout**: every `GET /api/auth/session` (the app's session
     provider polls every 5 minutes and on window focus) re-issues the token,
@@ -251,11 +259,13 @@ Read these before deploying. They are real, not hypothetical.
     2 `SELECT`s for one `GET /api/auth/session`, 4 for `/en/account`, which
     calls `auth()` twice). When a lookup fails the check fails closed.
     Measured as above, with the table renamed away: `GET /api/auth/session`
-    answered `null` and **cleared the cookie**, so a browser whose tab polls
-    during a database failure has to sign in again; a page request
-    (`/en/account`, which uses `auth()`) was redirected as signed out and left
-    the cookie alone, and that browser was signed in again once the table was
-    back. Auth.js logged `JWTSessionError` each time. A database that cannot
+    answered `null` and **cleared the cookie**, so a browser that asks the
+    session endpoint during a database failure has to sign in again: the
+    app's session provider asks it on every full page load, on window focus
+    and every 5 minutes. A bare request to `/en/account` (which uses
+    `auth()`), without the page's JavaScript, was redirected as signed out
+    and kept its cookie, and that cookie was accepted again once the table
+    was back. Auth.js logged `JWTSessionError` each time. A database that cannot
     be reached at all was not measured.
   - **A refused token is logged as an error.** Each session check (the
     session endpoint or `auth()`) that meets the token of an ended session

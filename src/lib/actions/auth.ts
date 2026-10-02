@@ -127,9 +127,22 @@ export async function deleteUserAccount(
       confirmEmail: formData.get("confirmEmail") as string,
     });
 
-    // Delete the authenticated user by id
+    // Delete the authenticated user by id. delete() answers false instead of
+    // throwing: an account that was not deleted keeps its sessions, so it must
+    // not be reported as deleted.
     const userRepo = repositories.getUserRepository();
-    await userRepo.delete(sessionUser.id);
+    const deleted = await userRepo.delete(sessionUser.id);
+    if (!deleted) {
+      logActionError(
+        "deleteUserAccount",
+        new Error("The user row was not deleted"),
+      );
+      return await createErrorResponseI18n(
+        "errors.failedToDeleteAccount",
+        locale,
+        "Failed to delete account. Please try again.",
+      );
+    }
 
     console.log("User account deleted:", { userId: sessionUser.id });
 
@@ -265,8 +278,11 @@ export async function addPasswordToGoogleUser(
       getBcryptRounds(),
     );
 
-    // Update user with password and metadata
-    await userRepo.updatePassword(authedUserId, hashedPassword);
+    // Update user with password and metadata. Adding a password does not end
+    // the user's sessions (SECURITY.md, Known Limitations).
+    await userRepo.updatePassword(authedUserId, hashedPassword, {
+      revokeSessions: false,
+    });
     await userRepo.update(authedUserId, {
       passwordSetAt: new Date(),
       lastPasswordChange: new Date(),

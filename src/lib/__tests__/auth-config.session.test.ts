@@ -175,6 +175,15 @@ describe("signOut event", () => {
     expect(mockRevokeSession).toHaveBeenCalledWith(token);
   });
 
+  it("waits for the revocation: a failed write rejects the event", async () => {
+    const failure = new Error("insert failed");
+    mockRevokeSession.mockRejectedValue(failure);
+
+    await expect(
+      signOutEvent({ token: { sub: "u1", id: "u1", sid: SID } }),
+    ).rejects.toBe(failure);
+  });
+
   it("resolves when the cookie could not be decoded (token null)", async () => {
     await expect(signOutEvent({ token: null })).resolves.toBeUndefined();
   });

@@ -757,11 +757,13 @@ describe("Authentication Integration Tests (Real Database)", () => {
       });
     });
 
-    it("updatePassword() without the option leaves the session version alone", async () => {
+    it("updatePassword() with revokeSessions false leaves the session version alone", async () => {
       const user = await makeUser("add-password@example.com");
       const hash = await bcrypt.hash("Another123!", 4);
 
-      await new UserRepository(prisma).updatePassword(user.id, hash);
+      await new UserRepository(prisma).updatePassword(user.id, hash, {
+        revokeSessions: false,
+      });
 
       const row = await prisma.user.findUnique({ where: { id: user.id } });
       expect(row).toMatchObject({ password: hash, sessionVersion: 0 });

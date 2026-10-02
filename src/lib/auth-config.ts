@@ -370,7 +370,10 @@ export const authOptions = {
         // one of the row the password was checked against, so a sign-in with
         // the old password that is in flight during a password change gets
         // the old version and its session is refused. A second read here
-        // could already see the new version. Read only when it is missing.
+        // could already see the new version. Read only when it is missing:
+        // with the Prisma adapter every sign-in carries it (authorize()
+        // returns it, the adapter returns whole rows), so the read is a guard
+        // that no sign-in reaches today.
         token.sv = user.sessionVersion ?? (await readSessionVersion(user.id));
       }
       return token;

@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { JWT, JWTOptions } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
-import { resolveSessionMaxAge } from "@/lib/session-config";
+import { MAX_SESSION_MAX_AGE_SECONDS } from "@/lib/session-config";
 
 /**
  * What makes a JWT session revocable. Server-only (Prisma): it runs inside
@@ -38,11 +38,18 @@ export async function readSessionVersion(userId: string): Promise<number> {
 
 /**
  * The token if its session is still live, else null. Database errors
- * propagate (fail closed): an unreadable revocation list revokes nothing.
+ * propagate (fail closed): when the user or the revocation list cannot be
+ * read, no token is accepted.
  */
 export async function verifySessionToken(token: JWT): Promise<JWT | null> {
-  // No sid: the token was issued before sessions could be revoked.
-  if (typeof token.id !== "string" || typeof token.sid !== "string") {
+  // No sid: the token was issued before sessions could be revoked. sid and sv
+  // are set together at sign-in, so a token with one and not the other is not
+  // one this application issued.
+  if (
+    typeof token.id !== "string" ||
+    typeof token.sid !== "string" ||
+    typeof token.sv !== "number"
+  ) {
     return null;
   }
   const [user, revoked] = await Promise.all([
@@ -55,9 +62,8 @@ export async function verifySessionToken(token: JWT): Promise<JWT | null> {
       select: { sid: true },
     }),
   ]);
-  // Signed out, account deleted, or password changed since the sign-in. A
-  // token without sv was issued while every user was at version 0.
-  if (revoked || !user || user.sessionVersion !== (token.sv ?? 0)) return null;
+  // Signed out, account deleted, or password changed since the sign-in.
+  if (revoked || !user || user.sessionVersion !== token.sv) return null;
   // The database is the authority for the role; every other claim stays the
   // sign-in copy.
   token.role = user.role;
@@ -70,11 +76,15 @@ export async function revokeSession(
   now: Date = new Date(),
 ): Promise<void> {
   if (!token || typeof token.sid !== "string") return;
-  // The presented token's exp is not the latest one possible: a concurrent
-  // session request can mint a token that expires at its encode time + maxAge.
+  // The row must outlive every token of the session, and the presented one
+  // is not the last word: a concurrent session request can mint a token that
+  // expires at its encode time + maxAge, and a copy minted before
+  // SESSION_MAX_AGE was lowered (or by an instance that still runs with the
+  // old value) carries the longer lifetime. So the longest lifetime a token
+  // can have is used, not the configured one.
   const tokenExpMs = typeof token.exp === "number" ? token.exp * 1000 : 0;
   const expires = new Date(
-    Math.max(tokenExpMs, now.getTime() + resolveSessionMaxAge() * 1000) +
+    Math.max(tokenExpMs, now.getTime() + MAX_SESSION_MAX_AGE_SECONDS * 1000) +
       REVOCATION_GRACE_SECONDS * 1000,
   );
   await prisma.revokedSession.createMany({

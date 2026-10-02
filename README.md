@@ -76,8 +76,8 @@ Playwright tests.
   form (codes are generated, stored and verified on the server, but the form
   only accepts a 6-digit TOTP code).
 - **Translations** cover the page text of sign-in, registration and account.
-  Many server messages (sign-up results, rate-limit and 2FA / linking
-  errors), the dashboards, the admin page and the 2FA sign-in prompt are
+  Many server messages (sign-up and password-change results, rate-limit and
+  2FA / linking errors), the dashboards, the admin page and the 2FA sign-in prompt are
   English only.
 - **Security limitations** — Google sign-in is not asked for a TOTP code,
   there is no list of a user's sessions (one cannot be ended from another
@@ -194,7 +194,7 @@ src/
 └── i18n.ts                # next-intl request config
 messages/                  # en, es, fr, it, de
 prisma/                    # schema + demo seed
-e2e/                       # Playwright specs + a small strict helper module
+e2e/                       # Playwright specs + small strict helper modules
 ```
 
 More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

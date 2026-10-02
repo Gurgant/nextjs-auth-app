@@ -76,8 +76,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 
 ### How the E2E suite is written
 
-- Specs live in `e2e/tests/*.e2e.ts` on top of one small helper module,
-  `e2e/support/app.ts`. Every helper either reaches the state it promises or
+- Specs live in `e2e/tests/*.e2e.ts` on top of two small helper modules:
+  `e2e/support/app.ts` and, for specs that change a user in the database,
+  `e2e/support/db.ts`. Every helper either reaches the state it promises or
   fails; nothing swallows an error and no request is retried.
 - API requests go through `apiGet` / `apiPost`, which send
   `Connection: close`. Playwright's request client keeps connections alive and
@@ -95,8 +96,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   4 failures when the rule was written (0 with the wait first); on
   2026-10-02, 8 failures on the code before sessions could be revoked and 0
   on the code after. In 6 of those 20 passing repetitions the server log
-  shows a refused token of the ended session: the late cookie did come back
-  and did not sign the browser in.
+  shows a refused token of the ended session: a token of that session reached
+  the server after the sign-out (a late cookie, or a request sent before the
+  sign-out answered) and was refused.
 - `session-revocation.e2e.ts` tests that race without timing, in both orders:
   a session request that reaches the server after the sign-out, and a
   response that was issued before it and is put into the browser after it.

@@ -82,14 +82,15 @@ export interface IUserRepository extends IRepository<User> {
   createWithAccount(data: CreateUserWithAccountDTO): Promise<User>;
   updateLastLogin(userId: string): Promise<void>;
   /**
-   * Stores an already hashed password. With `revokeSessions` the same write
-   * increments the user's sessionVersion, which ends every session of the
-   * user (see src/lib/auth/session-revocation.ts).
+   * Stores an already hashed password. With `revokeSessions: true` the same
+   * write increments the user's sessionVersion, which ends every session of
+   * the user (see src/lib/auth/session-revocation.ts). The option is
+   * required: every caller that changes a password decides it explicitly.
    */
   updatePassword(
     userId: string,
     hashedPassword: string,
-    options?: { revokeSessions?: boolean },
+    options: { revokeSessions: boolean },
   ): Promise<void>;
   verifyEmail(userId: string): Promise<void>;
   enableTwoFactor(userId: string, secret: string): Promise<void>;

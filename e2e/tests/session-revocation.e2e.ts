@@ -89,7 +89,9 @@ test("a session response that was in flight during sign-out cannot sign the brow
   }
 });
 
-test("sign-out ends one session, not the user's other sessions", async ({
+// That the sign-out ends its own session on the server is the first test of
+// this file; here the browser's own cookie is gone either way.
+test("sign-out does not end the user's other sessions", async ({
   page,
   browser,
   baseURL,

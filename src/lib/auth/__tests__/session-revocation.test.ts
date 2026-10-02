@@ -26,7 +26,7 @@ import {
   revokeSession,
   verifySessionToken,
 } from "@/lib/auth/session-revocation";
-import { DEFAULT_SESSION_MAX_AGE_SECONDS } from "@/lib/session-config";
+import { MAX_SESSION_MAX_AGE_SECONDS } from "@/lib/session-config";
 
 const mockUserFind = prisma.user.findUnique as unknown as jest.Mock;
 const mockRevokedFind = prisma.revokedSession
@@ -184,12 +184,10 @@ describe("verifySessionToken", () => {
     await expect(verifySessionToken(token)).resolves.toBe(token);
   });
 
-  it("counts a token without sv as version 0", async () => {
-    const token = tokenWithout("sv");
-    await expect(verifySessionToken(token)).resolves.toBe(token);
-
-    mockUserFind.mockResolvedValue({ role: "USER", sessionVersion: 1 });
+  it("returns null without a database call for a token that has no sv", async () => {
     await expect(verifySessionToken(tokenWithout("sv"))).resolves.toBeNull();
+
+    expect(databaseCalls()).toBe(0);
   });
 });
 
@@ -220,7 +218,9 @@ describe("revokeSession", () => {
   const nowSeconds = now.getTime() / 1000;
   const graceMs = REVOCATION_GRACE_SECONDS * 1000;
 
-  it("stores the sid until now + maxAge + grace when the token expires earlier", async () => {
+  // The longest lifetime a token can have, whatever SESSION_MAX_AGE is now: a
+  // copy minted before the lifetime was lowered still carries the old exp.
+  it("stores the sid until now + the longest allowed lifetime + grace when the token expires earlier", async () => {
     await revokeSession(liveToken({ exp: nowSeconds + 60 }), now);
 
     expect(mockRevokedCreate).toHaveBeenCalledTimes(1);
@@ -229,7 +229,7 @@ describe("revokeSession", () => {
         {
           sid: "sid-1",
           expires: new Date(
-            now.getTime() + DEFAULT_SESSION_MAX_AGE_SECONDS * 1000 + graceMs,
+            now.getTime() + MAX_SESSION_MAX_AGE_SECONDS * 1000 + graceMs,
           ),
         },
       ],
@@ -238,7 +238,7 @@ describe("revokeSession", () => {
   });
 
   it("stores the sid until exp + grace when the token expires later", async () => {
-    const exp = nowSeconds + DEFAULT_SESSION_MAX_AGE_SECONDS + 3600;
+    const exp = nowSeconds + MAX_SESSION_MAX_AGE_SECONDS + 3600;
 
     await revokeSession(liveToken({ exp }), now);
 
@@ -248,13 +248,13 @@ describe("revokeSession", () => {
     });
   });
 
-  it("follows SESSION_MAX_AGE", async () => {
+  it("does not follow SESSION_MAX_AGE: a lowered lifetime must not shorten the row", async () => {
     process.env.SESSION_MAX_AGE = "600";
 
     await revokeSession(liveToken({ exp: nowSeconds + 60 }), now);
 
     expect(mockRevokedCreate.mock.calls[0][0].data[0].expires).toEqual(
-      new Date(now.getTime() + 600_000 + graceMs),
+      new Date(now.getTime() + MAX_SESSION_MAX_AGE_SECONDS * 1000 + graceMs),
     );
   });
 
