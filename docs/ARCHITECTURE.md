@@ -26,9 +26,29 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
 ## Authentication (`src/lib/auth-config.ts`)
 
 - **Auth.js v5 (NextAuth beta)** with the Prisma adapter and **JWT sessions**
-  (`strategy: "jwt"`, idle timeout `SESSION_MAX_AGE`, default 7 days). Role and
-  2FA flag are copied into the token at sign-in and not refreshed afterwards —
-  see "Known Limitations" in `SECURITY.md`.
+  (`strategy: "jwt"`, idle timeout `SESSION_MAX_AGE`, default 7 days). Name,
+  e-mail and 2FA flag are copied into the token at sign-in and not refreshed
+  afterwards; the role is re-read at every session check — see "Known
+  Limitations" in `SECURITY.md`.
+- **Session checks** (`src/lib/auth/session-revocation.ts`). The `jwt`
+  callback puts two more claims into the token at sign-in: `sid`, a random
+  session id, and `sv`, the user's `sessionVersion` at that moment (for an
+  e-mail + password sign-in, the one of the row the password was checked
+  against, so a sign-in with the old password that overlaps a password change
+  gets the version from before it and is refused at its first check). Neither
+  is copied into the session object. `src/lib/auth.ts`
+  passes Auth.js a `jwt.decode` that first decodes the cookie as usual and
+  then asks the database, with two primary-key lookups. The session is live
+  when its `sid` is not in `RevokedSession` (written by the `signOut` event)
+  and the user still exists with the same `sessionVersion` (incremented by a
+  password change); the role in the token is then replaced by the one in the
+  database. Otherwise the token decodes to `null`, which Auth.js treats as an
+  invalid token: no session. A failed lookup throws, with the same result
+  (fail closed). The check sits in `decode` and not in the `jwt` callback
+  because Auth.js also decodes the cookie without calling that callback (at
+  sign-out, and when a Google sign-in returns to a browser that already has a
+  session cookie; the Google case is read in the source of `@auth/core`
+  0.41.3, not measured).
 - **Credentials provider** — `authorize()` is the single choke point for
   e-mail + password sign-in:
   1. Zod-validates the input.
@@ -64,7 +84,10 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
   role-restricted API routes (`/api/admin/metrics`).
 - Pages enforce access themselves: `auth()` + `hasRole()` + `redirect()` in
   `dashboard/*` and `admin/page.tsx`, and the `AuthGuard` server component on
-  `/account`. The middleware does not check authentication.
+  `/account`. The middleware does not check authentication. With the session
+  check above it could not call `auth()` as it is: Next.js middleware runs in
+  the Edge runtime by default and the check uses Prisma (read in the Next.js
+  documentation, not measured).
 
 ## Server actions (`src/lib/actions/`)
 

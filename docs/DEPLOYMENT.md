@@ -54,8 +54,16 @@ The starter uses `prisma db push`. For a real deployment, generate a migration
 baseline first (`prisma migrate dev`) and use `prisma migrate deploy` in your
 release pipeline.
 
+Session checks need the table `RevokedSession` and the column
+`User.sessionVersion`. Both are additive: an existing database gets them with
+`pnpm prisma:push` (measured on the test database: applied without a
+data-loss prompt). Push the schema **before** starting the new code: without
+the table every session check fails, and a failed check means "not signed in".
+Sessions issued before the upgrade are refused, so every user signs in once.
+
 ## Before you go live
 
 Work through the **Production Hardening Checklist in `SECURITY.md`** and read
-its Known Limitations: session revocation, 2FA on Google sign-in, in-memory
-rate limits, the encryption scheme, and the demo content listed in the README.
+its Known Limitations: the limits of session revocation, 2FA on Google
+sign-in, in-memory rate limits, the encryption scheme, and the demo content
+listed in the README.

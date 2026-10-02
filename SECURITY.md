@@ -46,6 +46,27 @@ the default branch; run the latest `main`.
   token (JWE, `A256CBC-HS512`, key derived from `AUTH_SECRET` /
   `NEXTAUTH_SECRET`) in an HttpOnly cookie. Idle lifetime `SESSION_MAX_AGE`
   seconds, default **7 days** (sliding — see Known Limitations).
+- **Sessions end on the server.** Every time the token is decoded — by the
+  session endpoint, by `auth()` in pages, actions and API routes, and at
+  sign-out — it is checked against the database
+  (`src/lib/auth/session-revocation.ts`, wired as `jwt.decode` in
+  `src/lib/auth.ts`). Auth.js decodes it the same way when a Google sign-in
+  returns to a browser that already has a session cookie (read in the source
+  of `@auth/core` 0.41.3, not measured).
+  - **Signing out** ends that session: its id is stored in `RevokedSession`,
+    and a copy of the cookie, or a response that arrives late, no longer works.
+    Other sessions of the same user are not touched.
+  - **Changing the password** ends **every** session of the user, the one
+    that changed it included (`User.sessionVersion` is incremented in the same
+    `UPDATE` as the password); the account page then signs out and the
+    success message asks to sign in again.
+  - **Deleting the account** ends its sessions in every browser.
+  - The **role** is re-read from the database at each check, so a role
+    changed in the database applies at the next request.
+  - When a lookup fails, the check **fails closed**: no session.
+  - Sign-out, password change, account deletion and the role are covered by
+    E2E tests (`e2e/tests/session-revocation.e2e.ts`), failing closed by unit
+    tests. See Known Limitations for what all this does not cover.
 - **Password hashing** with **bcrypt**, cost **12** by default (`BCRYPT_ROUNDS`,
   4–15, applies to registration, password change and adding a password to a
   Google account; the seed, `pnpm create-user` and the E2E fixtures always
@@ -191,23 +212,66 @@ and the link / unlink events store the raw `X-Forwarded-For` header.
 
 Read these before deploying. They are real, not hypothetical.
 
-- **Sessions cannot be revoked one by one.** A session is a self-contained
-  encrypted token; the server stores no session record. Role, name and 2FA flag
-  are copied into the token **once, at sign-in**. Until the token expires:
-  a **role change** has no effect (a demoted `ADMIN` still passes admin checks);
-  **changing the password** or **enabling / disabling 2FA** does not end other
-  sessions; **deleting the account** signs out only the browser that did it;
-  **signing out** clears the cookie in that browser only. `SESSION_MAX_AGE` is a
-  **sliding idle timeout**: every `GET /api/auth/session` (the app's session
-  provider polls every 5 minutes and on window focus) re-issues the token, so an
-  open tab keeps its session alive. For the same reason a session request that
-  is still in flight when a sign-out completes gets its cookie re-issued and
-  can leave that browser signed in (measured in the E2E suite, where a test
-  that polled the session during its own sign-out undid it in 4 of 20 runs).
-  The only kill switch today is **rotating
-  the session secret**, which signs out everyone. Per-user revocation needs a
-  check in the `jwt` callback (re-read the user or a token version on each
-  session check) at the cost of one database lookup.
+- **Sessions are checked on the server, but there is no list of them.** A
+  session is still an encrypted token. The server stores only what ends one: a
+  row per signed-out session (`RevokedSession`) and a counter per user
+  (`User.sessionVersion`). What that leaves open:
+  - **No session list.** The server cannot show a user's sessions or devices
+    and cannot end one _other_ session: only the session whose cookie is
+    presented (sign-out) or all sessions of a user (password change, account
+    deletion). "Active Sessions" on the admin page stays 0. Signing in again
+    over an existing session issues a new session and does not end the
+    previous token (read in the source, not measured).
+  - **Enabling or disabling 2FA, adding a password to a Google account and
+    linking or unlinking Google do not end sessions.**
+  - **Only the role is re-read.** Name, e-mail, the e-mail verification date
+    and the 2FA flag in the session are the copy taken at sign-in.
+  - **Sign-out is final only if it reaches the server and the database.**
+    Clearing the cookies or closing the browser revokes nothing: a copy of
+    that cookie keeps working. The same holds when the database fails during
+    the sign-out. Measured on 2026-10-02 against `next dev`, with the
+    `RevokedSession` table renamed away so that every query on it fails: the
+    sign-out answered 200 and cleared the cookie in that browser, Auth.js
+    logged `SignOutError`, no row was written, and a copy of the token was
+    accepted again once the table was back.
+  - **A response already sent cannot be recalled.** `SESSION_MAX_AGE` is a
+    **sliding idle timeout**: every `GET /api/auth/session` (the app's session
+    provider polls every 5 minutes and on window focus) re-issues the token,
+    so an open tab keeps its session alive, and a session request that is
+    still in flight when a sign-out completes can put a cookie back into the
+    browser. It is the cookie of the ended session: the server refuses it and
+    the next request to the session endpoint removes it. Measured in the E2E
+    suite on 2026-10-02 with a test that polls the session endpoint right
+    after the sign-out click, 20 repetitions each: before the check existed
+    the browser stayed signed in in 8 of 20 (4 of 20 in an earlier
+    measurement); with the check in 0 of 20, and in 6 of those 20 the server
+    log shows a refused token of the ended session.
+  - **Every session check needs the database**: two primary-key lookups (the
+    user row and the revocation row; measured in the query log of `next dev`:
+    2 `SELECT`s for one `GET /api/auth/session`, 4 for `/en/account`, which
+    calls `auth()` twice). When a lookup fails the check fails closed.
+    Measured as above, with the table renamed away: `GET /api/auth/session`
+    answered `null` and **cleared the cookie**, so a browser whose tab polls
+    during a database failure has to sign in again; a page request
+    (`/en/account`, which uses `auth()`) was redirected as signed out and left
+    the cookie alone, and that browser was signed in again once the table was
+    back. Auth.js logged `JWTSessionError` each time. A database that cannot
+    be reached at all was not measured.
+  - **A refused token is logged as an error.** Each session check (the
+    session endpoint or `auth()`) that meets the token of an ended session
+    makes Auth.js log a `JWTSessionError` ("Invalid JWT") at error level, with
+    a stack trace; a sign-out with such a token logs no error (the app's own
+    line then reads `User signed out: { userId: undefined }`). The error is
+    logged in ordinary use too: after a password change, every other browser
+    of the user causes it at its next session check.
+  - **Tokens issued before this check existed are refused** (they carry no
+    session id): after upgrading, every user signs in once.
+  - **Whatever decodes the token without this check does not see any of it**:
+    another service that holds the secret, or `getToken()` from
+    `next-auth/jwt` with its default `decode`. The app uses neither (read in
+    the source, not measured).
+  - **Rotating the session secret** is still the only way to end every
+    session of every user at once.
 - **Google sign-in is not challenged for a TOTP code.** 2FA is enforced only for
   e-mail + password sign-in; a user who enabled 2FA and linked Google can sign
   in with Google alone.
@@ -218,7 +282,9 @@ Read these before deploying. They are real, not hypothetical.
 - **Sensitive actions do not require re-authentication**: disabling 2FA,
   adding a password to a Google account and deleting the account need only a
   session. Together with the previous points, a hijacked session can turn 2FA
-  off, set its own password or delete the account.
+  off, set its own password or delete the account. Changing the password
+  (which asks for the current one) ends a hijacked session along with every
+  other session of the user.
 - **TOTP codes are not marked as used**: a captured code can be replayed within
   its validity window (up to about 90 s). **Backup-code removal is not
   atomic**: two concurrent sign-ins can both accept the same code.
@@ -289,8 +355,10 @@ Read these before deploying. They are real, not hypothetical.
 - [ ] Use a database with **TLS** (`sslmode=require`) and a least-privilege user.
 - [ ] Back rate limiting with a **shared store** for multi-instance / serverless.
 - [ ] Put a proxy in front that **overwrites** `X-Forwarded-For`.
-- [ ] Decide on session lifetime (`SESSION_MAX_AGE`) and, if you need it,
-      add per-user revocation (see Known Limitations).
+- [ ] Decide on session lifetime (`SESSION_MAX_AGE`): a session that nothing
+      ends lives as long as it is used, and that long after its last use. If
+      you need a list of sessions or devices, add a session registry (see
+      Known Limitations).
 - [ ] Require re-authentication for disabling 2FA, adding a password and
       deleting the account, and 2FA for Google sign-ins, if your threat model
       needs them.
