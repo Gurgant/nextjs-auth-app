@@ -16,13 +16,6 @@ export async function getErrorTranslations(locale: string) {
 }
 
 /**
- * Get common translations (for generic messages)
- */
-export async function getCommonTranslations(locale: string) {
-  return getServerTranslations(locale, "Common");
-}
-
-/**
  * Get success message translations
  */
 export async function getSuccessTranslations(locale: string) {

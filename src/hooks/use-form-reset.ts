@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useMemo } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 /**
  * Configuration options for useFormReset hook
@@ -188,123 +188,6 @@ export function useFormReset<T extends HTMLFormElement = HTMLFormElement>(
   return {
     formRef,
     resetForm,
-    isFormValid,
-  };
-}
-
-/**
- * Multiple form reset hook for managing several forms
- * This implementation avoids calling hooks inside loops by creating refs directly
- *
- * @param formNames Array of form identifiers
- * @param options Configuration options
- * @returns Object with refs and functions for each form
- *
- * @example
- * ```tsx
- * const { formRefs, resetForm, resetAllForms, isFormValid } = useMultipleFormReset(
- *   ['loginForm', 'signupForm'],
- *   { debug: true }
- * )
- *
- * return (
- *   <>
- *     <form ref={formRefs.loginForm}>...login fields...</form>
- *     <form ref={formRefs.signupForm}>...signup fields...</form>
- *     <button onClick={() => resetForm('loginForm')}>Reset Login</button>
- *     <button onClick={resetAllForms}>Reset All</button>
- *   </>
- * )
- * ```
- */
-export function useMultipleFormReset<T extends Record<string, HTMLFormElement>>(
-  formNames: (keyof T)[],
-  options: UseFormResetOptions = {},
-): {
-  formRefs: { [K in keyof T]: React.RefObject<T[K] | null> };
-  resetForm: (formName: keyof T) => void;
-  resetAllForms: () => void;
-  isFormValid: (formName: keyof T) => boolean;
-} {
-  const { debug, formName: baseFormName = "multiForm", onReset } = options;
-
-  // Create refs for each form using useMemo to avoid recreating
-  const formRefs = useMemo(() => {
-    const refs = {} as { [K in keyof T]: React.RefObject<T[K] | null> };
-    formNames.forEach((name) => {
-      refs[name] = { current: null } as React.RefObject<T[typeof name] | null>;
-    });
-    return refs;
-  }, [formNames]);
-
-  // Log helper for debugging
-  const log = useCallback(
-    (message: string, ...args: unknown[]) => {
-      if (debug) {
-        console.log(
-          `[useMultipleFormReset:${baseFormName}] ${message}`,
-          ...args,
-        );
-      }
-    },
-    [debug, baseFormName],
-  );
-
-  // Reset function for a specific form
-  const resetForm = useCallback(
-    (formName: keyof T) => {
-      const formRef = formRefs[formName];
-      if (formRef?.current) {
-        try {
-          log(`Resetting form: ${String(formName)}`);
-          formRef.current.reset();
-
-          // Clear custom validity states
-          const inputs = formRef.current.querySelectorAll<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-          >("input, select, textarea");
-          inputs.forEach((input) => {
-            if (input.setCustomValidity) {
-              input.setCustomValidity("");
-            }
-          });
-
-          log(`Form reset successful: ${String(formName)}`);
-          onReset?.();
-        } catch (error) {
-          log(`Form reset failed for ${String(formName)}:`, error);
-        }
-      } else {
-        log(`Form ref not found: ${String(formName)}`);
-      }
-    },
-    [formRefs, log, onReset],
-  );
-
-  // Reset all forms
-  const resetAllForms = useCallback(() => {
-    log("Resetting all forms");
-    formNames.forEach((name) => {
-      resetForm(name);
-    });
-  }, [formNames, resetForm, log]);
-
-  // Check if a specific form is valid
-  const isFormValid = useCallback(
-    (formName: keyof T) => {
-      const formRef = formRefs[formName];
-      if (formRef?.current) {
-        return formRef.current.checkValidity();
-      }
-      return false;
-    },
-    [formRefs],
-  );
-
-  return {
-    formRefs,
-    resetForm,
-    resetAllForms,
     isFormValid,
   };
 }

@@ -1,5 +1,4 @@
 import { BaseError, ErrorContext } from "./base/base-error";
-import { ErrorCode } from "./base/error-codes";
 import * as AuthErrors from "./domain/auth-errors";
 import * as ValidationErrors from "./domain/validation-errors";
 import * as BusinessErrors from "./domain/business-errors";
@@ -123,32 +122,6 @@ export class ErrorFactory {
         actualValue,
         context,
       ),
-
-    duplicate: (field: string, value: unknown, context?: ErrorContext) =>
-      new ValidationErrors.DuplicateValueError(field, value, context),
-
-    schema: (schema: z.ZodSchema, data: unknown, context?: ErrorContext) =>
-      new ValidationErrors.SchemaValidationError(schema, data, context),
-
-    field: (
-      field: string,
-      rule: string,
-      message: string,
-      value?: unknown,
-      context?: ErrorContext,
-    ) =>
-      new ValidationErrors.FieldValidationError(
-        field,
-        rule,
-        message,
-        value,
-        context,
-      ),
-
-    composite: (
-      fieldErrors: ValidationErrors.FieldValidationError[],
-      context?: ErrorContext,
-    ) => new ValidationErrors.CompositeValidationError(fieldErrors, context),
   };
 
   /**
@@ -343,38 +316,6 @@ export class ErrorFactory {
       context?: ErrorContext,
     ) => new SystemErrors.RateLimitError(limit, window, resetAt, context),
 
-    externalService: (
-      service: string,
-      operation: string,
-      statusCode?: number,
-      responseBody?: unknown,
-      cause?: Error,
-      context?: ErrorContext,
-    ) =>
-      new SystemErrors.ExternalServiceError(
-        service,
-        operation,
-        statusCode,
-        responseBody,
-        cause,
-        context,
-      ),
-
-    api: (
-      endpoint: string,
-      method: string,
-      statusCode: number,
-      responseBody?: unknown,
-      context?: ErrorContext,
-    ) =>
-      new SystemErrors.ApiError(
-        endpoint,
-        method,
-        statusCode,
-        responseBody,
-        context,
-      ),
-
     webhookFailed: (
       url: string,
       event: string,
@@ -436,24 +377,6 @@ export class ErrorFactory {
   };
 
   /**
-   * Create error from error code
-   */
-  static fromCode(
-    code: ErrorCode,
-    message: string,
-    details?: ErrorDetails,
-    context?: ErrorContext,
-  ): BaseError {
-    // This is a fallback method - prefer using specific factory methods
-    class GenericError extends BaseError {
-      constructor() {
-        super(code, message, details, context);
-      }
-    }
-    return new GenericError();
-  }
-
-  /**
    * Wrap unknown error
    */
   static wrap(error: unknown, context?: ErrorContext): BaseError {
@@ -470,22 +393,5 @@ export class ErrorFactory {
       undefined,
       { ...context, originalError: error },
     );
-  }
-
-  /**
-   * Check if error is of specific type
-   */
-  static is<T extends BaseError>(
-    error: unknown,
-    ErrorClass: new (...args: never[]) => T,
-  ): error is T {
-    return error instanceof ErrorClass;
-  }
-
-  /**
-   * Check if error has specific code
-   */
-  static hasCode(error: unknown, code: ErrorCode): boolean {
-    return error instanceof BaseError && error.code === code;
   }
 }

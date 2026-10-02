@@ -95,7 +95,7 @@ re-check, 429 throttling and security events.
 | Repositories | `repositories/`               | User repository behind an interface (credentials check, lockout); much other code calls Prisma directly                                             |
 | Commands     | `commands/`                   | Write operations as command objects + a command bus                                                                                                 |
 | Events       | `events/`                     | Domain events; audit and notification handlers are in-memory                                                                                        |
-| Errors       | `errors/`                     | Typed error taxonomy used by actions / handlers                                                                                                     |
+| Errors       | `errors/`                     | Typed error taxonomy, used by the two commands (register user, change password)                                                                     |
 | Validation   | `validation/`                 | Shared Zod schemas                                                                                                                                  |
 | Monitoring   | `monitoring/`, `performance/` | Logger; an in-process performance monitor read by `/api/admin/metrics` (nothing records into it yet); web-vitals helpers and the bounded demo store |
 

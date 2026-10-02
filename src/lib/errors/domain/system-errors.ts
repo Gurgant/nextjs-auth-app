@@ -136,54 +136,6 @@ export class RateLimitError extends BaseError {
 }
 
 /**
- * External service error
- */
-export class ExternalServiceError extends BaseError {
-  constructor(
-    service: string,
-    operation: string,
-    statusCode?: number,
-    responseBody?: unknown,
-    cause?: Error,
-    context?: ErrorContext,
-  ) {
-    super(
-      ErrorCode.EXTERNAL_SERVICE_ERROR,
-      `External service '${service}' failed during ${operation}`,
-      {
-        service,
-        operation,
-        statusCode,
-        responseBody,
-        originalError: cause?.message,
-      },
-      context,
-      cause,
-    );
-  }
-}
-
-/**
- * API error
- */
-export class ApiError extends BaseError {
-  constructor(
-    endpoint: string,
-    method: string,
-    statusCode: number,
-    responseBody?: unknown,
-    context?: ErrorContext,
-  ) {
-    super(
-      ErrorCode.API_ERROR,
-      `API request to ${method} ${endpoint} failed with status ${statusCode}`,
-      { endpoint, method, statusCode, responseBody },
-      context,
-    );
-  }
-}
-
-/**
  * Webhook failed error
  */
 export class WebhookFailedError extends BaseError {

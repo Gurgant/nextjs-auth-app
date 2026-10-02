@@ -42,6 +42,12 @@ breaks for you, that itself is a bug worth reporting.
   cannot detect every server module — keep those imports out yourself.
 - Tests must be able to fail: no `expect(true)`, no swallowed errors, no
   assertions hidden behind `if (count > 0)` (see `docs/TESTING.md`).
+- No dead code: `pnpm test:unit` fails when a module under `src/` is reached
+  by no entry point and no test, when a module outside `src/test` is reached
+  only by tests, or when a name exported outside `src/app` and `src/test` is
+  mentioned nowhere but in its definition. Delete it, or add it to the
+  allow-list in `src/test/unit/__tests__/dead-code.test.ts` with the reason.
+  The header of that file lists what the check does not see.
 - If you touch UI strings, update **all five** locale files in `messages/`
   (`pnpm validate-translations` enforces key parity).
 - Security-sensitive changes (auth flows, headers, crypto, rate limiting)

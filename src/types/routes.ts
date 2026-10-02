@@ -265,16 +265,3 @@ export class SafeNavigation {
     }
   }
 }
-
-/**
- * Route constants for common redirects
- */
-export const ROUTE_CONSTANTS = {
-  HOME: "/" as const,
-  SIGNIN: "/auth/signin" as const,
-  SIGNUP: "/auth/signup" as const,
-  DASHBOARD: "/dashboard" as const,
-  ADMIN: "/admin" as const,
-  PROFILE: "/account/profile" as const,
-  SETTINGS: "/account/security" as const,
-} satisfies Record<string, StaticRoute>;

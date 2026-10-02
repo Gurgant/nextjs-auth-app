@@ -159,10 +159,6 @@ require("@/lib/two-factor").encryptBackupCodes = jest
 require("@/lib/two-factor").generateNewBackupCodes = jest
   .fn()
   .mockReturnValue(["new1", "new2"]);
-require("@/lib/two-factor").isValidTOTPFormat = jest.fn().mockReturnValue(true);
-require("@/lib/two-factor").isValidBackupCodeFormat = jest
-  .fn()
-  .mockReturnValue(true);
 
 describe("Advanced Authentication Actions", () => {
   beforeEach(() => {
