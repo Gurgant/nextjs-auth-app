@@ -52,6 +52,13 @@ jest.mock("@/lib/repositories", () => ({
 jest.mock("@/lib/auth/remember-login-method", () => ({
   rememberLoginMethod: jest.fn(),
 }));
+// The session claims the jwt callback also sets are covered by
+// auth-config.session.test.ts; here they need no database.
+jest.mock("@/lib/auth/session-revocation", () => ({
+  newSessionId: () => "sid",
+  readSessionVersion: async () => 0,
+  revokeSession: async () => {},
+}));
 
 import { authOptions } from "@/lib/auth-config";
 

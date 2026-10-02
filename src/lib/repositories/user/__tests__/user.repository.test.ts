@@ -58,8 +58,27 @@ describe("UserRepository password writes", () => {
   it("updatePassword() stores the given hash as it is", async () => {
     const hash = await bcrypt.hash("Plain123!", 4);
 
-    await repo.updatePassword("u1", hash);
+    await repo.updatePassword("u1", hash, { revokeSessions: false });
 
     expect(mockUpdate.mock.calls[0][0].data.password).toBe(hash);
+  });
+
+  it("updatePassword() leaves the session version alone when told so", async () => {
+    await repo.updatePassword("u1", "hash", { revokeSessions: false });
+
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { password: "hash" },
+    });
+  });
+
+  it("updatePassword() with revokeSessions bumps the session version in the same update", async () => {
+    await repo.updatePassword("u1", "hash", { revokeSessions: true });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { password: "hash", sessionVersion: { increment: 1 } },
+    });
   });
 });

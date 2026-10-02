@@ -76,8 +76,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 
 ### How the E2E suite is written
 
-- Specs live in `e2e/tests/*.e2e.ts` on top of one small helper module,
-  `e2e/support/app.ts`. Every helper either reaches the state it promises or
+- Specs live in `e2e/tests/*.e2e.ts` on top of two small helper modules:
+  `e2e/support/app.ts` and, for specs that change a user in the database,
+  `e2e/support/db.ts`. Every helper either reaches the state it promises or
   fails; nothing swallows an error and no request is retried.
 - API requests go through `apiGet` / `apiPost`, which send
   `Connection: close`. Playwright's request client keeps connections alive and
@@ -86,12 +87,28 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   an idle gap of 5.985–6.045 s: 14 of 260 requests failed by default, 0 of 260
   with `Connection: close`. Without connection reuse there is nothing to
   retry; an earlier helper that silently repeated such a request is gone.
-- A test never asks `/api/auth/session` while a sign-out it triggered in the
-  browser is still in flight: every session request that carries a valid
-  cookie gets it re-issued, so its late response can put the cookie back.
-  The sign-out test first waits for the signed-out page, then asks the
-  server. Measured over 20 repetitions: 4 failures with the session poll
-  right after the click, 0 with the wait first.
+- The sign-out tests first wait for the signed-out page, then ask the
+  server. That order used to be a rule: every session request that carries a
+  valid cookie gets it re-issued, so a response still in flight when the
+  sign-out completes can put a cookie back, and that cookie used to be valid.
+  Now it is the cookie of an ended session and the server refuses it.
+  Measured over 20 repetitions with the session poll right after the click:
+  4 failures when the rule was written (0 with the wait first); on
+  2026-10-02, 8 failures on the code before sessions could be revoked and 0
+  on the code after. In 6 of those 20 passing repetitions the server log
+  shows a refused token of the ended session: a token of that session reached
+  the server after the sign-out (a late cookie, or a request sent before the
+  sign-out answered) and was refused.
+- `session-revocation.e2e.ts` tests that race without timing, in both orders:
+  a session request that reaches the server after the sign-out, and a
+  response that was issued before it and is put into the browser after it.
+  The helper for both is `cookieJarCopy`: a request client with its own
+  cookie jar, filled with the cookies the browser holds at that moment, so
+  what the browser does afterwards does not reach it. `signOutViaApi` signs
+  out through the endpoint the button calls. Tests that change or delete a
+  user create their own with `createTestUser` (`e2e/support/db.ts`, straight
+  into the test database), so the seeded users stay as the other specs
+  expect them.
 - What remains are bounded waits for a state, not second attempts at an
   assertion: `expect.poll` on the session endpoint and on a request counter,
   and one `toPass` loop that re-ticks the terms checkbox until the form is
@@ -108,11 +125,12 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   `/api/auth/providers`) and never clicks the Google button.
 - 2FA tests generate real TOTP codes with `otplib`; nothing is mocked at the
   browser boundary.
-- Rate-limit budget: one full run performs 5 registrations and 4 failed
-  sign-ins, inside the limits (registration: 5 per hour per IP; the 6th would
-  be refused). The counters live in the dev server's memory: with a reused
-  server (`E2E_REUSE_SERVER=1`) they can carry over between runs — restart it
-  if sign-up tests start failing with "Too many sign-up attempts".
+- Rate-limit budget: one full run performs 5 registrations, 4 failed
+  sign-ins and 1 password change, inside the limits (registration: 5 per hour
+  per IP; the 6th would be refused). The counters live in the dev server's
+  memory: with a reused server (`E2E_REUSE_SERVER=1`) they can carry over
+  between runs — restart it if sign-up tests start failing with "Too many
+  sign-up attempts".
 
 A mutation check was run on the rewritten suite: disabling 2FA enforcement in
 `authorize()`, hiding the invalid-credentials alert, or removing the role

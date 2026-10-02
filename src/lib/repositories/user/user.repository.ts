@@ -181,10 +181,18 @@ export class UserRepository
     });
   }
 
-  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+  async updatePassword(
+    userId: string,
+    hashedPassword: string,
+    options: { revokeSessions: boolean },
+  ): Promise<void> {
+    // One UPDATE: "password changed" and "sessions ended" cannot diverge.
     await this.model.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        ...(options.revokeSessions ? { sessionVersion: { increment: 1 } } : {}),
+      },
     });
   }
 

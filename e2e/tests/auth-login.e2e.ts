@@ -362,9 +362,10 @@ test("the Sign out button on the authenticated home ends the session and brings 
     .getByRole("button", { name: en.Auth.signOut, exact: true })
     .click();
 
-  // Let the browser finish its own sign-out before asking the server. Every
-  // GET /api/auth/session that carries a valid cookie re-issues it, so a
-  // request sent while the sign-out is in flight can put the cookie back.
+  // What the user sees first, then the server. The order no longer decides
+  // the result: a session request in flight during the sign-out can still put
+  // a cookie back, but it is the cookie of an ended session and is refused
+  // (session-revocation.e2e.ts).
   await waitForSignedOutHome(page);
   await expect(home).toHaveCount(0);
   await expect(page).toHaveURL(/\/en$/);

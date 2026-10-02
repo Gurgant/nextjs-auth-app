@@ -97,6 +97,7 @@ async function cleanDatabase(prisma: PrismaClient) {
     prisma.securityEvent.deleteMany(),
     prisma.account.deleteMany(),
     prisma.session.deleteMany(),
+    prisma.revokedSession.deleteMany(),
     prisma.verificationToken.deleteMany(),
     prisma.user.deleteMany(),
   ]);

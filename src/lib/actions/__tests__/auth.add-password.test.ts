@@ -109,6 +109,18 @@ describe("addPasswordToGoogleUser (PW-8)", () => {
     expect(bcrypt.getRounds(hash)).toBe(5);
   });
 
+  it("does not end the user's sessions", async () => {
+    const formData = new FormData();
+    formData.set("password", PASSWORD);
+    formData.set("confirmPassword", PASSWORD);
+
+    await addPasswordToGoogleUser(formData);
+
+    expect(mockRepo.updatePassword.mock.calls[0][2]).toEqual({
+      revokeSessions: false,
+    });
+  });
+
   it("writes the metadata without a password, so nothing is hashed twice", async () => {
     const formData = new FormData();
     formData.set("password", PASSWORD);

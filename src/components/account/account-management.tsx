@@ -128,9 +128,12 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     locale,
     {
       onSuccess: () => {
-        setTimeout(() => {
+        // The change ended every session of the user, this one included: the
+        // cookie is already dead, signOut() clears it and leaves the page.
+        setTimeout(async () => {
           resetChangePasswordForm();
-        }, 1500);
+          await signOut({ callbackUrl: `/${locale}` });
+        }, 2000);
       },
     },
   );

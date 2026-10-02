@@ -117,8 +117,11 @@ export class ChangePasswordCommand extends BaseCommand<
         getBcryptRounds(),
       );
 
-      // Update password
-      await userRepo.updatePassword(user.id, newPasswordHash);
+      // Update password. The same write ends every session of the user, the
+      // one that asked for the change included.
+      await userRepo.updatePassword(user.id, newPasswordHash, {
+        revokeSessions: true,
+      });
 
       // Update password metadata
       await userRepo.update(user.id, {
@@ -132,7 +135,7 @@ export class ChangePasswordCommand extends BaseCommand<
           {
             userId: user.id,
             changedAt: new Date(),
-            requiresLogout: false,
+            requiresLogout: true,
           },
           {
             userId: user.id,
@@ -142,10 +145,13 @@ export class ChangePasswordCommand extends BaseCommand<
         ),
       );
 
-      const response = createSuccessResponse("Password changed successfully!", {
-        userId: user.id,
-        passwordChanged: true,
-      });
+      const response = createSuccessResponse(
+        "Password changed successfully! Please sign in again.",
+        {
+          userId: user.id,
+          passwordChanged: true,
+        },
+      );
 
       this.logSuccess();
       return response;

@@ -43,6 +43,14 @@ model Session {
   @@index([userId])
 }
 
+model RevokedSession {
+  sid       String   @id
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expires])
+}
+
 model User {
   id                        String                   @id @default(cuid())
   name                      String?
@@ -63,6 +71,7 @@ model User {
   passwordSetAt             DateTime?
   lastLoginMethod           String?
   requiresPasswordChange    Boolean                  @default(false)
+  sessionVersion            Int                      @default(0)
   backupCodes               String[]
   emailVerificationRequired Boolean                  @default(true)
   twoFactorEnabled          Boolean                  @default(false)

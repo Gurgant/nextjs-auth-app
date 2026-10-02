@@ -30,9 +30,12 @@ Playwright tests.
   - The sign-in method used last is remembered: a "Last used" badge on the
     account page and, when Google is configured, on the sign-in page (from a
     cookie that holds only the method name)
+  - Sessions end on the server: signing out ends that session, changing the
+    password ends every session of the user (the one that changed it too),
+    deleting the account ends its sessions in every browser
 - **Authorization**
   - Roles `USER` / `PRO_USER` / `ADMIN` as a Prisma enum, carried in the
-    session token
+    session token and re-read from the database at every session check
   - Protected pages check the session and role on the server and redirect;
     `withRole()` guards role-restricted API routes (`/api/admin/metrics`)
 - **Security hardening**
@@ -73,12 +76,13 @@ Playwright tests.
   form (codes are generated, stored and verified on the server, but the form
   only accepts a 6-digit TOTP code).
 - **Translations** cover the page text of sign-in, registration and account.
-  Many server messages (sign-up results, rate-limit and 2FA / linking
-  errors), the dashboards, the admin page and the 2FA sign-in prompt are
+  Many server messages (sign-up and password-change results, rate-limit and
+  2FA / linking errors), the dashboards, the admin page and the 2FA sign-in prompt are
   English only.
 - **Security limitations** — Google sign-in is not asked for a TOTP code,
-  sessions cannot be revoked one by one, rate limits live in memory, and more:
-  read [SECURITY.md](SECURITY.md) before deploying.
+  there is no list of a user's sessions (one cannot be ended from another
+  device), every session check needs the database, rate limits live in
+  memory, and more: read [SECURITY.md](SECURITY.md) before deploying.
 
 ## Stack
 
@@ -190,7 +194,7 @@ src/
 └── i18n.ts                # next-intl request config
 messages/                  # en, es, fr, it, de
 prisma/                    # schema + demo seed
-e2e/                       # Playwright specs + a small strict helper module
+e2e/                       # Playwright specs + small strict helper modules
 ```
 
 More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
