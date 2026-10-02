@@ -18,8 +18,6 @@ export function getCommandBus(): CommandBus {
 
 function createCommandBus(): CommandBus {
   const bus = new CommandBus({
-    enableHistory: true,
-    maxHistorySize: 100,
     enableLogging: process.env.NODE_ENV === "development",
   });
 

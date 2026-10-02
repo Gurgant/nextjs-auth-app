@@ -1,45 +1,31 @@
-import {
-  ICommand,
-  CommandMetadata,
-  ExecutedCommand,
-} from "./command.interface";
-import { CommandHistory } from "../history/command-history";
+import { ICommand, CommandMetadata } from "./command.interface";
+import { sanitizeCommandInput, sanitizeCommandOutput } from "./sanitize";
 import { ICommandMiddleware } from "../middleware/middleware.interface";
 import { randomUUID } from "crypto";
 import { eventBus } from "@/lib/events";
 import {
   CommandExecutedEvent,
   CommandFailedEvent,
-  CommandUndoneEvent,
 } from "@/lib/events/domain/system.events";
 
 export interface CommandBusOptions {
-  enableHistory?: boolean;
-  maxHistorySize?: number;
   enableLogging?: boolean;
 }
 
-interface SanitizableOutput {
-  token?: unknown;
-  data?: { token?: unknown } | null;
-  [key: string]: unknown;
-}
+type CommandConstructor = new () => ICommand<unknown, unknown>;
 
 export class CommandBus {
-  private handlers = new Map<string, ICommand<unknown, unknown>>();
+  // Keyed by the class itself: a class identifier is renamed by the production
+  // minifier, and two classes can end up with the same one.
+  private handlers = new Map<CommandConstructor, ICommand<unknown, unknown>>();
   private middleware: ICommandMiddleware[] = [];
-  private history: CommandHistory;
   private options: CommandBusOptions;
 
   constructor(options: CommandBusOptions = {}) {
     this.options = {
-      enableHistory: true,
-      maxHistorySize: 100,
       enableLogging: true,
       ...options,
     };
-
-    this.history = new CommandHistory(this.options.maxHistorySize || 100);
   }
 
   /**
@@ -49,19 +35,17 @@ export class CommandBus {
     CommandClass: new () => TCommand,
   ): void {
     const instance = new CommandClass();
-    this.handlers.set(CommandClass.name, instance);
+    this.handlers.set(CommandClass, instance);
 
     if (this.options.enableLogging) {
-      console.log(`[CommandBus] Registered command: ${CommandClass.name}`);
+      console.log(`[CommandBus] Registered command: ${instance.name}`);
     }
   }
 
   /**
    * Register multiple command handlers
    */
-  registerMany(
-    commandClasses: Array<new () => ICommand<unknown, unknown>>,
-  ): void {
+  registerMany(commandClasses: CommandConstructor[]): void {
     commandClasses.forEach((CommandClass) => this.register(CommandClass));
   }
 
@@ -81,14 +65,18 @@ export class CommandBus {
     input: TInput,
     metadata?: Partial<CommandMetadata>,
   ): Promise<TOutput> {
-    const commandName = CommandClass.name;
-    const handler = this.handlers.get(commandName) as
+    const handler = this.handlers.get(CommandClass) as
       | ICommand<TInput, TOutput>
       | undefined;
 
     if (!handler) {
-      throw new Error(`No handler registered for command: ${commandName}`);
+      throw new Error(
+        `No handler registered for command: ${CommandClass.name}`,
+      );
     }
+
+    // The command's own `name`, not the class identifier (see `handlers`).
+    const commandName = handler.name;
 
     // Build metadata
     const fullMetadata: CommandMetadata = {
@@ -127,19 +115,6 @@ export class CommandBus {
       const output = await handler.execute(input, fullMetadata);
       const duration = Date.now() - startTime;
 
-      // Store in history if enabled and command is undoable
-      if (this.options.enableHistory && handler.canUndo) {
-        const executedCommand: ExecutedCommand = {
-          command: handler,
-          input,
-          output,
-          metadata: fullMetadata,
-          timestamp: new Date(),
-          undoable: handler.canUndo,
-        };
-        this.history.add(executedCommand);
-      }
-
       // Execute after middleware
       for (const mw of this.middleware) {
         if (mw.after) {
@@ -153,8 +128,8 @@ export class CommandBus {
           {
             commandName,
             commandId: fullMetadata.commandId,
-            input: this.sanitizeInput(input),
-            output: this.sanitizeOutput(output),
+            input: sanitizeCommandInput(input),
+            output: sanitizeCommandOutput(output),
             success: true,
             duration,
             executedAt: new Date(),
@@ -184,7 +159,7 @@ export class CommandBus {
             commandId: fullMetadata.commandId,
             error: (error as Error).message,
             errorStack: (error as Error).stack,
-            input: this.sanitizeInput(input),
+            input: sanitizeCommandInput(input),
             failedAt: new Date(),
           },
           fullMetadata,
@@ -200,141 +175,16 @@ export class CommandBus {
   }
 
   /**
-   * Undo the last undoable command
-   */
-  async undo(): Promise<void> {
-    if (!this.options.enableHistory) {
-      throw new Error("Command history is disabled");
-    }
-
-    const lastCommand = this.history.getLastUndoable();
-    if (!lastCommand) {
-      throw new Error("No undoable commands in history");
-    }
-
-    if (lastCommand.command.undo) {
-      await lastCommand.command.undo();
-    } else {
-      throw new Error(
-        `Command ${lastCommand.command.name} does not implement undo`,
-      );
-    }
-    this.history.moveToRedoStack(lastCommand);
-
-    // Emit command undone event
-    await eventBus.publish(
-      new CommandUndoneEvent(
-        {
-          commandName: lastCommand.command.name,
-          commandId: lastCommand.metadata.commandId,
-          undoneAt: new Date(),
-        },
-        lastCommand.metadata,
-      ),
-    );
-
-    if (this.options.enableLogging) {
-      console.log(`[CommandBus] Undid command: ${lastCommand.command.name}`);
-    }
-  }
-
-  /**
-   * Redo the last undone command
-   */
-  async redo(): Promise<void> {
-    if (!this.options.enableHistory) {
-      throw new Error("Command history is disabled");
-    }
-
-    const commandToRedo = this.history.getLastRedoable();
-    if (!commandToRedo) {
-      throw new Error("No commands to redo");
-    }
-
-    if (commandToRedo.command.redo) {
-      await commandToRedo.command.redo();
-    } else {
-      throw new Error(
-        `Command ${commandToRedo.command.name} does not implement redo`,
-      );
-    }
-    this.history.moveToUndoStack(commandToRedo);
-
-    if (this.options.enableLogging) {
-      console.log(`[CommandBus] Redid command: ${commandToRedo.command.name}`);
-    }
-  }
-
-  /**
-   * Get command history
-   */
-  getHistory(): ExecutedCommand[] {
-    return this.history.getAll();
-  }
-
-  /**
-   * Clear command history
-   */
-  clearHistory(): void {
-    this.history.clear();
-  }
-
-  /**
    * Check if a command is registered
    */
-  hasCommand(CommandClass: new () => ICommand<unknown, unknown>): boolean {
-    return this.handlers.has(CommandClass.name);
+  hasCommand(CommandClass: CommandConstructor): boolean {
+    return this.handlers.has(CommandClass);
   }
 
   /**
    * Get registered command names
    */
   getRegisteredCommands(): string[] {
-    return Array.from(this.handlers.keys());
-  }
-
-  /**
-   * Sanitize sensitive input data for events
-   */
-  private sanitizeInput(input: unknown): unknown {
-    if (!input) return input;
-
-    const sanitized: Record<string, unknown> = {
-      ...(input as Record<string, unknown>),
-    };
-    const sensitiveFields = [
-      "password",
-      "confirmPassword",
-      "currentPassword",
-      "newPassword",
-      "token",
-      "secret",
-    ];
-
-    sensitiveFields.forEach((field) => {
-      if (sanitized[field]) {
-        sanitized[field] = "[REDACTED]";
-      }
-    });
-
-    return sanitized;
-  }
-
-  /**
-   * Sanitize sensitive output data for events
-   */
-  private sanitizeOutput(output: unknown): unknown {
-    if (!output) return output;
-
-    const sanitized = { ...(output as SanitizableOutput) };
-
-    if (sanitized.token) {
-      sanitized.token = "[REDACTED]";
-    }
-    if (sanitized.data?.token) {
-      sanitized.data.token = "[REDACTED]";
-    }
-
-    return sanitized;
+    return Array.from(this.handlers.values(), (handler) => handler.name);
   }
 }

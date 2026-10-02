@@ -1,6 +1,19 @@
 import { ICommandMiddleware } from "./middleware.interface";
 import { CommandMetadata } from "../base/command.interface";
 
+/**
+ * Length of the JSON form of a command input, for the log line only.
+ * 0 = the input has no JSON form (undefined, a function, a symbol);
+ * undefined = it could not be measured (BigInt, circular reference).
+ */
+function serializedSize(input: unknown): number | undefined {
+  try {
+    return JSON.stringify(input)?.length ?? 0;
+  } catch {
+    return undefined;
+  }
+}
+
 export class LoggingMiddleware implements ICommandMiddleware {
   name = "LoggingMiddleware";
 
@@ -13,7 +26,7 @@ export class LoggingMiddleware implements ICommandMiddleware {
       commandId: metadata.commandId,
       userId: metadata.userId,
       timestamp: metadata.timestamp,
-      inputSize: JSON.stringify(input).length,
+      inputSize: serializedSize(input),
     });
   }
 

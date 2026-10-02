@@ -1,7 +1,7 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
-import { BaseCommand } from "../base/command.base";
+import { BaseCommand, COMMAND_FAILED_MESSAGE } from "../base/command.base";
 import { CommandMetadata } from "../base/command.interface";
 import { repositories } from "@/lib/repositories";
 import { eventBus } from "@/lib/events";
@@ -46,42 +46,13 @@ export class ChangePasswordCommand extends BaseCommand<
   readonly name = "ChangePasswordCommand";
   readonly description = "Change user password";
 
-  private previousPasswordHash?: string;
-  private userId?: string;
-
-  get canUndo(): boolean {
-    return true; // Password change can be undone (restore old password)
-  }
-
-  async validate(input: ChangePasswordInput): Promise<boolean> {
-    try {
-      changePasswordSchema.parse(input);
-
-      const userRepo = repositories.getUserRepository();
-      const user = await userRepo.findById(input.userId);
-
-      if (!user) {
-        console.log(`[${this.name}] User not found: ${input.userId}`);
-        return false;
-      }
-
-      if (!user.password) {
-        console.log(`[${this.name}] User has no password set: ${input.userId}`);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error(`[${this.name}] Validation failed:`, error);
-      return false;
-    }
-  }
+  // Validation is handled in execute() method for better error messaging
 
   async execute(
     input: ChangePasswordInput,
     metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
-    this.logExecution(input, metadata);
+    this.logExecution(metadata);
 
     try {
       // Validate input
@@ -140,10 +111,6 @@ export class ChangePasswordCommand extends BaseCommand<
         return createErrorResponse(error.getUserMessage());
       }
 
-      // Store old password hash for undo
-      this.previousPasswordHash = user.password;
-      this.userId = user.id;
-
       // Hash new password
       const newPasswordHash = await bcrypt.hash(
         input.newPassword,
@@ -180,7 +147,7 @@ export class ChangePasswordCommand extends BaseCommand<
         passwordChanged: true,
       });
 
-      this.logSuccess(response);
+      this.logSuccess();
       return response;
     } catch (error) {
       const baseError = ErrorFactory.wrap(error, {
@@ -189,40 +156,7 @@ export class ChangePasswordCommand extends BaseCommand<
       });
       baseError.log();
       this.logError(baseError);
-      return createErrorResponse(baseError.getUserMessage());
+      return createErrorResponse(COMMAND_FAILED_MESSAGE);
     }
-  }
-
-  async undo(): Promise<void> {
-    if (!this.userId || !this.previousPasswordHash) {
-      throw new Error("No password change to undo");
-    }
-
-    console.log(
-      `[${this.name}] Restoring previous password for user: ${this.userId}`,
-    );
-
-    const userRepo = repositories.getUserRepository();
-
-    // Restore the old password (already hashed)
-    await userRepo.update(this.userId, {
-      password: this.previousPasswordHash,
-      lastPasswordChange: new Date(),
-    });
-
-    console.log(`[${this.name}] Successfully restored previous password`);
-  }
-
-  async redo(): Promise<void> {
-    if (!this.input) {
-      throw new Error("No input available for redo");
-    }
-
-    console.log(
-      `[${this.name}] Redoing password change for user: ${this.input.userId}`,
-    );
-
-    // Re-execute the command
-    await this.execute(this.input, this.metadata);
   }
 }

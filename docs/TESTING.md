@@ -38,8 +38,8 @@ Coverage (measured): **8 % of statements** of the files matched by
 `collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
 and route handlers), `src/middleware.ts` and `index.ts` barrels. The tests
 concentrate on the authentication and security modules; large parts of the UI
-and of the command / event / error infrastructure have no unit tests. There is
-no coverage threshold.
+and of the event / error infrastructure have no unit tests. There is no
+coverage threshold.
 
 ## End-to-end (Playwright)
 

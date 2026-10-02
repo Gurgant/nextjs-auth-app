@@ -8,32 +8,14 @@ export interface CommandMetadata {
 }
 
 export interface ICommand<TInput = unknown, TOutput = unknown> {
+  /**
+   * Stable, readable name of the command. The bus uses it for middleware,
+   * audit entries, events and logs: unlike the class identifier, it survives
+   * minification.
+   */
   readonly name: string;
   readonly description: string;
-  readonly canUndo: boolean;
 
   execute(input: TInput, metadata?: CommandMetadata): Promise<TOutput>;
   validate?(input: TInput): Promise<boolean>;
-  undo?(): Promise<void>;
-  redo?(): Promise<void>;
-}
-
-export interface ICommandHandler<TInput = unknown, TOutput = unknown> {
-  handle(input: TInput, metadata?: CommandMetadata): Promise<TOutput>;
-}
-
-export interface CommandResult<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  metadata?: CommandMetadata;
-}
-
-export interface ExecutedCommand {
-  command: ICommand<unknown, unknown>;
-  input: unknown;
-  output: unknown;
-  metadata: CommandMetadata;
-  timestamp: Date;
-  undoable: boolean;
 }
