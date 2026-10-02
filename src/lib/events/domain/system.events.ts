@@ -21,12 +21,6 @@ export interface CommandFailedPayload {
   failedAt: Date;
 }
 
-export interface CommandUndonePayload {
-  commandName: string;
-  commandId: string;
-  undoneAt: Date;
-}
-
 export interface DatabaseErrorPayload {
   operation: string;
   table?: string;
@@ -92,17 +86,6 @@ export class CommandFailedEvent extends BaseEvent<CommandFailedPayload> {
 
   constructor(
     payload: CommandFailedPayload,
-    metadata?: Partial<EventMetadata>,
-  ) {
-    super(payload, metadata);
-  }
-}
-
-export class CommandUndoneEvent extends BaseEvent<CommandUndonePayload> {
-  readonly type = "system.command_undone";
-
-  constructor(
-    payload: CommandUndonePayload,
     metadata?: Partial<EventMetadata>,
   ) {
     super(payload, metadata);
@@ -176,7 +159,6 @@ export class PerformanceMetricEvent extends BaseEvent<PerformanceMetricPayload> 
 export const SystemEvents = {
   CommandExecutedEvent,
   CommandFailedEvent,
-  CommandUndoneEvent,
   DatabaseErrorEvent,
   ApplicationStartedEvent,
   ApplicationStoppedEvent,

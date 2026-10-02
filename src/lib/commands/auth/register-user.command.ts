@@ -1,7 +1,7 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
-import { BaseCommand } from "../base/command.base";
+import { BaseCommand, COMMAND_FAILED_MESSAGE } from "../base/command.base";
 import { CommandMetadata } from "../base/command.interface";
 import { repositories } from "@/lib/repositories";
 import { eventBus } from "@/lib/events";
@@ -42,19 +42,13 @@ export class RegisterUserCommand extends BaseCommand<
   readonly name = "RegisterUserCommand";
   readonly description = "Register a new user account";
 
-  private createdUserId?: string;
-
-  get canUndo(): boolean {
-    return true; // Registration can be undone (delete the user)
-  }
-
   // Validation is handled in execute() method for better error messaging
 
   async execute(
     input: RegisterUserInput,
     metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
-    this.logExecution(input, metadata);
+    this.logExecution(metadata);
 
     try {
       // Validate input
@@ -107,8 +101,6 @@ export class RegisterUserCommand extends BaseCommand<
         lastPasswordChange: new Date(),
       });
 
-      this.createdUserId = user.id;
-
       // Emit user registered event
       await eventBus.publish(
         new UserRegisteredEvent(
@@ -133,7 +125,7 @@ export class RegisterUserCommand extends BaseCommand<
         { userId: user.id },
       );
 
-      this.logSuccess(response);
+      this.logSuccess();
       return response;
     } catch (error) {
       const baseError = ErrorFactory.wrap(error, {
@@ -142,38 +134,7 @@ export class RegisterUserCommand extends BaseCommand<
       });
       baseError.log();
       this.logError(baseError);
-      return createErrorResponse(baseError.getUserMessage());
+      return createErrorResponse(COMMAND_FAILED_MESSAGE);
     }
-  }
-
-  async undo(): Promise<void> {
-    if (!this.createdUserId) {
-      throw new Error("No user to undo - registration may have failed");
-    }
-
-    console.log(
-      `[${this.name}] Undoing registration for user: ${this.createdUserId}`,
-    );
-
-    const userRepo = repositories.getUserRepository();
-    const deleted = await userRepo.delete(this.createdUserId);
-
-    if (!deleted) {
-      throw new Error(`Failed to delete user: ${this.createdUserId}`);
-    }
-
-    console.log(`[${this.name}] Successfully undid registration`);
-    this.createdUserId = undefined;
-  }
-
-  async redo(): Promise<void> {
-    if (!this.input) {
-      throw new Error("No input available for redo");
-    }
-
-    console.log(`[${this.name}] Redoing registration`);
-
-    // Re-execute the command
-    await this.execute(this.input, this.metadata);
   }
 }

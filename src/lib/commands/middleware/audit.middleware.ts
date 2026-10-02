@@ -1,5 +1,9 @@
 import { ICommandMiddleware } from "./middleware.interface";
 import { CommandMetadata } from "../base/command.interface";
+import { sanitizeCommandInput, sanitizeCommandOutput } from "../base/sanitize";
+
+/** Entries kept in memory; older ones are dropped first. */
+export const DEFAULT_MAX_AUDIT_LOGS = 1000;
 
 interface AuditLog {
   commandName: string;
@@ -18,9 +22,14 @@ export class AuditMiddleware implements ICommandMiddleware {
 
   private auditLogs: AuditLog[] = [];
   private persistToDatabase: boolean;
+  private maxLogs: number;
 
-  constructor(persistToDatabase: boolean = false) {
+  constructor(
+    persistToDatabase: boolean = false,
+    maxLogs: number = DEFAULT_MAX_AUDIT_LOGS,
+  ) {
     this.persistToDatabase = persistToDatabase;
+    this.maxLogs = maxLogs;
   }
 
   async after(
@@ -34,8 +43,8 @@ export class AuditMiddleware implements ICommandMiddleware {
       commandName,
       commandId: metadata.commandId,
       userId: metadata.userId,
-      input: this.sanitizeInput(input),
-      output: this.sanitizeOutput(output),
+      input: sanitizeCommandInput(input),
+      output: sanitizeCommandOutput(output),
       duration,
       metadata,
       timestamp: new Date(),
@@ -54,7 +63,7 @@ export class AuditMiddleware implements ICommandMiddleware {
       commandName,
       commandId: metadata.commandId,
       userId: metadata.userId,
-      input: this.sanitizeInput(input),
+      input: sanitizeCommandInput(input),
       error: error.message,
       metadata,
       timestamp: new Date(),
@@ -64,8 +73,11 @@ export class AuditMiddleware implements ICommandMiddleware {
   }
 
   private async saveAuditLog(log: AuditLog): Promise<void> {
-    // Store in memory
+    // Store in memory, newest entries only
     this.auditLogs.push(log);
+    if (this.auditLogs.length > this.maxLogs) {
+      this.auditLogs.shift(); // Remove oldest
+    }
 
     // Persist to database if enabled
     if (this.persistToDatabase) {
@@ -82,52 +94,6 @@ export class AuditMiddleware implements ICommandMiddleware {
         console.error("[AuditMiddleware] Failed to persist audit log:", error);
       }
     }
-  }
-
-  /**
-   * Sanitize sensitive input data
-   */
-  private sanitizeInput(input: unknown): unknown {
-    if (!input) return input;
-
-    const sanitized: Record<string, unknown> = {
-      ...(input as Record<string, unknown>),
-    };
-
-    // Remove sensitive fields
-    const sensitiveFields = [
-      "password",
-      "confirmPassword",
-      "currentPassword",
-      "newPassword",
-      "token",
-      "secret",
-    ];
-    sensitiveFields.forEach((field) => {
-      if (sanitized[field]) {
-        sanitized[field] = "[REDACTED]";
-      }
-    });
-
-    return sanitized;
-  }
-
-  /**
-   * Sanitize sensitive output data
-   */
-  private sanitizeOutput(output: unknown): unknown {
-    if (!output) return output;
-
-    const sanitized: Record<string, unknown> = {
-      ...(output as Record<string, unknown>),
-    };
-
-    // Remove sensitive fields from output
-    if (sanitized.token) {
-      sanitized.token = "[REDACTED]";
-    }
-
-    return sanitized;
   }
 
   /**

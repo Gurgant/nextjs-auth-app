@@ -47,7 +47,9 @@ the default branch; run the latest `main`.
   `NEXTAUTH_SECRET`) in an HttpOnly cookie. Idle lifetime `SESSION_MAX_AGE`
   seconds, default **7 days** (sliding — see Known Limitations).
 - **Password hashing** with **bcrypt**, cost **12** by default (`BCRYPT_ROUNDS`,
-  4–15, applies to registration and password change; other code paths use 12).
+  4–15, applies to registration, password change and adding a password to a
+  Google account; the seed, `pnpm create-user` and the E2E fixtures always
+  use 12).
 - **Two-factor authentication (TOTP, `otplib`)** is **enforced for e-mail +
   password sign-in** inside the credentials `authorize()`: without a valid code
   the sign-in is refused and the form asks for the authenticator code.
@@ -66,8 +68,9 @@ the default branch; run the latest `main`.
 - Unknown e-mails (and accounts without a password) are compared against a
   dummy hash of cost `BCRYPT_ROUNDS`, so they take as long as accounts hashed
   at that cost. With `BCRYPT_ROUNDS` other than 12, accounts hashed at cost 12
-  (a password added to a Google account, seeded users) answer at a different
-  speed.
+  (seeded users, users made with `pnpm create-user`, a password that was added
+  to a Google account while that action still used a fixed cost of 12) answer
+  at a different speed.
 - **CSPRNG tokens** from `crypto.randomBytes`: e-mail-verification tokens are
   drawn from a 62-character alphabet with rejection sampling (no modulo
   bias); backup codes use the same generator, upper-cased; account-link tokens
