@@ -83,6 +83,19 @@ the default branch; run the latest `main`.
   account identifier. It is validated on read; any other value is ignored. On
   a shared browser it tells the next person which method was used last.
   Signing out does not remove it.
+- **E-mail verification through Google.** A Google sign-in marks the e-mail
+  verified only when Google's ID token carries `email_verified: true` for the
+  address stored on the user (compared without regard to case). This is
+  decided in one place (`src/lib/auth/google-email-verification.ts`, called
+  from the `jwt` callback), for a new user at the first sign-in, for an
+  existing user and when Google is linked to a signed-in user. A verification
+  date that is already set is kept, and a sign-in never clears it. A refused
+  Google sign-in (`OAuthAccountNotLinked`) does not change `emailVerified`:
+  the `signIn` callback, which runs before Auth.js accepts or refuses, does not
+  write it. The callbacks are covered by unit tests; the order in which
+  Auth.js calls them (`signIn` before the decision, `jwt` only after an
+  accepted sign-in) was read in the source of `@auth/core` 0.41.3, not
+  measured against Google.
 
 ### Authorization
 
@@ -167,7 +180,8 @@ wrong passwords when linking / unlinking; the confirmation page
 `hasGoogleAccount` flag and does not prove that a Google account was linked);
 account lockouts. **Not recorded** (console or in-memory only): sign-ins,
 failed sign-ins, the completed Google OAuth link, password changes, adding a
-password, backup-code use, account deletion.
+password, backup-code use, account deletion. An e-mail marked verified by a
+Google sign-in is not recorded either: it only sets the date on the user row.
 Security events are deleted together with the account (`onDelete: Cascade`),
 and the link / unlink events store the raw `X-Forwarded-For` header.
 

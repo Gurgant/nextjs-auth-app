@@ -17,6 +17,7 @@ import {
 import { getLockoutPolicy } from "@/lib/auth/lockout";
 import { parseLoginMethod } from "@/lib/auth/last-login-method";
 import { rememberLoginMethod } from "@/lib/auth/remember-login-method";
+import { resolveEmailVerified } from "@/lib/auth/google-email-verification";
 import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
@@ -316,11 +317,6 @@ export const authOptions = {
               hasGoogleAccount: hasGoogleAccount,
               hasEmailAccount: hasPassword,
               lastLoginAt: new Date(),
-              // Auto-verify email for Google login (Google OAuth ensures email verification)
-              emailVerified:
-                account.provider === "google"
-                  ? new Date()
-                  : existingUser.emailVerified,
               // Set password timestamps for existing password users
               passwordSetAt:
                 existingUser.password && !existingUser.passwordSetAt
@@ -340,13 +336,19 @@ export const authOptions = {
 
       return result;
     },
-    async jwt({ token, user }: JWTCallbackParams) {
+    async jwt({ token, user, account, profile }: JWTCallbackParams) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         token.image = user.image;
-        token.emailVerified = user.emailVerified;
+        // The one place where a Google sign-in can mark the e-mail verified:
+        // Auth.js has accepted the sign-in and the token is not encoded yet.
+        token.emailVerified = await resolveEmailVerified({
+          user,
+          account,
+          profile,
+        });
         token.twoFactorEnabled = user.twoFactorEnabled;
         token.role = user.role || "USER";
         token.hasGoogleAccount = user.hasGoogleAccount;
@@ -390,26 +392,11 @@ export const authOptions = {
         userId: message.token?.sub,
       });
     },
-    async createUser(message: { user: User; account?: Account | null }) {
+    // Auth.js passes the new user only: no account, so no provider.
+    async createUser(message: { user: User }) {
       console.log("New user created:", {
         userId: message.user?.id,
-        provider: message.account?.provider,
       });
-
-      // Auto-verify email for new Google users
-      if (message.account?.provider === "google" && message.user?.id) {
-        try {
-          const userRepo = repositories.getUserRepository();
-          await userRepo.update(message.user.id, {
-            emailVerified: new Date(),
-          });
-        } catch (error) {
-          console.error(
-            "Failed to auto-verify email for new Google user:",
-            error,
-          );
-        }
-      }
     },
     async linkAccount(message: { user: User; account: Account }) {
       console.log("Account linked:", {
