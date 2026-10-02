@@ -232,12 +232,17 @@ export class UserRepository
     return account?.user || null;
   }
 
+  /**
+   * Update a user. `data.password`, when given, is PLAIN TEXT: it is hashed
+   * here at the configured cost (`BCRYPT_ROUNDS`). To store a hash that
+   * already exists, use `updatePassword()`; passing a hash here would hash
+   * it a second time.
+   */
   async update(id: string, data: UpdateUserDTO): Promise<User> {
-    // Create update data with proper typing, allowing password to be hashed
     const updateData: UpdateUserDTO = { ...data };
 
     if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 12);
+      updateData.password = await bcrypt.hash(data.password, getBcryptRounds());
     }
 
     return await this.model.update({

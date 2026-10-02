@@ -19,6 +19,7 @@ import {
   emailMatchRefinement,
 } from "@/lib/validation";
 import { resolveFormLocale } from "@/lib/utils/form-locale-server";
+import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
 import {
   createValidationErrorResponse,
   createGenericErrorResponse,
@@ -259,7 +260,10 @@ export async function addPasswordToGoogleUser(
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
+    const hashedPassword = await bcrypt.hash(
+      validatedData.password,
+      getBcryptRounds(),
+    );
 
     // Update user with password and metadata
     await userRepo.updatePassword(authedUserId, hashedPassword);
@@ -322,25 +326,35 @@ export async function changeUserPassword(
     };
   }
 
-  // Use command pattern for password change
-  const result = await commandBus.execute(
-    ChangePasswordCommand,
-    {
-      userId: authedUserId,
-      currentPassword: formData.get("currentPassword") as string,
-      newPassword: formData.get("newPassword") as string,
-      confirmPassword: formData.get("confirmPassword") as string,
+  // Use command pattern for password change. The command answers an invalid
+  // form with an error response; the guard is for anything unexpected in the
+  // bus: a failure there is answered with an error response instead of
+  // rejecting the action. The steps above are outside the guard.
+  try {
+    return await commandBus.execute(
+      ChangePasswordCommand,
+      {
+        userId: authedUserId,
+        currentPassword: formData.get("currentPassword") as string,
+        newPassword: formData.get("newPassword") as string,
+        confirmPassword: formData.get("confirmPassword") as string,
+        locale,
+      },
+      {
+        userId: authedUserId,
+        locale,
+        ipAddress: formData.get("ipAddress") as string | undefined,
+        userAgent: formData.get("userAgent") as string | undefined,
+      },
+    );
+  } catch (error) {
+    logActionError("changeUserPassword", error);
+    return await createErrorResponseI18n(
+      "errors.failedToChangePassword",
       locale,
-    },
-    {
-      userId: authedUserId,
-      locale,
-      ipAddress: formData.get("ipAddress") as string | undefined,
-      userAgent: formData.get("userAgent") as string | undefined,
-    },
-  );
-
-  return result;
+      "Failed to change password. Please try again.",
+    );
+  }
 }
 
 // Migrate user account metadata (run once for existing users)

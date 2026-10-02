@@ -160,7 +160,7 @@ each. Summary:
 | `MAX_LOGIN_ATTEMPTS`              | optional (default 5)            | consecutive failures before a temporary lock                                                                 |
 | `ACCOUNT_LOCKOUT_DURATION`        | optional (default 15, minutes)  | lock duration                                                                                                |
 | `SESSION_MAX_AGE`                 | optional (default 604800, secs) | session idle timeout (300 – 2 592 000)                                                                       |
-| `BCRYPT_ROUNDS`                   | optional (4–15, default 12)     | hashing cost for registration and password change; not checked at start-up (out-of-range values are ignored) |
+| `BCRYPT_ROUNDS`                   | optional (4–15, default 12)     | hashing cost: registration, password change / add; not checked at start-up (out-of-range values are ignored) |
 
 `LOG_LEVEL` is also read (by the logger). Configuration is validated when the
 server starts (`src/lib/env.ts`): with an invalid configuration the process
