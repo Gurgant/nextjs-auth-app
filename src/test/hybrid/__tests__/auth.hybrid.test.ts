@@ -173,11 +173,21 @@ jest.mock("@/lib/repositories", () => ({
           return updated;
         }
       },
-      updatePassword: async (id: string, password: string) => {
+      updatePassword: async (
+        id: string,
+        password: string,
+        options: { revokeSessions: boolean },
+      ) => {
         if (IS_REAL_DB && realPrisma) {
           return realPrisma.user.update({
             where: { id },
-            data: { password, lastPasswordChange: new Date() },
+            data: {
+              password,
+              lastPasswordChange: new Date(),
+              ...(options.revokeSessions
+                ? { sessionVersion: { increment: 1 } }
+                : {}),
+            },
           });
         } else {
           const updated = { id, password, lastPasswordChange: new Date() };

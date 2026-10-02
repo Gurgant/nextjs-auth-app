@@ -28,6 +28,8 @@ const customJestConfig = {
     "!src/**/index.ts",
     "!src/middleware.ts",
     "!src/app/**",
+    // The generated Prisma client is not code of this repository.
+    "!src/generated/**",
   ],
 };
 

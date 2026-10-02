@@ -76,12 +76,23 @@ jest.mock("@/lib/repositories", () => ({
           data: { lastLoginAt: new Date() },
         });
       }),
-      updatePassword: jest.fn(async (id: string, password: string) => {
-        return mockPrismaClient.user.update({
-          where: { id },
-          data: { password },
-        });
-      }),
+      updatePassword: jest.fn(
+        async (
+          id: string,
+          password: string,
+          options: { revokeSessions: boolean },
+        ) => {
+          return mockPrismaClient.user.update({
+            where: { id },
+            data: {
+              password,
+              ...(options.revokeSessions
+                ? { sessionVersion: { increment: 1 } }
+                : {}),
+            },
+          });
+        },
+      ),
       delete: jest.fn(async (id: string) => {
         await mockPrismaClient.user.delete({ where: { id } });
         return true;
