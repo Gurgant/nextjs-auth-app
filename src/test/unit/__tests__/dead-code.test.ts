@@ -1,0 +1,743 @@
+/**
+ * @jest-environment node
+ */
+import fs from "fs";
+import path from "path";
+import ts from "typescript";
+import * as formReset from "@/hooks/use-form-reset";
+import { BaseError } from "@/lib/errors/base/base-error";
+import * as systemErrors from "@/lib/errors/domain/system-errors";
+import * as validationErrors from "@/lib/errors/domain/validation-errors";
+import { ErrorBuilder, createError } from "@/lib/errors/error-builder";
+import { ErrorFactory } from "@/lib/errors/error-factory";
+import { BaseEvent } from "@/lib/events/base/event.base";
+
+// The error classes publish through the event bus. Check C only reads their
+// shape and needs no bus.
+jest.mock("@/lib/events", () => ({
+  eventBus: { publish: async () => {} },
+}));
+
+// Dead-code guard. Code that nothing imports and nothing calls has no
+// behaviour, so no behavioural test fails when it is left behind. These
+// checks read the sources instead:
+//   A. every module under src is reachable from an entry point or from a test;
+//   B. every exported name is mentioned somewhere besides its definition;
+//   C. the retired members that A and B cannot see stay retired.
+// A and B work on text (import specifiers, whole words), not on types; the
+// TypeScript parser only tells them where the comments are. Dead code that
+// they do not see:
+//   - a name that is also a word somewhere else: in another file (a test
+//     counts), in a string, or once more in its own file;
+//   - a member of a class or of an object, and an export in a form that
+//     `exportedNames` does not read (a default export, `module.exports`);
+//   - the exports of src/app, of src/test, of the test files, of the
+//     declaration files and of the three framework entries;
+//   - a file in a `__tests__` directory that holds no test (Jest fails it);
+//   - a module that only a file outside src imports: for A those files are
+//     entry points.
+// They report live code when it is reached in a way they do not read: a
+// specifier built at run time, a file convention not listed below, a name
+// read only through `import * as`.
+
+const REPO_ROOT = path.resolve(__dirname, "../../../..");
+
+// This file names what it allows and what was retired. Read as part of the
+// tree, it would count as a mention of every one of those names.
+const THIS_FILE = path
+  .relative(REPO_ROOT, __filename)
+  .split(path.sep)
+  .join("/");
+
+// What may stay although a check reports it, each with the reason. The checks
+// compare for equality: an entry that no longer applies fails as well.
+// "owner decision": the owner keeps it. "pending owner decision": nothing is
+// decided yet, and the entry says what is open.
+const ALLOWED_ORPHANS: Record<string, string> = {
+  "src/components/auth/role-guard.tsx":
+    "owner decision: client role guard that the starter offers, rendered nowhere",
+  "src/hooks/use-role.ts":
+    "owner decision: used only by role-guard.tsx, kept with it",
+};
+
+const ALLOWED_TEST_ONLY: Record<string, string> = {
+  "src/lib/prisma-test.ts":
+    "the Prisma client of the integration test (docs/TESTING.md)",
+  "src/hooks/use-multi-step-form.ts":
+    "owner decision: form hook that the starter offers, used by its own test only",
+};
+
+const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {
+  "src/components/auth/role-guard.tsx#RoleGuard":
+    "owner decision: see role-guard.tsx above",
+  "src/components/auth/role-guard.tsx#RoleVisibility":
+    "owner decision: see role-guard.tsx above",
+  "src/lib/auth/rbac.ts#requireRole":
+    "pending owner decision: guard a server route with it, or delete it",
+  "src/lib/utils/form-responses-i18n.ts#createGenericErrorResponseI18n":
+    "pending owner decision: use it where form-responses.ts points to it, or delete it",
+  "src/lib/actions/auth.ts#getUserAccountInfo":
+    "pending owner decision: Server Action without a caller; deleting it changes the action surface",
+  "src/lib/data-access/user-repository.ts#getUserAccountInfo":
+    "pending owner decision: wrapper of getUserWithAccountDetails without a caller; delete it, or add the cache its comment announces",
+  "src/lib/performance/web-vitals.ts#initWebVitals":
+    "pending owner decision: wire it, or delete it together with the web-vitals dependency",
+  "src/lib/performance/web-vitals.ts#getPerformanceSnapshot":
+    "pending owner decision: see initWebVitals",
+  "src/lib/monitoring/performance.ts#measureAsync":
+    "owner decision: recording API of the performance monitor, not used yet",
+  "src/lib/monitoring/performance.ts#recordDbQuery":
+    "owner decision: recording API of the performance monitor, not used yet",
+  "src/lib/events/event-provider.ts#emitEvent":
+    "owner decision: read and drain API of the events layer, no caller",
+  "src/lib/events/event-provider.ts#getEventHistory":
+    "owner decision: read and drain API of the events layer, no caller",
+  "src/lib/events/event-provider.ts#getAnalyticsSummary":
+    "owner decision: read and drain API of the events layer, no caller",
+  "src/lib/events/event-provider.ts#processNotificationQueue":
+    "owner decision: the only drain of the notification e-mail queue, no caller",
+  "src/lib/events/domain/auth.events.ts#AuthEvents":
+    "owner decision: aggregate of event classes, some never published",
+  "src/lib/events/domain/security.events.ts#SecurityEvents":
+    "owner decision: aggregate of event classes, some never published",
+  "src/lib/events/domain/system.events.ts#SystemEvents":
+    "owner decision: aggregate of event classes, some never published",
+};
+
+// Retired members that A and B cannot see: a member of a class or of an
+// object, a name that a test still mentions, and an export under src/test.
+// `kept` is a member that is
+// still there, so a holder that cannot be read does not pass. C looks at
+// names, not at use: a member that returns with a caller is no longer
+// retired, and its row is deleted.
+const RETIRED: {
+  holder: string;
+  members: () => string[];
+  kept: string;
+  retired: string[];
+}[] = [
+  {
+    holder: "exports of hooks/use-form-reset",
+    members: () => Object.keys(formReset),
+    kept: "useFormReset",
+    retired: ["useMultipleFormReset"],
+  },
+  {
+    holder: "BaseError.prototype",
+    members: () => Object.getOwnPropertyNames(BaseError.prototype),
+    kept: "toJSON",
+    retired: [
+      "toResponse",
+      "getDebugInfo",
+      "isRetryable",
+      "getSuggestedAction",
+    ],
+  },
+  {
+    holder: "names exported by errors/base/base-error.ts",
+    members: () => namesExportedBy("src/lib/errors/base/base-error.ts"),
+    kept: "ErrorContext",
+    retired: ["ErrorDetails"],
+  },
+  {
+    holder: "ErrorFactory",
+    members: () => Object.getOwnPropertyNames(ErrorFactory),
+    kept: "wrap",
+    retired: ["fromCode", "is", "hasCode"],
+  },
+  {
+    holder: "ErrorFactory.validation",
+    members: () => Object.keys(ErrorFactory.validation),
+    kept: "fromZod",
+    retired: ["duplicate", "schema", "field", "composite"],
+  },
+  {
+    holder: "ErrorFactory.system",
+    members: () => Object.keys(ErrorFactory.system),
+    kept: "internal",
+    retired: ["externalService", "api"],
+  },
+  {
+    holder: "ErrorBuilder.prototype",
+    members: () => Object.getOwnPropertyNames(ErrorBuilder.prototype),
+    kept: "withUserId",
+    retired: ["withContext"],
+  },
+  {
+    holder: "createError().validation",
+    members: () => Object.keys(createError().validation),
+    kept: "invalidInput",
+    retired: ["duplicate"],
+  },
+  {
+    holder: "exports of errors/domain/validation-errors",
+    members: () => Object.keys(validationErrors),
+    kept: "ValidationError",
+    retired: [
+      "DuplicateValueError",
+      "SchemaValidationError",
+      "FieldValidationError",
+      "CompositeValidationError",
+    ],
+  },
+  {
+    holder: "exports of errors/domain/system-errors",
+    members: () => Object.keys(systemErrors),
+    kept: "InternalError",
+    retired: ["ExternalServiceError", "ApiError"],
+  },
+  {
+    holder: "BaseEvent and BaseEvent.prototype",
+    members: () => [
+      ...Object.getOwnPropertyNames(BaseEvent),
+      ...Object.getOwnPropertyNames(BaseEvent.prototype),
+    ],
+    kept: "toJSON",
+    retired: ["fromJSON"],
+  },
+  {
+    holder: "names exported by two-factor.ts",
+    members: () => namesExportedBy("src/lib/two-factor.ts"),
+    kept: "validateTOTPCode",
+    retired: ["isValidTOTPFormat", "isValidBackupCodeFormat"],
+  },
+  {
+    holder: "names exported by test/builders/base.builder.ts",
+    members: () => namesExportedBy("src/test/builders/base.builder.ts"),
+    kept: "ChainableBuilder",
+    retired: ["CompositeBuilder"],
+  },
+];
+
+/** Sources without comments, by repo-relative path ("/" as separator). */
+interface Tree {
+  /** The files under src. */
+  modules: Map<string, string>;
+  /** The files outside src that can import a module or mention a name. */
+  outside: Map<string, string>;
+}
+
+/**
+ * The source without its comments. The TypeScript parser splits the file into
+ * tokens, and what stands before a token is white space and comments. A `//`
+ * or a comment opener inside a string, a template, a regular expression or
+ * JSX text is part of a token and stays.
+ */
+function withoutComments(file: string, source: string): string {
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  let code = "";
+  let copied = 0;
+  const visit = (node: ts.Node): void => {
+    // The parser hands out a JSDoc comment as a node of its own. It goes with
+    // the white space of the token after it.
+    const children = node
+      .getChildren(parsed)
+      .filter((child) => !ts.isJSDoc(child));
+    if (children.length > 0) {
+      children.forEach(visit);
+      return;
+    }
+    const start = node.getStart(parsed);
+    code +=
+      source.slice(copied, node.pos) +
+      source.slice(node.pos, start).replace(/\S+/g, "");
+    copied = start;
+  };
+  visit(parsed);
+  return code + source.slice(copied);
+}
+
+function treeOf(
+  modules: Record<string, string>,
+  outside: Record<string, string>,
+): Tree {
+  const strip = (files: Record<string, string>) =>
+    new Map(
+      Object.entries(files).map(([file, source]): [string, string] => [
+        file,
+        withoutComments(file, source),
+      ]),
+    );
+  return { modules: strip(modules), outside: strip(outside) };
+}
+
+const SOURCE_FILE = /\.(?:ts|tsx|js|jsx|mjs|cjs)$/;
+// The generated Prisma client is not code of this repository.
+const SKIPPED_DIRECTORIES = ["src/generated"];
+
+/** The source files in `dir` (repo-relative), by default with its subdirectories. */
+function sourceFiles(dir: string, recursive = true): string[] {
+  return fs
+    .readdirSync(path.join(REPO_ROOT, dir), { withFileTypes: true })
+    .flatMap((entry) => {
+      const file = path.posix.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        return recursive && !SKIPPED_DIRECTORIES.includes(file)
+          ? sourceFiles(file)
+          : [];
+      }
+      return SOURCE_FILE.test(entry.name) ? [file] : [];
+    });
+}
+
+/** The names that a file of the repository exports. */
+function namesExportedBy(file: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  return [...exportedNames(withoutComments(file, source)).keys()];
+}
+
+function readTree(): Tree {
+  const read = (files: string[]) =>
+    Object.fromEntries(
+      files.map((file) => [
+        file,
+        fs.readFileSync(path.join(REPO_ROOT, file), "utf8"),
+      ]),
+    );
+  return treeOf(
+    read(sourceFiles("src").filter((file) => file !== THIS_FILE)),
+    read([
+      ...sourceFiles("e2e"),
+      ...sourceFiles("scripts"),
+      ...sourceFiles("prisma"),
+      ...sourceFiles("", false),
+    ]),
+  );
+}
+
+// Jest takes every file in a `__tests__` directory for a test suite (its
+// default `testMatch`), so each of them is a test here as well. A file named
+// `*.typecheck.ts` is a test too: a compile-time test that `tsc` checks and
+// nothing imports.
+const isTest = (file: string) =>
+  file.includes("/__tests__/") ||
+  /\.test\.tsx?$/.test(file) ||
+  file.endsWith(".typecheck.ts");
+
+const isDeclaration = (file: string) => file.endsWith(".d.ts");
+
+// Entry points: nothing imports them. The framework loads these by name, and
+// the compiler loads every declaration file. Every file outside src (e2e,
+// scripts, prisma, the configuration in the root) is an entry point as well.
+const APP_ENTRY =
+  /^src\/app\/(?:.+\/)?(?:page|layout|route|loading|error|global-error|not-found|template|default)\.tsx?$/;
+const FRAMEWORK_ENTRIES = [
+  "src/middleware.ts",
+  "src/instrumentation.ts",
+  "src/i18n.ts",
+];
+
+const SPECIFIERS = [
+  /\bfrom\s*["']([^"'\n]+)["']/g, // import ... from "x", export ... from "x"
+  /\bimport\s*["']([^"'\n]+)["']/g, // import "x"
+  // The specifier of a call may be a template without `${}`.
+  /\bimport\s*\(\s*["'`]([^"'`\n]+)["'`]\s*\)/g, // import("x"), typeof import("x")
+  // require("x"), jest.requireActual<T>("x"), jest.requireMock("x"); the
+  // formatter adds a comma after the specifier when it wraps the call.
+  /\b(?:require|requireActual|requireMock)\s*(?:<[^\n]*?>)?\s*\(\s*["'`]([^"'`\n]+)["'`]\s*,?\s*\)/g,
+];
+
+function specifiersOf(code: string): string[] {
+  return SPECIFIERS.flatMap((pattern) =>
+    [...code.matchAll(pattern)].map((match) => match[1]),
+  );
+}
+
+// The extensions that a specifier may leave out.
+const IMPLIED_EXTENSIONS = ["ts", "tsx", "js", "jsx"];
+
+/** The module that `specifier` names in `from`; nothing for a package or a file outside src. */
+function resolveModule(
+  from: string,
+  specifier: string,
+  modules: Map<string, string>,
+): string[] {
+  let base: string;
+  if (specifier.startsWith("@/")) {
+    base = `src/${specifier.slice(2)}`;
+  } else if (specifier.startsWith(".")) {
+    base = path.posix.join(path.posix.dirname(from), specifier);
+  } else {
+    return [];
+  }
+  const found = [
+    base,
+    ...IMPLIED_EXTENSIONS.map((extension) => `${base}.${extension}`),
+    ...IMPLIED_EXTENSIONS.map((extension) => `${base}/index.${extension}`),
+  ].find((candidate) => modules.has(candidate));
+  return found ? [found] : [];
+}
+
+/**
+ * `orphans`: modules that neither an entry point nor a test reaches.
+ * `testOnly`: modules outside src/test that only the tests under src reach.
+ */
+function unreachableModules(tree: Tree): {
+  orphans: string[];
+  testOnly: string[];
+} {
+  const files = [...tree.modules.keys()].sort();
+  const importsOf = (file: string, code: string) =>
+    specifiersOf(code).flatMap((specifier) =>
+      resolveModule(file, specifier, tree.modules),
+    );
+  const reachedFrom = (roots: string[]) => {
+    const reached = new Set<string>();
+    const queue = [...roots];
+    for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+      if (reached.has(file)) continue;
+      reached.add(file);
+      queue.push(...importsOf(file, tree.modules.get(file) ?? ""));
+    }
+    return reached;
+  };
+
+  const byEntryPoints = reachedFrom([
+    ...files.filter(
+      (file) =>
+        !isTest(file) &&
+        (APP_ENTRY.test(file) ||
+          FRAMEWORK_ENTRIES.includes(file) ||
+          isDeclaration(file)),
+    ),
+    ...[...tree.outside].flatMap(([file, code]) => importsOf(file, code)),
+  ]);
+  const byTests = reachedFrom(files.filter(isTest));
+  const candidates = files.filter(
+    (file) => !isTest(file) && !isDeclaration(file) && !byEntryPoints.has(file),
+  );
+
+  return {
+    orphans: candidates.filter((file) => !byTests.has(file)),
+    testOnly: candidates.filter(
+      (file) => byTests.has(file) && !file.startsWith("src/test/"),
+    ),
+  };
+}
+
+// A default export is not read: every importer gives it a name of its own,
+// and A says whether its module is used.
+const EXPORTED_NAME =
+  /^export (?:async )?(?:abstract )?(?:function|const|let|class|interface|type|enum) (\w+)/gm;
+// export { a, b as c }, export type { D }; not `export { a } from "x"`
+const EXPORT_LIST = /^export (?:type )?\{([^}]*)\}(?!\s*from\b)/gm;
+// export const { a, b: c } = ...
+const EXPORTED_PATTERN = /^export (?:const|let) \{([^}]*)\}/gm;
+
+/**
+ * The names that `code` exports, each with the number of times its definition
+ * writes it: once in a declaration; twice in an export list, which names what
+ * the file declares or imports elsewhere, and once when the list renames it.
+ */
+function exportedNames(code: string): Map<string, number> {
+  const names = new Map<string, number>();
+  const add = (name: string, times: number) =>
+    names.set(name, (names.get(name) ?? 0) + times);
+  // The words of each entry of a list, without a default value: the last one
+  // is the name.
+  const entriesOf = (list: string) =>
+    list
+      .split(",")
+      .map((entry) => entry.split("=")[0].match(/\w+/g) ?? [])
+      .filter((words) => words.length > 0 && words.at(-1) !== "default");
+
+  for (const [, name] of code.matchAll(EXPORTED_NAME)) add(name, 1);
+  for (const [, list] of code.matchAll(EXPORT_LIST)) {
+    for (const words of entriesOf(list)) {
+      add(words.at(-1) ?? "", words.at(-2) === "as" ? 1 : 2);
+    }
+  }
+  for (const [, list] of code.matchAll(EXPORTED_PATTERN)) {
+    for (const words of entriesOf(list)) add(words.at(-1) ?? "", 1);
+  }
+  return names;
+}
+
+// The exports of these files are read by the framework or are test support.
+const exportsAreChecked = (file: string) =>
+  !isTest(file) &&
+  !isDeclaration(file) &&
+  !file.startsWith("src/app/") &&
+  !file.startsWith("src/test/") &&
+  !FRAMEWORK_ENTRIES.includes(file);
+
+/**
+ * "file#name" for every exported name that no file of the tree writes, as a
+ * whole word, more often than the file defines it. A second definition of the
+ * same name in another checked file is no mention. In a file whose exports are
+ * not checked every occurrence is a mention: a route that imports a handler
+ * and exports it again in a list is its only reader.
+ */
+function unreferencedExports(tree: Tree): string[] {
+  const mentioned = new Set<string>();
+  const sources: [string, string, boolean][] = [
+    ...[...tree.modules].map(([file, code]): [string, string, boolean] => [
+      file,
+      code,
+      exportsAreChecked(file),
+    ]),
+    ...[...tree.outside].map(([file, code]): [string, string, boolean] => [
+      file,
+      code,
+      false,
+    ]),
+  ];
+  for (const [, code, checked] of sources) {
+    const defined = checked ? exportedNames(code) : new Map<string, number>();
+    const written = new Map<string, number>();
+    for (const word of code.match(/\w+/g) ?? []) {
+      written.set(word, (written.get(word) ?? 0) + 1);
+    }
+    for (const [word, times] of written) {
+      if (times > (defined.get(word) ?? 0)) mentioned.add(word);
+    }
+  }
+
+  return [...tree.modules]
+    .filter(([file]) => exportsAreChecked(file))
+    .flatMap(([file, code]) =>
+      [...exportedNames(code).keys()]
+        .filter((name) => !mentioned.has(name))
+        .map((name) => `${file}#${name}`),
+    )
+    .sort();
+}
+
+// A check that finds nothing in a tree it cannot read would pass. This tree
+// has a known answer.
+describe("the checks, on a tree with a known answer", () => {
+  const fixture = treeOf(
+    {
+      "src/app/[locale]/page.tsx": [
+        'import { used } from "@/lib/used";',
+        'import { Panel } from "@/components/panel";',
+        'import { Legacy } from "@/components/legacy";',
+        'import renamed from "@/lib/default-export";',
+        'import { listedUsed, first } from "@/lib/listed";',
+        "export default function Page() {",
+        "  return [used, Panel, Legacy, renamed, listedUsed, first];",
+        "}",
+      ].join("\n"),
+      "src/app/[locale]/helper.tsx": "export const notAnEntryPoint = 1;",
+      // The framework reads GET from the route; the list is its only mention.
+      "src/app/api/thing/route.ts": [
+        'import { GET } from "@/lib/handler";',
+        "export { GET };",
+      ].join("\n"),
+      "src/lib/handler.ts": "export function GET() {}",
+      "src/lib/used.ts": [
+        'export { barrel } from "./barrel";',
+        'import "./literals";',
+        'import "./same-a";',
+        'import "./same-b";',
+        "export const used = 1; // unusedHelper() is named after this code",
+        "/**",
+        " * unusedHelper() is named in this comment and called nowhere.",
+        " * @see unusedHelper",
+        " */",
+        "export async function unusedHelper() {",
+        '  const lazy = (await import("./lazy")).lazy;',
+        "  const byTemplate = (await import(`./by-template`)).byTemplate;",
+        '  return lazy + byTemplate + require("./required").required;',
+        "}",
+        '// import "./commented-out";',
+        "export type OnlyInAString = 'OnlyInAString';",
+        "export interface UsedByATest {}",
+      ].join("\n"),
+      // A comment opener or a quote inside a literal is text: what follows it
+      // is still code, and a comment after it is still a comment.
+      "src/lib/literals.tsx": [
+        'const trimmed = (value: string) => value.replace(/\\/*$/, "");',
+        'import "./after-regex";',
+        'const glob = "src/*";',
+        'import "./after-string";',
+        "const escaped = 'it\\'s /* text';",
+        'import "./after-escape";',
+        "const Text = () => <p>src/*</p>;",
+        'import "./after-jsx-text";',
+        "const page = `",
+        "// onlyInATemplate is named in this line of a template",
+        "`;",
+        "export const onlyInATemplate = 1;",
+        "const backtick = /`/;",
+        "// afterBacktick is named in this comment only",
+        "export const afterBacktick = 1;",
+      ].join("\n"),
+      "src/lib/after-regex.ts": "",
+      "src/lib/after-string.ts": "",
+      "src/lib/after-escape.ts": "",
+      "src/lib/after-jsx-text.ts": "",
+      "src/lib/same-a.ts": "export function sameName() {}",
+      "src/lib/same-b.ts": "export function sameName() {}",
+      "src/lib/default-export.ts": "export default function DefaultName() {}",
+      "src/lib/listed.ts": [
+        "const listedUsed = 1;",
+        "const listedUnused = 1;",
+        "const local = 1;",
+        "const inner = 1;",
+        "export { listedUsed, listedUnused, local as renamedUnused };",
+        "export { inner as namedInAString };",
+        "export const label = 'namedInAString';",
+        'export const { first, second: secondUnused } = JSON.parse("{}");',
+      ].join("\n"),
+      "src/components/panel/index.tsx": "export const Panel = () => null;",
+      "src/components/legacy.jsx": "export const Legacy = () => null;",
+      "src/lib/barrel/index.ts": "export const barrel = 1;",
+      "src/lib/lazy.ts": "export const lazy = 1;",
+      "src/lib/by-template.ts": "export const byTemplate = 1;",
+      "src/lib/required.js": "module.exports = { required: 1 };",
+      "src/lib/commented-out.ts": "export const commentedOut = 1;",
+      "src/lib/orphan.ts": 'import "./orphan-too";',
+      "src/lib/orphan-too.ts": "export const orphanToo = 1;",
+      "src/lib/by-script.ts": "export const byScript = 1;",
+      "src/lib/test-only.ts": "export const testOnly = 1;",
+      "src/lib/__tests__/test-only.test.ts": [
+        'import { testOnly } from "../test-only";',
+        'import type { UsedByATest } from "@/lib/used";',
+        'import { support } from "@/test/support";',
+        'import { label } from "@/lib/listed";',
+        "const actual =",
+        '  jest.requireActual<Record<string, number>>("@/test/actual-only");',
+        "const mock =",
+        '  jest.requireMock<typeof import("@/test/support")>("@/test/mock-only");',
+        "const wrapped = jest.requireActual<Record<string, number>>(",
+        '  "@/test/wrapped-only",',
+        ");",
+      ].join("\n"),
+      "src/lib/__tests__/holds-no-test.ts": "",
+      "src/lib/shape.typecheck.ts": 'import "./checked-shape";',
+      "src/lib/checked-shape.ts": "export const checkedShape = 1;",
+      "src/test/support.ts": "export const support = 1;",
+      "src/test/actual-only.ts": "export const actualOnly = 1;",
+      "src/test/mock-only.ts": "export const mockOnly = 1;",
+      "src/test/wrapped-only.ts": "export const wrappedOnly = 1;",
+      "src/test/unused-support.ts": "export const unusedSupport = 1;",
+      "src/types/ambient.d.ts":
+        'import type { AmbientShape } from "@/lib/ambient-shape";',
+      "src/lib/ambient-shape.ts": "export type AmbientShape = string;",
+    },
+    {
+      "scripts/run.ts": 'import { byScript } from "../src/lib/by-script";',
+      "next.config.ts": 'import pkg from "some-package";',
+    },
+  );
+
+  it("reports the modules that nothing reaches, and those that only tests reach", () => {
+    expect(unreachableModules(fixture)).toEqual({
+      orphans: [
+        "src/app/[locale]/helper.tsx",
+        "src/lib/commented-out.ts",
+        "src/lib/orphan-too.ts",
+        "src/lib/orphan.ts",
+        "src/test/unused-support.ts",
+      ],
+      testOnly: ["src/lib/checked-shape.ts", "src/lib/test-only.ts"],
+    });
+  });
+
+  it("reports the exported names that nothing else mentions", () => {
+    expect(unreferencedExports(fixture)).toEqual([
+      "src/lib/checked-shape.ts#checkedShape",
+      "src/lib/commented-out.ts#commentedOut",
+      "src/lib/listed.ts#listedUnused",
+      "src/lib/listed.ts#renamedUnused",
+      "src/lib/listed.ts#secondUnused",
+      "src/lib/literals.tsx#afterBacktick",
+      "src/lib/orphan-too.ts#orphanToo",
+      "src/lib/same-a.ts#sameName",
+      "src/lib/same-b.ts#sameName",
+      "src/lib/used.ts#unusedHelper",
+    ]);
+  });
+
+  it("reads the names of an export list and of a destructuring export", () => {
+    expect([
+      ...exportedNames(
+        "export { a as default, a as b, a };\nexport type { T };",
+      ),
+    ]).toEqual([
+      ["b", 1],
+      ["a", 2],
+      ["T", 2],
+    ]);
+    expect([
+      ...exportedNames("export const { c, d: e = 1, ...f } = g;"),
+    ]).toEqual([
+      ["c", 1],
+      ["e", 1],
+      ["f", 1],
+    ]);
+  });
+});
+
+describe("dead code in this repository", () => {
+  const tree = readTree();
+
+  it("reads the sources", () => {
+    expect(tree.modules.size).toBeGreaterThan(100);
+    expect([...tree.modules.keys()]).toEqual(
+      expect.arrayContaining([
+        "src/middleware.ts",
+        "src/app/[locale]/page.tsx",
+        "src/test/unit/__tests__/auth.unit.test.ts",
+      ]),
+    );
+    expect(THIS_FILE).toBe("src/test/unit/__tests__/dead-code.test.ts");
+    expect(tree.modules.has(THIS_FILE)).toBe(false);
+    expect([...tree.outside.keys()]).toEqual(
+      expect.arrayContaining([
+        "e2e/global-setup.ts",
+        "scripts/create-user.ts",
+        "prisma/seed.ts",
+        "playwright.config.ts",
+        "jest.setup.js",
+      ]),
+    );
+    expect(
+      [...tree.modules.keys()].filter((file) =>
+        file.startsWith("src/generated/"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("every allowed entry gives its reason", () => {
+    const allowed = Object.entries({
+      ...ALLOWED_ORPHANS,
+      ...ALLOWED_TEST_ONLY,
+      ...ALLOWED_UNUSED_EXPORTS,
+    });
+
+    expect(
+      allowed.filter(([, reason]) => reason.trim() === "").map(([key]) => key),
+    ).toEqual([]);
+  });
+
+  describe("A. no orphan modules", () => {
+    const { orphans, testOnly } = unreachableModules(tree);
+
+    it("every module under src is reachable from an entry point or from a test", () => {
+      expect(orphans).toEqual(Object.keys(ALLOWED_ORPHANS).sort());
+    });
+
+    it("no module outside src/test is kept alive by Jest tests alone", () => {
+      expect(testOnly).toEqual(Object.keys(ALLOWED_TEST_ONLY).sort());
+    });
+  });
+
+  describe("B. no unreferenced exports", () => {
+    it("every exported name is mentioned outside its definition", () => {
+      expect(unreferencedExports(tree)).toEqual(
+        Object.keys(ALLOWED_UNUSED_EXPORTS).sort(),
+      );
+    });
+  });
+
+  describe("C. retired members stay retired", () => {
+    it.each(RETIRED)("$holder", ({ members, kept, retired }) => {
+      const present = members();
+
+      expect(present).toContain(kept);
+      expect(retired.filter((name) => present.includes(name))).toEqual([]);
+    });
+  });
+});
