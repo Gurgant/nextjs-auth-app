@@ -1,19 +1,5 @@
 import { BaseError, ErrorContext } from "../base/base-error";
 import { ErrorCode } from "../base/error-codes";
-import type { ErrorDetails } from "../types/error-details";
-
-/**
- * Authentication error - thrown when authentication fails
- */
-export class AuthenticationError extends BaseError {
-  constructor(
-    message: string = "Authentication failed",
-    details?: ErrorDetails,
-    context?: ErrorContext,
-  ) {
-    super(ErrorCode.AUTHENTICATION_FAILED, message, details, context);
-  }
-}
 
 /**
  * Invalid credentials error

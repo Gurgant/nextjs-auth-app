@@ -1,6 +1,5 @@
 import { randomUUID } from "crypto";
 import { IEvent, EventMetadata } from "./event.interface";
-import { isValidEventPayload } from "../types/event-payloads";
 
 export abstract class BaseEvent<TPayload = unknown>
   implements IEvent<TPayload>
@@ -52,40 +51,6 @@ export abstract class BaseEvent<TPayload = unknown>
       payload: this.payload,
       metadata: this.metadata,
     };
-  }
-
-  /**
-   * Create event from JSON with improved validation
-   * Validates basic structure but maintains backward compatibility
-   */
-  static fromJSON<T extends BaseEvent>(
-    data: unknown,
-    EventClass: new (
-      payload: T["payload"],
-      metadata?: Partial<EventMetadata>,
-    ) => T,
-  ): T {
-    // Basic validation to ensure data has expected structure
-    if (!data || typeof data !== "object") {
-      throw new Error("Invalid event data: must be an object");
-    }
-
-    const eventData = data as Record<string, unknown>;
-
-    // Validate that payload exists
-    if (!("payload" in eventData)) {
-      throw new Error("Invalid event data: missing payload");
-    }
-
-    // Optional payload validation if it extends BaseEventPayload
-    if (isValidEventPayload(eventData.payload)) {
-      // Payload follows our base structure - could add more validation here
-    }
-
-    return new EventClass(
-      eventData.payload as T["payload"],
-      eventData.metadata as Partial<EventMetadata> | undefined,
-    );
   }
 
   /**

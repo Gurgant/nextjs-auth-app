@@ -14,12 +14,6 @@ export interface TwoFactorSetup {
   backupCodes: string[];
 }
 
-export interface TwoFactorInfo {
-  enabled: boolean;
-  backupCodesCount: number;
-  enabledAt?: Date;
-}
-
 // Generate a new TOTP secret for a user
 export function generateTOTPSecret(): string {
   const secret = authenticator.generateSecret();
@@ -149,54 +143,9 @@ export function encryptBackupCodes(codes: string[]): string[] {
   return codes.map((code) => encrypt(code));
 }
 
-// Decrypt backup codes for display (use sparingly)
-export function decryptBackupCodes(encryptedCodes: string[]): string[] {
-  return encryptedCodes.map((code) => {
-    try {
-      return decrypt(code);
-    } catch (error) {
-      console.error("Error decrypting backup code:", error);
-      return "****-****"; // Return masked code on error
-    }
-  });
-}
-
 // Generate new backup codes (for when user needs fresh codes)
 export function generateNewBackupCodes(): string[] {
   return generateBackupCodes(8);
-}
-
-// Check if TOTP code format is valid
-export function isValidTOTPFormat(code: string): boolean {
-  const cleanCode = code.replace(/\s/g, "");
-  return /^\d{6}$/.test(cleanCode);
-}
-
-// Check if backup code format is valid
-export function isValidBackupCodeFormat(code: string): boolean {
-  const cleanCode = code.replace(/[-\s]/g, "").toUpperCase();
-  return /^[A-Z0-9]{8}$/.test(cleanCode);
-}
-
-// Generate TOTP URL for manual entry (when QR code can't be scanned)
-export function generateTOTPUrl(
-  secret: string,
-  userEmail: string,
-  issuer: string = "Auth App",
-): string {
-  return authenticator.keyuri(userEmail, issuer, secret);
-}
-
-// Get current TOTP code (for testing purposes)
-export function getCurrentTOTPCode(secret: string): string {
-  return authenticator.generate(secret);
-}
-
-// Get time remaining until next TOTP code
-export function getTimeRemaining(): number {
-  const now = Date.now();
-  const step = (authenticator.options.step || 30) * 1000; // Convert to milliseconds
-  return step - (now % step);
 }
 
 // Verify if secret is valid
@@ -208,38 +157,4 @@ export function isValidSecret(secret: string): boolean {
   } catch {
     return false;
   }
-}
-
-// Format backup code for display (add dash in middle)
-export function formatBackupCode(code: string): string {
-  const cleanCode = code.replace(/[-\s]/g, "").toUpperCase();
-  if (cleanCode.length === 8) {
-    return `${cleanCode.slice(0, 4)}-${cleanCode.slice(4, 8)}`;
-  }
-  return code;
-}
-
-// Count remaining backup codes
-export function countRemainingBackupCodes(encryptedCodes: string[]): number {
-  return encryptedCodes.length;
-}
-
-// Check if 2FA is required for user
-export function requiresTwoFactor(user: {
-  twoFactorEnabled: boolean;
-}): boolean {
-  return user.twoFactorEnabled;
-}
-
-// Generate 2FA status info
-export function getTwoFactorInfo(user: {
-  twoFactorEnabled: boolean;
-  backupCodes: string[];
-  twoFactorEnabledAt?: Date | null;
-}): TwoFactorInfo {
-  return {
-    enabled: user.twoFactorEnabled,
-    backupCodesCount: user.backupCodes.length,
-    enabledAt: user.twoFactorEnabledAt || undefined,
-  };
 }

@@ -20,15 +20,6 @@ export interface ErrorContext {
   method?: string;
 }
 
-export interface ErrorDetails {
-  code: ErrorCode;
-  message: string;
-  details?: import("../types/error-details").ErrorDetails;
-  context?: ErrorContext;
-  cause?: Error;
-  stack?: string;
-}
-
 export abstract class BaseError extends Error {
   readonly id: string;
   readonly code: ErrorCode;
@@ -98,54 +89,6 @@ export abstract class BaseError extends Error {
   }
 
   /**
-   * Get detailed error information for debugging
-   */
-  getDebugInfo(): object {
-    return {
-      ...this.toJSON(),
-      cause: this.cause?.message,
-      causeStack: this.cause?.stack,
-    };
-  }
-
-  /**
-   * Check if error is retryable
-   */
-  isRetryable(): boolean {
-    // Network and timeout errors are typically retryable
-    return [
-      ErrorCode.NETWORK_ERROR,
-      ErrorCode.TIMEOUT,
-      ErrorCode.SERVICE_UNAVAILABLE,
-      ErrorCode.RATE_LIMIT_EXCEEDED,
-    ].includes(this.code);
-  }
-
-  /**
-   * Get suggested action for the error
-   */
-  getSuggestedAction(): string {
-    switch (this.code) {
-      case ErrorCode.INVALID_CREDENTIALS:
-        return "Please check your email and password and try again.";
-      case ErrorCode.SESSION_EXPIRED:
-        return "Your session has expired. Please log in again.";
-      case ErrorCode.ACCOUNT_LOCKED:
-        return "Your account has been locked. Please contact support.";
-      case ErrorCode.EMAIL_NOT_VERIFIED:
-        return "Please verify your email address to continue.";
-      case ErrorCode.RATE_LIMIT_EXCEEDED:
-        return "Too many attempts. Please wait a moment and try again.";
-      case ErrorCode.SERVICE_UNAVAILABLE:
-        return "Service is temporarily unavailable. Please try again later.";
-      case ErrorCode.VALIDATION_FAILED:
-        return "Please check your input and try again.";
-      default:
-        return "An error occurred. Please try again or contact support if the problem persists.";
-    }
-  }
-
-  /**
    * Emit error event for monitoring and logging
    */
   private async emitErrorEvent(): Promise<void> {
@@ -205,28 +148,5 @@ export abstract class BaseError extends Error {
       default:
         console.log(`[${this.severity.toUpperCase()}] ${this.name}:`, logData);
     }
-  }
-
-  /**
-   * Create error response for API
-   */
-  toResponse(): {
-    error: {
-      id: string;
-      code: string;
-      message: string;
-      details?: import("../types/error-details").ErrorDetails;
-      suggestedAction?: string;
-    };
-  } {
-    return {
-      error: {
-        id: this.id,
-        code: this.code,
-        message: this.getUserMessage(),
-        details: this.details,
-        suggestedAction: this.getSuggestedAction(),
-      },
-    };
   }
 }

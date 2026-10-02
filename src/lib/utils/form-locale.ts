@@ -18,28 +18,6 @@ export function appendLocaleToFormData(
 }
 
 /**
- * Creates new FormData with locale pre-populated
- * @param locale - The current page locale
- * @param initialData - Optional initial form entries
- * @returns New FormData instance with locale
- */
-export function createLocalizedFormData(
-  locale: string,
-  initialData?: Record<string, string>,
-): FormData {
-  const formData = new FormData();
-  formData.append("_locale", locale);
-
-  if (initialData) {
-    Object.entries(initialData).forEach(([key, value]) => {
-      formData.append(key, value);
-    });
-  }
-
-  return formData;
-}
-
-/**
  * Extracts locale from FormData, with fallback
  * @param formData - The form data to extract from
  * @param fallback - Fallback locale if not found

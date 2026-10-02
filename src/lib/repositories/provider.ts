@@ -40,9 +40,3 @@ export class RepositoryProvider {
 }
 
 export const repositories = RepositoryProvider.getInstance();
-
-export function getRepositories(
-  prismaClient?: PrismaClient,
-): RepositoryProvider {
-  return RepositoryProvider.getInstance(prismaClient);
-}

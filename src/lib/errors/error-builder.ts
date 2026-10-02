@@ -1,5 +1,4 @@
-import { BaseError, ErrorContext } from "./base/base-error";
-import { ErrorCode } from "./base/error-codes";
+import { ErrorContext } from "./base/base-error";
 import { ErrorFactory } from "./error-factory";
 import type { ErrorDetails } from "./types/error-details";
 import { z } from "zod";
@@ -47,14 +46,6 @@ export class ErrorBuilder {
    */
   withMethod(method: string): this {
     this.context.method = method;
-    return this;
-  }
-
-  /**
-   * Add custom context data
-   */
-  withContext(context: Record<string, unknown>): this {
-    this.context = { ...this.context, ...context };
     return this;
   }
 
@@ -146,9 +137,6 @@ export class ErrorBuilder {
         actualValue,
         this.context,
       ),
-
-    duplicate: (field: string, value: unknown) =>
-      ErrorFactory.validation.duplicate(field, value, this.context),
   };
 
   /**
@@ -267,104 +255,4 @@ export class ErrorBuilder {
  */
 export function createError(): ErrorBuilder {
   return new ErrorBuilder();
-}
-
-/**
- * Error assertions for testing and validation
- */
-export class ErrorAssertions {
-  /**
-   * Assert that value is an error with specific code
-   */
-  static assertErrorCode(
-    error: unknown,
-    expectedCode: ErrorCode,
-  ): asserts error is BaseError {
-    if (!(error instanceof BaseError)) {
-      throw new Error(`Expected BaseError instance, got ${typeof error}`);
-    }
-    if (error.code !== expectedCode) {
-      throw new Error(`Expected error code ${expectedCode}, got ${error.code}`);
-    }
-  }
-
-  /**
-   * Assert that value is a specific error type
-   */
-  static assertErrorType<T extends BaseError>(
-    error: unknown,
-    ErrorClass: new (...args: never[]) => T,
-  ): asserts error is T {
-    if (!(error instanceof ErrorClass)) {
-      throw new Error(
-        `Expected ${ErrorClass.name} instance, got ${error?.constructor?.name}`,
-      );
-    }
-  }
-
-  /**
-   * Assert that error is retryable
-   */
-  static assertRetryable(error: unknown): asserts error is BaseError {
-    if (!(error instanceof BaseError)) {
-      throw new Error(`Expected BaseError instance, got ${typeof error}`);
-    }
-    if (!error.isRetryable()) {
-      throw new Error(`Error ${error.code} is not retryable`);
-    }
-  }
-}
-
-/**
- * Error guards for type narrowing
- */
-export class ErrorGuards {
-  /**
-   * Check if error is authentication error
-   */
-  static isAuthError(error: unknown): boolean {
-    return error instanceof BaseError && error.code.startsWith("AUTH_");
-  }
-
-  /**
-   * Check if error is validation error
-   */
-  static isValidationError(error: unknown): boolean {
-    return error instanceof BaseError && error.code.startsWith("VAL_");
-  }
-
-  /**
-   * Check if error is business logic error
-   */
-  static isBusinessError(error: unknown): boolean {
-    return error instanceof BaseError && error.code.startsWith("BIZ_");
-  }
-
-  /**
-   * Check if error is system error
-   */
-  static isSystemError(error: unknown): boolean {
-    return error instanceof BaseError && error.code.startsWith("SYS_");
-  }
-
-  /**
-   * Check if error is rate limiting error
-   */
-  static isRateLimitError(error: unknown): boolean {
-    return error instanceof BaseError && error.code.startsWith("RATE_");
-  }
-
-  /**
-   * Check if error is retryable
-   */
-  static isRetryable(error: unknown): boolean {
-    return error instanceof BaseError && error.isRetryable();
-  }
-
-  /**
-   * Check if error is critical
-   */
-  static isCritical(error: unknown): boolean {
-    return error instanceof BaseError && error.severity === "critical";
-  }
 }

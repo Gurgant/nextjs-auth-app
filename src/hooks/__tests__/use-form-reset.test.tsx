@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { useFormReset, useMultipleFormReset } from "../use-form-reset";
+import { useFormReset } from "../use-form-reset";
 import React from "react";
 
 // Mock console methods
@@ -274,100 +274,5 @@ describe("useFormReset", () => {
         }),
       );
     });
-  });
-});
-
-describe("useMultipleFormReset", () => {
-  let form1: HTMLFormElement;
-  let form2: HTMLFormElement;
-
-  beforeEach(() => {
-    form1 = document.createElement("form");
-    form1.innerHTML = '<input name="field1" value="value1" />';
-    form1.reset = jest.fn();
-    document.body.appendChild(form1);
-
-    form2 = document.createElement("form");
-    form2.innerHTML = '<input name="field2" value="value2" />';
-    form2.reset = jest.fn();
-    document.body.appendChild(form2);
-  });
-
-  afterEach(() => {
-    if (form1 && document.body.contains(form1)) {
-      document.body.removeChild(form1);
-    }
-    if (form2 && document.body.contains(form2)) {
-      document.body.removeChild(form2);
-    }
-  });
-
-  it("manages multiple forms", () => {
-    const { result } = renderHook(() =>
-      useMultipleFormReset(["form1", "form2"]),
-    );
-
-    // Attach refs
-    act(() => {
-      Object.defineProperty(result.current.formRefs.form1, "current", {
-        writable: true,
-        value: form1,
-      });
-      Object.defineProperty(result.current.formRefs.form2, "current", {
-        writable: true,
-        value: form2,
-      });
-    });
-
-    // Reset individual form
-    act(() => {
-      result.current.resetForm("form1");
-    });
-
-    expect(form1.reset).toHaveBeenCalled();
-    expect(form2.reset).not.toHaveBeenCalled();
-  });
-
-  it("resets all forms at once", () => {
-    const { result } = renderHook(() =>
-      useMultipleFormReset(["form1", "form2"]),
-    );
-
-    // Attach refs
-    act(() => {
-      Object.defineProperty(result.current.formRefs.form1, "current", {
-        writable: true,
-        value: form1,
-      });
-      Object.defineProperty(result.current.formRefs.form2, "current", {
-        writable: true,
-        value: form2,
-      });
-    });
-
-    // Reset all forms
-    act(() => {
-      result.current.resetAllForms();
-    });
-
-    expect(form1.reset).toHaveBeenCalled();
-    expect(form2.reset).toHaveBeenCalled();
-  });
-
-  it("validates individual forms", () => {
-    const { result } = renderHook(() =>
-      useMultipleFormReset(["form1", "form2"]),
-    );
-
-    // Only attach form1
-    act(() => {
-      Object.defineProperty(result.current.formRefs.form1, "current", {
-        writable: true,
-        value: form1,
-      });
-    });
-
-    expect(result.current.isFormValid("form1")).toBe(true);
-    expect(result.current.isFormValid("form2")).toBe(false);
   });
 });

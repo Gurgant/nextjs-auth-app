@@ -34,22 +34,3 @@ export async function translateValidationErrors(
 
   return translatedErrors;
 }
-
-/**
- * Helper to get a single validation error message
- * @param key - Translation key (without validation prefix)
- * @param locale - Current locale
- * @returns Translated message
- */
-export async function getValidationMessage(
-  key: string,
-  locale: string,
-): Promise<string> {
-  try {
-    const t = await getTranslations({ locale, namespace: "validation" });
-    return t(key);
-  } catch {
-    console.warn(`Translation not found for key: ${key}`);
-    return key;
-  }
-}

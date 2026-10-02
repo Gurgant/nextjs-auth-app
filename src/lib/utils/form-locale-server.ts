@@ -53,26 +53,3 @@ export async function getFormTranslations(
   const locale = await resolveFormLocale(formData);
   return getTranslations({ locale, namespace });
 }
-
-/**
- * Type-safe wrapper for getting form translations with specific namespaces
- */
-export type FormTranslationNamespaces =
-  | "validation"
-  | "auth"
-  | "errors"
-  | "success"
-  | "common";
-
-/**
- * Gets typed translations for common form namespaces
- *
- * @example
- * const t = await getTypedFormTranslations(formData, 'validation');
- * // TypeScript knows this is validation namespace translations
- */
-export async function getTypedFormTranslations<
-  T extends FormTranslationNamespaces,
->(formData: FormData, namespace: T) {
-  return getFormTranslations(formData, namespace);
-}

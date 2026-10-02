@@ -20,6 +20,3 @@ export interface QueryOptions<T = unknown> {
   skip?: number;
   take?: number;
 }
-
-export type CreateDTO<T> = Omit<T, "id" | "createdAt" | "updatedAt">;
-export type UpdateDTO<T> = Partial<CreateDTO<T>>;
