@@ -4,6 +4,8 @@
  */
 
 import type { Role } from "@/lib/types/prisma";
+import type { Account, Session, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   /**
