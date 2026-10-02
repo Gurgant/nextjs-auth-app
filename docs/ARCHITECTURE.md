@@ -48,7 +48,11 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
   `GOOGLE_CLIENT_SECRET` are both set. The UI asks `/api/auth/providers`
   (`src/hooks/use-google-sign-in.ts`) and hides Google when it is absent.
   Google sign-ins go through the `signIn`/`jwt` callbacks, not `authorize()`,
-  so they are not asked for a TOTP code.
+  so they are not asked for a TOTP code. A Google sign-in marks the e-mail
+  verified only when Google's ID token has `email_verified: true` for the
+  address stored on the user. That is decided in one place,
+  `src/lib/auth/google-email-verification.ts`, called from the `jwt` callback;
+  an existing verification date is kept.
 - 2FA secrets and backup codes are stored **encrypted** (`src/lib/security.ts`,
   passphrase `ENCRYPTION_KEY`, rule in `src/lib/env-rules.ts`).
 
