@@ -1,4 +1,4 @@
-import { FullConfig } from "@playwright/test";
+import { request, type FullConfig } from "@playwright/test";
 import { PrismaClient } from "../src/generated/prisma/index";
 import bcrypt from "bcryptjs";
 import CryptoJS from "crypto-js";
@@ -8,6 +8,7 @@ import {
   assertNotDevelopmentDatabase,
   resolveE2EDatabaseUrl,
 } from "./support/test-db";
+import { warmUp } from "./support/warm-up";
 
 // Resolved by playwright.config.ts before .env is loaded below.
 const E2E_DATABASE_URL = resolveE2EDatabaseUrl();
@@ -26,12 +27,13 @@ dotenv.config();
 async function globalSetup(config: FullConfig) {
   console.log("🚀 Starting Playwright global setup...");
 
+  const baseURL = config.projects[0].use?.baseURL || "http://localhost:3000";
+
   // Set environment variables for tests
   if (!process.env.NODE_ENV) {
     (process.env as any).NODE_ENV = "test";
   }
-  process.env.NEXTAUTH_URL =
-    config.projects[0].use?.baseURL || "http://localhost:3000";
+  process.env.NEXTAUTH_URL = baseURL;
   process.env.NEXTAUTH_SECRET =
     process.env.NEXTAUTH_SECRET || "test-secret-for-e2e";
 
@@ -44,23 +46,44 @@ async function globalSetup(config: FullConfig) {
   try {
     // Connect to database
     await prisma.$connect();
-    console.log(" Connected to test database");
+    console.log("Connected to test database");
 
     // Clean database
     await cleanDatabase(prisma);
-    console.log(">� Cleaned test database");
+    console.log("Cleaned test database");
 
     // Seed test data
     await seedTestData(prisma);
-    console.log("<1 Seeded test data");
+    console.log("Seeded test data");
   } catch (error) {
-    console.error("L Global setup failed:", error);
+    console.error("Global setup failed:", error);
     throw error;
   } finally {
     await prisma.$disconnect();
   }
 
-  console.log(" Playwright global setup complete");
+  // Compile every route the suite visits before the first test, so that no
+  // test pays a `next dev` compile inside one of its own waits (see
+  // e2e/support/warm-up.ts). The requests carry no session and follow no
+  // redirect; `Connection: close` for the reason given in e2e/support/app.ts.
+  const api = await request.newContext({ baseURL });
+  try {
+    await warmUp({
+      log: console.log,
+      get: async (path, timeoutMs) => {
+        const response = await api.get(path, {
+          maxRedirects: 0,
+          timeout: timeoutMs,
+          headers: { Connection: "close" },
+        });
+        return response.status();
+      },
+    });
+  } finally {
+    await api.dispose();
+  }
+
+  console.log("Playwright global setup complete");
 }
 
 /**
@@ -87,10 +110,6 @@ async function seedTestData(prisma: PrismaClient) {
   console.log("🔐 Creating password hash for test@example.com...");
   const testPassword = "Test123!";
   const testPasswordHash = await bcrypt.hash(testPassword, 12);
-  console.log(`🔐 Generated hash: ${testPasswordHash}`);
-  console.log(
-    `🔐 Verification test: ${bcrypt.compareSync(testPassword, testPasswordHash)}`,
-  );
 
   const testUsers = [
     {

@@ -47,11 +47,15 @@ export default defineConfig({
 
   // Reporter configuration
   // In CI: one line per test plus the totals in the log, and GitHub annotations.
+  // The compile guard fails the run when the dev server compiles a route, or
+  // rebuilds after a file change, while tests are running (it reads the
+  // server's output, hence `stdout: "pipe"` below).
   reporter: process.env.CI
-    ? [["list"], ["github"]]
+    ? [["list"], ["github"], ["./e2e/support/compile-guard.ts"]]
     : [
         ["list"],
         ["html", { outputFolder: "playwright-report", open: "never" }],
+        ["./e2e/support/compile-guard.ts"],
       ],
 
   // Global setup for database seeding and test environment
