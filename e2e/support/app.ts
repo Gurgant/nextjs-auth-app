@@ -1,4 +1,10 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import {
+  expect,
+  request,
+  type APIRequestContext,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 import { authenticator } from "otplib";
 
 /**
@@ -153,7 +159,7 @@ export async function signInViaUi(page: Page, user: TestUser, locale = "en") {
  */
 export async function signInViaApi(
   page: Page,
-  user: TestUser,
+  user: { email: string; password: string },
   extra: Record<string, string> = {},
 ) {
   // Leave the app first: its background session polling shares the cookie
@@ -174,6 +180,53 @@ export async function signInViaApi(
   });
   expect(res.ok()).toBeTruthy();
   await expectSignedInAs(page, user.email);
+}
+
+/**
+ * Sign out through the endpoint the Sign out button calls (no UI), for tests
+ * whose subject is what the server does with the session afterwards.
+ */
+export async function signOutViaApi(page: Page) {
+  await page.goto("about:blank"); // same reason as in signInViaApi
+  const { csrfToken } = await apiGet(page, "/api/auth/csrf").then((r) =>
+    r.json(),
+  );
+  const res = await apiPost(page, "/api/auth/signout", {
+    headers: { "X-Auth-Return-Redirect": "1" },
+    form: { csrfToken, callbackUrl: "/en" },
+  });
+  expect(res.ok()).toBeTruthy();
+}
+
+/**
+ * A request client with its own cookie jar, filled with the cookies this
+ * browser context holds right now. It stands for a copy of the cookie, or for
+ * a request that left the browser before something changed: what the browser
+ * does afterwards does not reach this jar. Dispose it at the end of the test.
+ */
+export async function cookieJarCopy(
+  page: Page,
+  baseURL: string | undefined,
+): Promise<APIRequestContext> {
+  return request.newContext({
+    baseURL,
+    storageState: await page.context().storageState(),
+    extraHTTPHeaders: NO_KEEP_ALIVE,
+  });
+}
+
+/**
+ * The session cookie(s) with a value among `cookies` (Auth.js names it
+ * `authjs.session-token`, with a `__Secure-` prefix over HTTPS and a numeric
+ * suffix when it is split into chunks). A cleared cookie has no value.
+ */
+export function sessionCookies<T extends { name: string; value: string }>(
+  cookies: readonly T[],
+): T[] {
+  return cookies.filter(
+    (cookie) =>
+      cookie.name.includes("authjs.session-token") && cookie.value !== "",
+  );
 }
 
 /**

@@ -18,6 +18,11 @@ import { getLockoutPolicy } from "@/lib/auth/lockout";
 import { parseLoginMethod } from "@/lib/auth/last-login-method";
 import { rememberLoginMethod } from "@/lib/auth/remember-login-method";
 import { resolveEmailVerified } from "@/lib/auth/google-email-verification";
+import {
+  newSessionId,
+  readSessionVersion,
+  revokeSession,
+} from "@/lib/auth/session-revocation";
 import { resolveSessionMaxAge } from "@/lib/session-config";
 import { CredentialsSignin } from "next-auth";
 import type { User, Account } from "next-auth";
@@ -242,6 +247,8 @@ export const authOptions = {
           emailVerified: user.emailVerified,
           twoFactorEnabled: user.twoFactorEnabled,
           role: user.role,
+          // From the row the password was checked against (see the jwt callback).
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -254,7 +261,9 @@ export const authOptions = {
     strategy: "jwt" as const,
     // Seconds; default 7 days, override with SESSION_MAX_AGE (validated at boot
     // by src/lib/env.ts). Sliding idle timeout: Auth.js re-issues the token on
-    // every GET /api/auth/session. JWTs cannot be revoked one by one — see
+    // every GET /api/auth/session. A session can end earlier: every decode of
+    // the token is checked against the database (sign-out, password change,
+    // deleted account) — see src/lib/auth/session-revocation.ts and
     // SECURITY.md. (`updateAge` only applies to database sessions.)
     maxAge: resolveSessionMaxAge(),
   },
@@ -353,6 +362,16 @@ export const authOptions = {
         token.role = user.role || "USER";
         token.hasGoogleAccount = user.hasGoogleAccount;
         token.lastLoginAt = user.lastLoginAt;
+        // Set once, here: a session check returns the token as it is, so both
+        // claims are carried through every re-issue. The check itself is in
+        // jwt.decode (src/lib/auth.ts), not in this callback.
+        token.sid = newSessionId();
+        // The version comes with the user object: for credentials it is the
+        // one of the row the password was checked against, so a sign-in with
+        // the old password that is in flight during a password change gets
+        // the old version and its session is refused. A second read here
+        // could already see the new version. Read only when it is missing.
+        token.sv = user.sessionVersion ?? (await readSessionVersion(user.id));
       }
       return token;
     },
@@ -391,6 +410,8 @@ export const authOptions = {
       console.log("User signed out:", {
         userId: message.token?.sub,
       });
+      // The token is the decoded cookie, or null when it was already dead.
+      await revokeSession(message.token);
     },
     // Auth.js passes the new user only: no account, so no provider.
     async createUser(message: { user: User }) {

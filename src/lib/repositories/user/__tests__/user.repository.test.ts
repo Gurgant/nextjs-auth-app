@@ -62,4 +62,23 @@ describe("UserRepository password writes", () => {
 
     expect(mockUpdate.mock.calls[0][0].data.password).toBe(hash);
   });
+
+  it("updatePassword() leaves the session version alone unless asked", async () => {
+    await repo.updatePassword("u1", "hash");
+
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { password: "hash" },
+    });
+  });
+
+  it("updatePassword() with revokeSessions bumps the session version in the same update", async () => {
+    await repo.updatePassword("u1", "hash", { revokeSessions: true });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: { password: "hash", sessionVersion: { increment: 1 } },
+    });
+  });
 });

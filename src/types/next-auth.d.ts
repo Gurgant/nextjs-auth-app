@@ -19,6 +19,8 @@ declare module "next-auth" {
     twoFactorEnabled: boolean;
     hasGoogleAccount?: boolean;
     lastLoginAt?: Date | null;
+    /** User.sessionVersion as read at sign-in; never copied to the session. */
+    sessionVersion?: number;
     createdAt?: Date;
     updatedAt?: Date;
   }
@@ -62,6 +64,10 @@ declare module "next-auth/jwt" {
     twoFactorEnabled: boolean;
     hasGoogleAccount?: boolean;
     lastLoginAt?: Date | null;
+    /** Session id, set once at sign-in (src/lib/auth/session-revocation.ts). */
+    sid?: string;
+    /** The user's sessionVersion at sign-in. */
+    sv?: number;
   }
 }
 

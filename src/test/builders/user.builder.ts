@@ -28,6 +28,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       passwordSetAt: null,
       lastPasswordChange: null,
       requiresPasswordChange: false,
+      sessionVersion: 0,
       twoFactorEnabled: false,
       twoFactorSecret: null,
       twoFactorEnabledAt: null,

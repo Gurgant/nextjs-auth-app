@@ -214,7 +214,7 @@ describe("changeUserPassword", () => {
 
       expect(result).toMatchObject({
         success: true,
-        message: "Password changed successfully!",
+        message: "Password changed successfully! Please sign in again.",
       });
       expect(mockRepo.updatePassword).toHaveBeenCalledTimes(1);
       const [userId, hash] = mockRepo.updatePassword.mock.calls[0];

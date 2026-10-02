@@ -198,7 +198,8 @@ test.describe("Role-based access control", () => {
         panel.getByText(`System administration panel - ${USERS.admin.name}`),
       ).toBeVisible();
       // "Recent Users" lists the newest accounts with take: 5; global-setup
-      // seeds 6 users and no spec deletes any, so the table is always full.
+      // seeds 6 users and no spec deletes any of them (session-revocation
+      // deletes only a user it created itself), so the table is always full.
       await expect(
         panel.getByRole("heading", { name: "Recent Users", exact: true }),
       ).toBeVisible();

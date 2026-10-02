@@ -8,13 +8,23 @@ import { prismaTest as prisma, cleanupPrismaTest } from "@/lib/prisma-test";
 import { RegisterUserCommand } from "@/lib/commands/auth/register-user.command";
 import { ChangePasswordCommand } from "@/lib/commands/auth/change-password.command";
 import { UserRepository } from "@/lib/repositories/user/user.repository";
+import {
+  revokeSession,
+  verifySessionToken,
+} from "@/lib/auth/session-revocation";
 import { UserBuilder } from "../../builders/user.builder";
 import { AccountBuilder } from "../../builders/account.builder";
 import { SessionBuilder } from "../../builders/session.builder";
 import bcrypt from "bcryptjs";
+import type { JWT } from "next-auth/jwt";
 
 // Using properly configured test Prisma client
 // Connection pooling is handled in prisma-test.ts
+
+// The session guard uses the app's Prisma client: point it at the test database.
+jest.mock("@/lib/prisma", () => ({
+  prisma: require("@/lib/prisma-test").prismaTest,
+}));
 
 // Mock the repositories to use real Prisma
 jest.mock("@/lib/repositories", () => ({
@@ -122,6 +132,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
     await prisma.$transaction([
       prisma.account.deleteMany(),
       prisma.session.deleteMany(),
+      prisma.revokedSession.deleteMany(),
       prisma.verificationToken.deleteMany(),
       prisma.user.deleteMany(),
     ]);
@@ -648,6 +659,145 @@ describe("Authentication Integration Tests (Real Database)", () => {
       const row = await prisma.user.findUnique({ where: { id: user.id } });
       expect(row).toMatchObject({ loginAttempts: 0, lockedUntil: null });
       expect(row?.lastLoginAt).toBeTruthy();
+    });
+  });
+
+  // The session guard (src/lib/auth/session-revocation.ts) and the password
+  // write that ends sessions, on real PostgreSQL. In this file for the reason
+  // given above.
+  describe("Session revocation - Real DB", () => {
+    const makeUser = async (email: string) =>
+      prisma.user.create({
+        data: { email, password: await bcrypt.hash("Correct123!", 4) },
+      });
+
+    const tokenFor = (
+      userId: string,
+      sid: string,
+      claims: Record<string, unknown> = {},
+    ): JWT =>
+      ({
+        id: userId,
+        sub: userId,
+        sid,
+        sv: 0,
+        role: "USER",
+        ...claims,
+      }) as JWT;
+
+    it("a revoked session is refused, another session of the same user is not", async () => {
+      const user = await makeUser("revoked@example.com");
+      const signedOut = tokenFor(user.id, "sid-signed-out");
+      const other = tokenFor(user.id, "sid-other");
+
+      await expect(verifySessionToken(signedOut)).resolves.toBe(signedOut);
+      await revokeSession(signedOut);
+
+      await expect(verifySessionToken(signedOut)).resolves.toBeNull();
+      await expect(verifySessionToken(other)).resolves.toBe(other);
+    });
+
+    it("two concurrent sign-outs of one session both succeed and leave one row", async () => {
+      const token = tokenFor("no-user-needed", "sid-twice");
+
+      await expect(
+        Promise.all([revokeSession(token), revokeSession(token)]),
+      ).resolves.toEqual([undefined, undefined]);
+
+      await expect(
+        prisma.revokedSession.count({ where: { sid: "sid-twice" } }),
+      ).resolves.toBe(1);
+    });
+
+    it("the next sign-out deletes the expired rows and keeps the others", async () => {
+      await prisma.revokedSession.createMany({
+        data: [
+          { sid: "sid-expired", expires: new Date(Date.now() - 1000) },
+          { sid: "sid-current", expires: new Date(Date.now() + 60_000) },
+        ],
+      });
+
+      await revokeSession(tokenFor("no-user-needed", "sid-new"));
+
+      const rows = await prisma.revokedSession.findMany({
+        select: { sid: true },
+        orderBy: { sid: "asc" },
+      });
+      expect(rows.map((row) => row.sid)).toEqual(["sid-current", "sid-new"]);
+    });
+
+    it("a session of a deleted user is refused", async () => {
+      const user = await makeUser("deleted@example.com");
+      const token = tokenFor(user.id, "sid-deleted-user");
+      await expect(verifySessionToken(token)).resolves.toBe(token);
+
+      await prisma.user.delete({ where: { id: user.id } });
+
+      await expect(verifySessionToken(token)).resolves.toBeNull();
+    });
+
+    it("a role change in the database reaches the token at the next check", async () => {
+      const user = await makeUser("demoted@example.com");
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "ADMIN" },
+      });
+      const token = tokenFor(user.id, "sid-role", { role: "ADMIN" });
+      await expect(verifySessionToken(token)).resolves.toMatchObject({
+        role: "ADMIN",
+      });
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "USER" },
+      });
+
+      await expect(verifySessionToken(token)).resolves.toMatchObject({
+        role: "USER",
+      });
+    });
+
+    it("updatePassword() without the option leaves the session version alone", async () => {
+      const user = await makeUser("add-password@example.com");
+      const hash = await bcrypt.hash("Another123!", 4);
+
+      await new UserRepository(prisma).updatePassword(user.id, hash);
+
+      const row = await prisma.user.findUnique({ where: { id: user.id } });
+      expect(row).toMatchObject({ password: hash, sessionVersion: 0 });
+    });
+
+    it("updatePassword() with revokeSessions stores the hash and bumps the session version", async () => {
+      const user = await makeUser("bump@example.com");
+      const repo = new UserRepository(prisma);
+      const first = await bcrypt.hash("Another123!", 4);
+      const second = await bcrypt.hash("YetAnother123!", 4);
+
+      await repo.updatePassword(user.id, first, { revokeSessions: true });
+      await expect(
+        prisma.user.findUnique({ where: { id: user.id } }),
+      ).resolves.toMatchObject({ password: first, sessionVersion: 1 });
+
+      await repo.updatePassword(user.id, second, { revokeSessions: true });
+      await expect(
+        prisma.user.findUnique({ where: { id: user.id } }),
+      ).resolves.toMatchObject({ password: second, sessionVersion: 2 });
+    });
+
+    it("a password change ends the sessions issued before it, not the ones after", async () => {
+      const user = await makeUser("everywhere@example.com");
+      const before = tokenFor(user.id, "sid-before", { sv: 0 });
+      const after = tokenFor(user.id, "sid-after", { sv: 1 });
+      await expect(verifySessionToken(before)).resolves.toBe(before);
+
+      await new UserRepository(prisma).updatePassword(
+        user.id,
+        await bcrypt.hash("Another123!", 4),
+        { revokeSessions: true },
+      );
+
+      await expect(verifySessionToken(before)).resolves.toBeNull();
+      await expect(verifySessionToken(after)).resolves.toBe(after);
     });
   });
 });
