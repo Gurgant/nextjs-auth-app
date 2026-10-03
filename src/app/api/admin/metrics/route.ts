@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withRole } from "@/lib/auth/rbac";
-import { performanceMonitor } from "@/lib/monitoring/performance";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Admin metrics endpoint - system performance and health metrics.
+ * Admin metrics endpoint - system, database and security-event figures.
  * ADMIN role required (enforced by withRole).
  */
 const getMetrics = async (_request: NextRequest) => {
   try {
     const startTime = Date.now();
-
-    // Get performance statistics
-    const performanceStats = performanceMonitor.getStats();
-    const slowOperations = performanceMonitor.getSlowOperations(5);
-    const slowQueries = performanceMonitor.getSlowQueries(5);
 
     // Get system metrics
     const memoryUsage = process.memoryUsage();
@@ -30,10 +24,7 @@ const getMetrics = async (_request: NextRequest) => {
     let databaseStats = null;
     try {
       // Count total users
-      const [userCount, sessionCount] = await Promise.all([
-        prisma.user.count(),
-        prisma.session.count(),
-      ]);
+      const userCount = await prisma.user.count();
 
       // Get recent security events
       const recentSecurityEvents = await prisma.securityEvent.findMany({
@@ -49,7 +40,6 @@ const getMetrics = async (_request: NextRequest) => {
 
       databaseStats = {
         userCount,
-        sessionCount,
         recentSecurityEvents: recentSecurityEvents.map((event) => ({
           type: event.eventType,
           success: event.success,
@@ -107,15 +97,12 @@ const getMetrics = async (_request: NextRequest) => {
           ),
         },
       },
-      performance: performanceStats,
       database: databaseStats,
       security: {
         errorRate,
         recentEvents: databaseStats?.recentSecurityEvents || [],
       },
       alerts: {
-        slowOperations,
-        slowQueries,
         highMemoryUsage: memoryUsage.heapUsed / memoryUsage.heapTotal > 0.8,
         highErrorRate: (errorRate?.rate || 0) > 5,
       },
@@ -141,26 +128,4 @@ const getMetrics = async (_request: NextRequest) => {
   }
 };
 
-/**
- * Reset metrics (useful for testing or after resolving issues). ADMIN only.
- */
-const clearMetrics = async (_request: NextRequest) => {
-  try {
-    performanceMonitor.clearOldMetrics();
-
-    return NextResponse.json({
-      message: "Metrics cleared successfully",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Failed to clear metrics:", error);
-
-    return NextResponse.json(
-      { error: "Failed to clear metrics" },
-      { status: 500 },
-    );
-  }
-};
-
 export const GET = withRole("ADMIN", getMetrics);
-export const DELETE = withRole("ADMIN", clearMetrics);

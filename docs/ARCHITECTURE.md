@@ -9,7 +9,7 @@ statement against the code.
 Browser ──► src/middleware.ts        locale routing only (next-intl)
         ──► src/app/[locale]/…       pages; protected ones call auth() and redirect
         ──► src/app/api/…            route handlers: Auth.js, link/unlink Google,
-                 │                   account info, admin metrics, health, web-vitals
+                 │                   account info, admin metrics, health
                  ▼
         src/lib/actions/…            server actions
                  │
@@ -80,8 +80,8 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
 
 - Roles: `USER`, `PRO_USER`, `ADMIN` (Prisma enum, single source of truth).
 - Pure role helpers live in `src/lib/auth/roles.ts` and are safe for Client
-  Components. Server guards live in `src/lib/auth/rbac.ts`: `withRole()` wraps
-  role-restricted API routes (`/api/admin/metrics`).
+  Components. The server guard lives in `src/lib/auth/rbac.ts`: `withRole()`
+  wraps role-restricted API routes (`/api/admin/metrics`).
 - Pages enforce access themselves: `auth()` + `hasRole()` + `redirect()` in
   `dashboard/*` and `admin/page.tsx`, and the `AuthGuard` server component on
   `/account`. The middleware does not check authentication. With the session
@@ -113,14 +113,13 @@ re-check, 429 throttling and security events.
 
 ## Supporting layers (`src/lib/`)
 
-| Layer        | Path                          | Role                                                                                                                                                |
-| ------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repositories | `repositories/`               | User repository behind an interface (credentials check, lockout); much other code calls Prisma directly                                             |
-| Commands     | `commands/`                   | Write operations as command objects + a command bus                                                                                                 |
-| Events       | `events/`                     | Domain events on an in-process bus, with two example listeners kept in memory (below)                                                               |
-| Errors       | `errors/`                     | Typed error taxonomy, used by the two commands (register user, change password)                                                                     |
-| Validation   | `validation/`                 | Shared Zod schemas                                                                                                                                  |
-| Monitoring   | `monitoring/`, `performance/` | Logger; an in-process performance monitor read by `/api/admin/metrics` (nothing records into it yet); web-vitals helpers and the bounded demo store |
+| Layer        | Path            | Role                                                                                                    |
+| ------------ | --------------- | ------------------------------------------------------------------------------------------------------- |
+| Repositories | `repositories/` | User repository behind an interface (credentials check, lockout); much other code calls Prisma directly |
+| Commands     | `commands/`     | Write operations as command objects + a command bus                                                     |
+| Events       | `events/`       | Domain events on an in-process bus, with two example listeners kept in memory (below)                   |
+| Errors       | `errors/`       | Typed error taxonomy, used by the two commands (register user, change password)                         |
+| Validation   | `validation/`   | Shared Zod schemas                                                                                      |
 
 The events layer carries five events: a registration and a password change
 (published by the two commands), a command that returned or threw (by the

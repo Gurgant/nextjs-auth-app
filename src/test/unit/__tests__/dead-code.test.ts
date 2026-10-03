@@ -12,6 +12,7 @@ import { ErrorBuilder, createError } from "@/lib/errors/error-builder";
 import { ErrorFactory } from "@/lib/errors/error-factory";
 import { BaseEvent } from "@/lib/events/base/event.base";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { RouteValidator, SafeNavigation } from "@/types/routes";
 
 // The error classes publish through the event bus. Check C only reads their
 // shape and needs no bus.
@@ -54,36 +55,14 @@ const THIS_FILE = path
 // compare for equality: an entry that no longer applies fails as well.
 // "owner decision": the owner keeps it. "pending owner decision": nothing is
 // decided yet, and the entry says what is open.
-const ALLOWED_ORPHANS: Record<string, string> = {
-  "src/components/auth/role-guard.tsx":
-    "owner decision: client role guard that the starter offers, rendered nowhere",
-  "src/hooks/use-role.ts":
-    "owner decision: used only by role-guard.tsx, kept with it",
-};
+const ALLOWED_ORPHANS: Record<string, string> = {};
 
 const ALLOWED_TEST_ONLY: Record<string, string> = {
   "src/lib/prisma-test.ts":
     "the Prisma client of the integration test (docs/TESTING.md)",
-  "src/hooks/use-multi-step-form.ts":
-    "owner decision: form hook that the starter offers, used by its own test only",
 };
 
-const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {
-  "src/components/auth/role-guard.tsx#RoleGuard":
-    "owner decision: see role-guard.tsx above",
-  "src/components/auth/role-guard.tsx#RoleVisibility":
-    "owner decision: see role-guard.tsx above",
-  "src/lib/auth/rbac.ts#requireRole":
-    "pending owner decision: guard a server route with it, or delete it",
-  "src/lib/performance/web-vitals.ts#initWebVitals":
-    "pending owner decision: wire it, or delete it together with the web-vitals dependency",
-  "src/lib/performance/web-vitals.ts#getPerformanceSnapshot":
-    "pending owner decision: see initWebVitals",
-  "src/lib/monitoring/performance.ts#measureAsync":
-    "owner decision: recording API of the performance monitor, not used yet",
-  "src/lib/monitoring/performance.ts#recordDbQuery":
-    "owner decision: recording API of the performance monitor, not used yet",
-};
+const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 
 // Retired members that A and B cannot see: a member of a class or of an
 // object, a name that a test still mentions or that its own file writes
@@ -106,6 +85,12 @@ const RETIRED: {
     members: () => Object.keys(formReset),
     kept: "useFormReset",
     retired: ["useMultipleFormReset"],
+  },
+  {
+    holder: "names exported by hooks/use-safe-locale.ts",
+    members: () => namesExportedBy("src/hooks/use-safe-locale.ts"),
+    kept: "useSafeLocale",
+    retired: ["useSafeLocaleWithOptions"],
   },
   {
     holder: "BaseError.prototype",
@@ -226,6 +211,18 @@ const RETIRED: {
     members: () => namesExportedBy("src/lib/two-factor.ts"),
     kept: "validateTOTPCode",
     retired: ["isValidTOTPFormat", "isValidBackupCodeFormat"],
+  },
+  {
+    holder: "RouteValidator",
+    members: () => Object.getOwnPropertyNames(RouteValidator),
+    kept: "isValidRoute",
+    retired: ["getRouteType", "extractLocale", "buildLocaleRoute"],
+  },
+  {
+    holder: "SafeNavigation",
+    members: () => Object.getOwnPropertyNames(SafeNavigation),
+    kept: "push",
+    retired: ["replace", "getAuthRedirect", "getDashboardRedirect"],
   },
   {
     holder: "names exported by test/builders/base.builder.ts",

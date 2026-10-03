@@ -3,8 +3,8 @@
  */
 
 /**
- * Authorization contract of /api/admin/metrics. GET and DELETE are both
- * wrapped in withRole("ADMIN", …) (src/lib/auth/rbac.ts):
+ * Authorization contract of /api/admin/metrics. GET, the only method the
+ * route exports, is wrapped in withRole("ADMIN", …) (src/lib/auth/rbac.ts):
  *   no session / session without user -> 401
  *   authenticated but not ADMIN       -> 403
  *   ADMIN                             -> 200
@@ -22,48 +22,24 @@ jest.mock("@/lib/auth", () => ({ auth: jest.fn() }));
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     user: { count: jest.fn() },
-    session: { count: jest.fn() },
     securityEvent: { findMany: jest.fn(), count: jest.fn() },
-  },
-}));
-
-// The real module starts a setInterval at import time; never load it here.
-jest.mock("@/lib/monitoring/performance", () => ({
-  performanceMonitor: {
-    getStats: jest.fn(),
-    getSlowOperations: jest.fn(),
-    getSlowQueries: jest.fn(),
-    clearOldMetrics: jest.fn(),
   },
 }));
 
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { performanceMonitor } from "@/lib/monitoring/performance";
-import { GET, DELETE } from "../route";
+import * as route from "../route";
+
+const { GET } = route;
 
 const mockAuth = auth as unknown as jest.MockedFunction<() => Promise<unknown>>;
 const db = prisma as unknown as {
   user: { count: jest.Mock };
-  session: { count: jest.Mock };
   securityEvent: { findMany: jest.Mock; count: jest.Mock };
-};
-const monitor = performanceMonitor as unknown as {
-  getStats: jest.Mock;
-  getSlowOperations: jest.Mock;
-  getSlowQueries: jest.Mock;
-  clearOldMetrics: jest.Mock;
 };
 
 const METRICS_URL = "http://localhost:3000/api/admin/metrics";
-
-type RouteHandler = (request: NextRequest) => Promise<Response>;
-
-const routes: Array<[string, RouteHandler]> = [
-  ["GET", GET],
-  ["DELETE", DELETE],
-];
 
 function sessionWithRole(role?: string) {
   return {
@@ -77,96 +53,88 @@ function sessionWithRole(role?: string) {
 }
 
 function expectHandlerNotRun() {
-  expect(monitor.getStats).not.toHaveBeenCalled();
-  expect(monitor.clearOldMetrics).not.toHaveBeenCalled();
   expect(db.user.count).not.toHaveBeenCalled();
   expect(db.securityEvent.findMany).not.toHaveBeenCalled();
+  expect(db.securityEvent.count).not.toHaveBeenCalled();
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  monitor.getStats.mockReturnValue({ totalOperations: 0 });
-  monitor.getSlowOperations.mockReturnValue([]);
-  monitor.getSlowQueries.mockReturnValue([]);
   db.user.count.mockResolvedValue(3);
-  db.session.count.mockResolvedValue(0);
   db.securityEvent.findMany.mockResolvedValue([]);
   db.securityEvent.count.mockResolvedValue(0);
 });
 
-describe.each(routes)(
-  "%s /api/admin/metrics authorization",
-  (method, handler) => {
-    const call = () => handler(new NextRequest(METRICS_URL, { method }));
+describe("GET /api/admin/metrics authorization", () => {
+  const call = () => GET(new NextRequest(METRICS_URL));
 
-    it("returns 401 when there is no session", async () => {
-      mockAuth.mockResolvedValue(null);
+  it("returns 401 when there is no session", async () => {
+    mockAuth.mockResolvedValue(null);
 
-      const res = await call();
+    const res = await call();
 
-      expect(res.status).toBe(401);
-      await expect(res.json()).resolves.toEqual({
-        error: "Authentication required",
-      });
-      expectHandlerNotRun();
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({
+      error: "Authentication required",
     });
+    expectHandlerNotRun();
+  });
 
-    it("returns 401 when the session has no user", async () => {
-      mockAuth.mockResolvedValue({ expires: new Date().toISOString() });
+  it("returns 401 when the session has no user", async () => {
+    mockAuth.mockResolvedValue({ expires: new Date().toISOString() });
 
-      const res = await call();
+    const res = await call();
 
-      expect(res.status).toBe(401);
-      expectHandlerNotRun();
+    expect(res.status).toBe(401);
+    expectHandlerNotRun();
+  });
+
+  it.each(["USER", "PRO_USER"])("returns 403 for role %s", async (role) => {
+    mockAuth.mockResolvedValue(sessionWithRole(role));
+
+    const res = await call();
+
+    expect(res.status).toBe(403);
+    await expect(res.json()).resolves.toEqual({
+      error: "Insufficient permissions",
     });
+    expectHandlerNotRun();
+  });
 
-    it.each(["USER", "PRO_USER"])("returns 403 for role %s", async (role) => {
-      mockAuth.mockResolvedValue(sessionWithRole(role));
+  it("returns 403 when the session carries no role", async () => {
+    mockAuth.mockResolvedValue(sessionWithRole());
 
-      const res = await call();
+    const res = await call();
 
-      expect(res.status).toBe(403);
-      await expect(res.json()).resolves.toEqual({
-        error: "Insufficient permissions",
-      });
-      expectHandlerNotRun();
-    });
+    expect(res.status).toBe(403);
+    expectHandlerNotRun();
+  });
 
-    it("returns 403 when the session carries no role", async () => {
-      mockAuth.mockResolvedValue(sessionWithRole());
+  it("returns 403 for an unknown role value", async () => {
+    mockAuth.mockResolvedValue(sessionWithRole("SUPERUSER"));
 
-      const res = await call();
+    const res = await call();
 
-      expect(res.status).toBe(403);
-      expectHandlerNotRun();
-    });
+    expect(res.status).toBe(403);
+    expectHandlerNotRun();
+  });
 
-    it("returns 403 for an unknown role value", async () => {
-      mockAuth.mockResolvedValue(sessionWithRole("SUPERUSER"));
+  it("returns 200 for ADMIN", async () => {
+    mockAuth.mockResolvedValue(sessionWithRole("ADMIN"));
 
-      const res = await call();
+    const res = await call();
 
-      expect(res.status).toBe(403);
-      expectHandlerNotRun();
-    });
-
-    it("returns 200 for ADMIN", async () => {
-      mockAuth.mockResolvedValue(sessionWithRole("ADMIN"));
-
-      const res = await call();
-
-      expect(res.status).toBe(200);
-      expect(mockAuth).toHaveBeenCalledTimes(1);
-    });
-  },
-);
+    expect(res.status).toBe(200);
+    expect(mockAuth).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("ADMIN responses", () => {
   beforeEach(() => {
     mockAuth.mockResolvedValue(sessionWithRole("ADMIN"));
   });
 
-  it("GET returns uncached metrics and does not clear them", async () => {
+  it("GET returns uncached figures that are read at request time", async () => {
     const res = await GET(new NextRequest(METRICS_URL));
 
     expect(res.status).toBe(200);
@@ -174,22 +142,38 @@ describe("ADMIN responses", () => {
       "no-cache, no-store, must-revalidate",
     );
     const body = await res.json();
-    expect(body.database.userCount).toBe(3);
-    expect(monitor.getStats).toHaveBeenCalledTimes(1);
-    expect(monitor.clearOldMetrics).not.toHaveBeenCalled();
-  });
+    expect(Object.keys(body).sort()).toEqual([
+      "alerts",
+      "database",
+      "responseTime",
+      "security",
+      "system",
+      "timestamp",
+    ]);
+    expect(body.database).toEqual({ userCount: 3, recentSecurityEvents: [] });
+    expect(Object.keys(body.alerts).sort()).toEqual([
+      "highErrorRate",
+      "highMemoryUsage",
+    ]);
 
-  it("DELETE clears metrics once and reads no statistics", async () => {
-    const res = await DELETE(
-      new NextRequest(METRICS_URL, { method: "DELETE" }),
-    );
+    // A later request reports the figures of that moment, not earlier ones.
+    db.user.count.mockResolvedValueOnce(4);
+    db.securityEvent.count.mockResolvedValueOnce(10).mockResolvedValueOnce(1);
 
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({
-      message: "Metrics cleared successfully",
+    const later = await (await GET(new NextRequest(METRICS_URL))).json();
+
+    expect(later.database.userCount).toBe(4);
+    expect(later.security.errorRate).toEqual({
+      total: 10,
+      errors: 1,
+      rate: 10,
+      period: "1 hour",
     });
-    expect(monitor.clearOldMetrics).toHaveBeenCalledTimes(1);
-    expect(monitor.getStats).not.toHaveBeenCalled();
-    expect(db.user.count).not.toHaveBeenCalled();
+  });
+});
+
+describe("/api/admin/metrics methods", () => {
+  it("exports GET and no DELETE", () => {
+    expect(Object.keys(route)).toEqual(["GET"]);
   });
 });

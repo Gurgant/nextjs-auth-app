@@ -1,15 +1,7 @@
 "use client";
 
-import {
-  Suspense,
-  lazy,
-  memo,
-  Component,
-  useEffect,
-  type ErrorInfo,
-} from "react";
+import { Suspense, lazy, memo, Component, type ErrorInfo } from "react";
 import { useTranslations } from "next-intl";
-import { trackAccountPageMetrics } from "@/lib/performance/web-vitals";
 
 // Lazy load the heavy components
 const AccountManagementLazy = lazy(() =>
@@ -192,11 +184,6 @@ export const AccountPageWrapper = memo(function AccountPageWrapper({
   user,
   locale,
 }: AccountPageWrapperProps) {
-  useEffect(() => {
-    // Initialize performance tracking for account page
-    trackAccountPageMetrics();
-  }, []);
-
   return (
     <AccountErrorBoundary
       onError={(error, errorInfo) => {

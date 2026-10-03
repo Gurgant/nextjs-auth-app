@@ -337,11 +337,9 @@ Read these before deploying. They are real, not hypothetical.
   an `EMAIL_FROM` on a domain verified in Resend (the default
   `noreply@authapp.com` will be rejected) and `NEXTAUTH_URL` (e-mail links are
   built from it) before going live.
-- **Public endpoints**: `/api/health` reports status, uptime, memory usage,
-  `NODE_ENV` and the package version (database errors are logged, not
-  returned); `/api/analytics/web-vitals` accepts metrics and returns aggregates
-  without authentication — an in-memory demo store of at most 1000 validated,
-  size-capped entries whose aggregates anyone can skew.
+- **Public health endpoint**: `/api/health` reports status, uptime, memory
+  usage, `NODE_ENV` and the package version (database errors are logged, not
+  returned).
 - **`next-auth` v5 is a beta** (pinned to `5.0.0-beta.32`); keep it pinned and
   review its changelog before upgrading.
 - **No migration files** — the starter uses `prisma db push`; baseline your own
