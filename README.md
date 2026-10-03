@@ -167,10 +167,10 @@ each. Summary:
 | `SESSION_MAX_AGE`                 | optional (default 604800, secs) | session idle timeout (300 – 2 592 000)                                                                       |
 | `BCRYPT_ROUNDS`                   | optional (4–15, default 12)     | hashing cost: registration, password change / add; not checked at start-up (out-of-range values are ignored) |
 
-`LOG_LEVEL` is also read (by the logger). Configuration is validated when the
-server starts (`src/lib/env.ts`): with an invalid configuration the process
-keeps running but serves nothing — every request fails and the log lists the
-offending variable **names** (never values).
+Configuration is validated when the server starts (`src/lib/env.ts`): with an
+invalid configuration the process keeps running but serves nothing — every
+request fails and the log lists the offending variable **names** (never
+values).
 
 ## Project structure
 
@@ -180,13 +180,13 @@ src/
 │   ├── [locale]/          # pages: home, sign-in, register, account, dashboards, admin,
 │   │                      # auth error, e-mail verification, link confirmation
 │   └── api/               # Auth.js, link/unlink Google, account info,
-│                          # admin metrics, health, public web-vitals collector
+│                          # admin metrics, health
 ├── components/            # auth forms, account management, layouts, UI kit
-├── hooks/                 # client hooks (account data, roles, Google availability)
+├── hooks/                 # client hooks (account data, Google availability)
 ├── lib/
 │   ├── actions/           # server actions (account actions take identity from auth();
 │   │                      #  the public send-verification-e-mail action uses the given address)
-│   ├── auth/              # role helpers (roles.ts), server guards (rbac.ts), lockout policy,
+│   ├── auth/              # role helpers (roles.ts), API route guard (rbac.ts), lockout policy,
 │   │                      #  session check (session-revocation.ts), Google e-mail verification
 │   ├── auth-config.ts     # Auth.js configuration, credentials authorize()
 │   ├── auth.ts            # auth(), handlers; passes Auth.js the session check (jwt.decode)

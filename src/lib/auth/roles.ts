@@ -1,8 +1,8 @@
 /**
  * Role helpers that are safe to use anywhere, including Client Components.
  * No server imports here: Client Components import this module directly, and
- * anything imported from it ships to the browser. Server-only guards
- * (withRole, requireRole) live in ./rbac.
+ * anything imported from it ships to the browser. The server-only guard
+ * (withRole) lives in ./rbac.
  */
 
 import type { Role } from "@/lib/types/prisma";
@@ -29,30 +29,6 @@ export function hasRole(
   const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
 
   return userLevel >= requiredLevel;
-}
-
-/**
- * Check if user has exact role (no hierarchy)
- */
-export function hasExactRole(
-  userRole: Role | undefined,
-  targetRole: Role,
-): boolean {
-  return userRole === targetRole;
-}
-
-/**
- * Check if user is admin
- */
-export function isAdmin(userRole: Role | undefined): boolean {
-  return userRole === "ADMIN";
-}
-
-/**
- * Check if user is pro user or admin
- */
-export function isProUser(userRole: Role | undefined): boolean {
-  return hasRole(userRole, "PRO_USER");
 }
 
 /**

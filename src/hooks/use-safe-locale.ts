@@ -50,27 +50,6 @@ export function useSafeLocale(): Locale {
 }
 
 /**
- * Hook variant with explicit logging control
- *
- * @param options - Configuration for logging behavior
- * @returns A validated locale string
- */
-export function useSafeLocaleWithOptions(options?: {
-  logInvalid?: boolean;
-  componentName?: string;
-}): Locale {
-  const params = useParams();
-  const rawLocale = params.locale;
-
-  return getSafeLocaleWithLogging(rawLocale, {
-    logInvalid: options?.logInvalid ?? shouldLogSecurityEvents(),
-    source: options?.componentName
-      ? `useSafeLocale(${options.componentName})`
-      : "useSafeLocale",
-  });
-}
-
-/**
  * Internal helper to check if we already know this is valid
  * Helps reduce unnecessary logging for valid locales
  */
