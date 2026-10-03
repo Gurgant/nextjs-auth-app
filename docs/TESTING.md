@@ -1,11 +1,11 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-02; run the commands
+Three layers. The numbers below were measured on 2026-10-03; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                            |
 | ----------- | --------------------- | ----- | ------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 697   | lib, hooks, components, actions, API route handlers                       |
+| Unit        | Jest (jsdom / node)   | 779   | lib, hooks, components, actions, API route handlers                       |
 | Integration | Jest + test DB        | 24    | UserRepository, registration, lockout, session checks on real PostgreSQL  |
 | End-to-end  | Playwright (Chromium) | 88    | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser |
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (721 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (697) — no DB
+pnpm test             # every Jest suite (803 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (779) — no DB
 pnpm test:integration # the real-DB integration file only (port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -34,12 +34,11 @@ URL (e.g. `15433`) or adjust that file:
 DATABASE_URL="postgresql://postgres:postgres123@127.0.0.1:15433/nextjs_auth_db" pnpm test
 ```
 
-Coverage (measured): **43 % of statements** of the files matched by
+Coverage (measured): **55 % of statements** of the files matched by
 `collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
 and route handlers), `src/middleware.ts`, `index.ts` barrels and the generated
-Prisma client (`src/generated/**`). Until v2.1.0 the generated client was
-counted as well, which made up most of the statements: counted that way, the
-same run gives 9 %. The tests
+Prisma client (`src/generated/**`, counted until v2.1.0, when it made up most
+of the statements). The tests
 concentrate on the authentication and security modules; large parts of the UI
 and of the error infrastructure have no unit tests. The events layer is tested
 with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).

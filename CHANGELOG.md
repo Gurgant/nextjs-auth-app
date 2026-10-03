@@ -1,5 +1,131 @@
 # Changelog
 
+## [v2.3.0] - 2026-10-03
+
+A clean-up of code that nothing used, decided item by item, and the defects
+found on the way.
+
+### 🔒 Security
+
+- The public action that sends the verification e-mail put its `locale`
+  argument unchecked into the e-mailed link and into the e-mail's HTML. Only
+  the five supported locales are accepted now; any other value gets the
+  default.
+- No personal data stays in the in-memory lists of the events layer and of
+  the command bus.
+  - Events layer: removed a notification queue that gained an entry at every
+    registration (e-mail address, name, user id) and at every password change
+    (user id), was never emptied, sent nothing and marked its entries "sent";
+    and an event store that kept full copies of up to 10,000 events. The two
+    example listeners that remain keep ids and outcomes, and for errors the
+    type and code only.
+  - Command bus: its audit list (the newest 1,000 entries) kept each
+    command's input with only the password fields redacted (for a
+    registration the name and the e-mail address, also when it was refused),
+    its output, the error text and the whole metadata. An entry now keeps the
+    command name, the ids, the time, the duration, the outcome and, for a
+    command that threw, the class name of the error. The shared command
+    instances no longer keep the last run's metadata.
+- Registration and password change took `ipAddress` and `userAgent` from the
+  submitted form, so a client could put any text of any length into the
+  command metadata. They come from the request now (the User-Agent cut to 512
+  characters).
+- A registration refused because the address is taken printed that address to
+  the server console, in the details of the logged error. It now logs which
+  field collided, not its value.
+- Four Server Actions that nothing called are removed; one of them returned
+  the linked-account rows, tokens included, to the signed-in user.
+- The public collector `/api/analytics/web-vitals` is removed: an endpoint
+  without authentication and without a rate limit that stored every valid
+  metric anyone posted (up to 1,000 entries) and returned the aggregates to
+  anyone. The application itself never sent it a metric that it accepted
+  (read in the v2.2.0 source, not measured).
+
+### 🔧 Changed
+
+- Five actions take "user not found" from the message files instead of an
+  English literal: two-factor set-up, enable and disable, sending the
+  verification e-mail, adding a password. The three two-factor actions do the
+  same for "not signed in"; in English, "You must be signed in." becomes "You
+  are not authorized to perform this action". The account page now passes its
+  locale to two-factor set-up and disable, which answered in English whatever
+  the page's language; both accept only the five supported locales.
+- `GET /api/admin/metrics` no longer returns the `performance` block (always
+  zero), `alerts.slowOperations` and `alerts.slowQueries` (always empty) and
+  `database.sessionCount` (always 0). `DELETE /api/admin/metrics`, which
+  answered "cleared" while clearing nothing, is removed.
+- `CommandExecutedEvent.payload.success` is true only when the command's
+  answer has `success: true`; it was true for every command that returned, a
+  refused one included. A command whose answer has no `success` field (none
+  in the application) is now reported as not successful. The average command
+  duration of the analytics listener no longer counts the newest run twice.
+- The audit entries of the example listener have no `ipAddress` /
+  `userAgent`; `getAnalyticsSummary().totals` has no `logins` /
+  `failedLogins` (they could never rise above zero). The `[AUDIT]` lines that
+  the audit listener prints to the server console have the same reduced
+  details: the line of a command that threw no longer has the error text; the
+  line of a critical error has the type and the code, no longer the message
+  and the rest of the context.
+- The entries of `AuditMiddleware.getAuditLogs()` have `success` and, for a
+  command that threw, `errorType`; they no longer have `input`, `output`,
+  `error` and `metadata`. `BaseCommand` keeps `commandId` in place of
+  `metadata`. The development log line of the logging middleware reads
+  "[Command:X] Completed".
+- `LOG_LEVEL` and `SENTRY_DSN` are no longer read by anything.
+
+### 🗑️ Removed
+
+A project that imported one of these no longer compiles. Most had no caller
+in the application; four were wired in: the notification handler and the
+event store received every event (see Security), the account page started
+`trackAccountPageMetrics`, and `/api/admin/metrics` read the performance
+monitor, into which nothing recorded (see Changed).
+
+- Events: `NotificationHandler`, `getNotificationHandler`,
+  `processNotificationQueue`, `InMemoryEventStore`, `eventStore`,
+  `getEventStore`, `getEventHistory`, `IEventStore`, `EventFilter`,
+  `emitEvent` (use `eventBus.publish`), the catalogues `AuthEvents`,
+  `SecurityEvents` and `SystemEvents`, and the 20 event classes that nothing
+  published. Five events remain: `UserRegisteredEvent`,
+  `PasswordChangedEvent`, `CommandExecutedEvent`, `CommandFailedEvent`,
+  `ErrorOccurredEvent`.
+- Server Actions `getUserAccountInfo`, `migrateUserAccountMetadata`,
+  `initiateAccountLinking`, `getEnhancedUserAccountInfo`, and what only they
+  used: `sendAccountLinkConfirmation`, `createAccountLinkTemplate` and
+  `RATE_LIMITS.accountLink`. Also removed, without any caller: the
+  data-access `getUserAccountInfo`, and `createGenericErrorResponseI18n` with
+  its helper `translateCommonError`.
+- 14 message keys, from all five message files: in `Errors`, `notFound`,
+  `forbidden`, `serverError`, `unknown`, `alreadyExists`, `invalidInput`,
+  `accountLinkingInProgress`, `failedToSendConfirmationEmail`,
+  `failedToInitiateAccountLinking`, `failedToFetchAccountInfo`,
+  `failedToMigrateAccountMetadata`; in `Success`, `accountMetadataUpdated`,
+  `confirmationEmailSent`, `accountInfoRetrieved`. A project that still uses
+  one of them compiles (the messages are not typed); next-intl then shows the
+  key's path, such as `Errors.notFound`, in place of the text (read in the
+  source of use-intl 4.14.7, not measured).
+- Roles: `RoleGuard`, `RoleVisibility`, `useRole`, `hasExactRole`, `isAdmin`,
+  `isProUser`, `requireRole` (`withRole` stays), and the unused members of
+  `SafeNavigation` and `RouteValidator`.
+- Forms: `useMultiStepForm`, `useSafeLocaleWithOptions`.
+- Performance: `src/lib/performance/` (web vitals), `src/lib/monitoring/`
+  (the performance monitor and its logger) and the dependency `web-vitals`.
+- Routes: `/api/analytics/web-vitals` (`GET` and `POST`) and
+  `DELETE /api/admin/metrics`.
+
+### ⬆️ Upgrading from v2.2.0
+
+- No schema change and no new setting.
+- Search your own code for the 14 removed message keys (see Removed): a
+  removed key fails at run time, not at compile time.
+
+### 🧪 Tests
+
+- Jest: 803 tests (was 721). Playwright: 88 tests (unchanged).
+- The events layer has its first tests, with the real bus and listeners.
+- The dead-code allow-list went from 21 entries to 1.
+- Coverage: 55 % of statements (was 43 %).
+
 ## [v2.2.0] - 2026-10-02
 
 ### 🔒 Security

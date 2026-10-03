@@ -244,7 +244,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     if (!confirmed) return;
 
     try {
-      const result = await disableTwoFactorAuth(user.id);
+      const result = await disableTwoFactorAuth(user.id, locale);
 
       if (result.success) {
         await refetchAccountInfo();
@@ -252,7 +252,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     } catch (error) {
       handleFormError(error, "2FA disable");
     }
-  }, [user.id, t, refetchAccountInfo, handleFormError]);
+  }, [user.id, locale, t, refetchAccountInfo, handleFormError]);
 
   return (
     <>

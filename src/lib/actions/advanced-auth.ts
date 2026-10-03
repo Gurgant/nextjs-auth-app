@@ -321,8 +321,12 @@ export async function confirmAccountLinking(
 // Two-Factor Authentication Actions
 export async function setupTwoFactorAuth(
   _userId: string,
-  locale: string = "en",
+  requestedLocale: string = "en",
 ): Promise<ActionResult> {
+  // The locale is an argument the client sends: only a supported one is
+  // accepted, anything else falls back to the default.
+  const locale = getSafeLocale(requestedLocale);
+
   try {
     const userId = await getSessionUserId();
     if (!userId) {
@@ -553,8 +557,11 @@ export async function enableTwoFactorAuth(
 
 export async function disableTwoFactorAuth(
   _userId: string,
-  locale: string = "en",
+  requestedLocale: string = "en",
 ): Promise<ActionResult> {
+  // As in setupTwoFactorAuth: only a supported locale is accepted.
+  const locale = getSafeLocale(requestedLocale);
+
   try {
     const userId = await getSessionUserId();
     if (!userId) {

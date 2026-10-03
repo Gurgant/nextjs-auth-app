@@ -71,8 +71,10 @@ export class RegisterUserCommand extends BaseCommand<
         if (metadata?.userId) errorBuilder.withUserId(metadata.userId);
         if (metadata?.commandId)
           errorBuilder.withCorrelationId(metadata.commandId);
+        // Which field collides, not its value: log() prints these details to
+        // the server console and the error event carries them.
         const error = errorBuilder.business.alreadyExists("User", {
-          email: input.email,
+          field: "email",
         });
         error.log();
         return createErrorResponse(error.getUserMessage());

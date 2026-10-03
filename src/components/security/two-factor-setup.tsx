@@ -93,7 +93,7 @@ export function TwoFactorSetup({
     setSetupResult(null);
 
     try {
-      const result = await setupTwoFactorAuth(user.id);
+      const result = await setupTwoFactorAuth(user.id, locale);
 
       if (result.success && result.data) {
         setSetupData(result.data as NonNullable<typeof setupData>);

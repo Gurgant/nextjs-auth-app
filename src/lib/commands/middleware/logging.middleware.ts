@@ -38,7 +38,9 @@ export class LoggingMiddleware implements ICommandMiddleware {
     metadata: CommandMetadata,
     duration: number,
   ): Promise<void> {
-    console.log(`[Command:${commandName}] Completed successfully`, {
+    // "Completed" for every command that returned: a refusal returns too, and
+    // the `success` field says which it was.
+    console.log(`[Command:${commandName}] Completed`, {
       commandId: metadata.commandId,
       userId: metadata.userId,
       duration: `${duration}ms`,
