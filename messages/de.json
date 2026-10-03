@@ -270,10 +270,6 @@
     "verificationTokenUsed": "Verifizierungstoken wurde bereits verwendet",
     "verificationTokenExpired": "Verifizierungstoken ist abgelaufen",
     "failedToVerifyEmail": "E-Mail konnte nicht verifiziert werden",
-    "invalidLinkingToken": "Ungültiger Verknüpfungstoken",
-    "accountLinkingCompleted": "Konto-Verknüpfung wurde bereits abgeschlossen",
-    "linkingTokenExpired": "Verknüpfungstoken ist abgelaufen",
-    "failedToConfirmAccountLinking": "Konto-Verknüpfung konnte nicht bestätigt werden",
     "twoFactorAlreadyEnabled": "Zwei-Faktor-Authentifizierung ist bereits aktiviert",
     "failedToSetupTwoFactor": "Zwei-Faktor-Authentifizierung konnte nicht eingerichtet werden",
     "failedToEnableTwoFactor": "2FA konnte nicht aktiviert werden",
@@ -312,7 +308,6 @@
     "passwordChanged": "Passwort erfolgreich geändert!",
     "verificationEmailSent": "Verifizierungs-E-Mail erfolgreich gesendet",
     "emailVerified": "E-Mail erfolgreich verifiziert",
-    "accountLinked": "Konto erfolgreich verknüpft",
     "twoFactorSetupInitiated": "2FA-Einrichtung eingeleitet",
     "twoFactorEnabled": "2FA erfolgreich aktiviert",
     "twoFactorVerified": "2FA erfolgreich verifiziert",
@@ -426,20 +421,5 @@
     "needHelp": "Benötigen Sie Hilfe? Kontaktieren Sie unser Support-Team.",
     "metaTitle": "E-Mail-Verifizierung - Auth App",
     "metaDescription": "Verifizieren Sie Ihre E-Mail-Adresse, um die Einrichtung Ihres Kontos abzuschließen."
-  },
-  "AccountLinking": {
-    "successTitle": "Konto Erfolgreich Verknüpft! 🔗",
-    "successMessage": "Ihre Konten wurden erfolgreich verknüpft. Sie können jetzt beide Authentifizierungsmethoden für die Anmeldung verwenden.",
-    "enhancedSecurity": "Erhöhte Sicherheit: Sie haben jetzt mehrere Anmeldeoptionen für besseren Kontozugang.",
-    "manageAccountSettings": "Kontoeinstellungen Verwalten",
-    "goToDashboard": "Zum Dashboard",
-    "failureTitle": "Kontoverknüpfung Fehlgeschlagen ❌",
-    "defaultFailureMessage": "Die Kontoverknüpfungsanfrage ist ungültig oder abgelaufen.",
-    "tryAgainInstructions": "Bitte versuchen Sie, den Kontoverknüpfungsprozess erneut von Ihren Kontoeinstellungen aus zu starten.",
-    "tryAgainAccountSettings": "Erneut Versuchen - Kontoeinstellungen",
-    "backToHome": "Zurück zur Startseite",
-    "securityNotice": "Gesichert durch Verschlüsselung auf Unternehmensebene",
-    "metaTitle": "Kontoverknüpfung Bestätigung - Auth App",
-    "metaDescription": "Bestätigen Sie die Verknüpfung Ihrer Authentifizierungskonten für erhöhte Sicherheit."
   }
 }

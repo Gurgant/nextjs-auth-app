@@ -17,6 +17,11 @@ export interface WarmUpRoute {
   readonly path: string;
   /** The entry `next dev` compiles for it, as in "Compiled <entry> in ...". */
   readonly entry: string;
+  /**
+   * Set for the entry of the not-found page: `path` is then a path that no
+   * page serves, and the answer has to be 404.
+   */
+  readonly notFound?: true;
 }
 
 /**
@@ -24,7 +29,10 @@ export interface WarmUpRoute {
  * the locale is a parameter of the same entry. `/instrumentation`,
  * `/middleware` and `/[locale]` are already compiled when the global setup
  * starts (Playwright's availability check requests `/`); `/en` is listed so
- * that the list is complete on its own.
+ * that the list is complete on its own. The link route exports POST only and
+ * answers the GET with 405. The last entry is the page `next dev` serves for
+ * a path that has no page: the suite opens one, the URL of a page that was
+ * removed.
  */
 export const WARM_UP_ROUTES: readonly WarmUpRoute[] = [
   { path: "/en", entry: "/[locale]" },
@@ -37,6 +45,11 @@ export const WARM_UP_ROUTES: readonly WarmUpRoute[] = [
   { path: "/en/dashboard/user", entry: "/[locale]/dashboard/user" },
   { path: "/en/admin", entry: "/[locale]/admin" },
   { path: "/en/dashboard/pro", entry: "/[locale]/dashboard/pro" },
+  {
+    path: "/api/auth/link-account/initiate",
+    entry: "/api/auth/link-account/initiate",
+  },
+  { path: "/en/no-such-page", entry: "/_not-found", notFound: true },
 ];
 
 /** Upper limit for one request (a cold compile on a busy machine). */
@@ -75,6 +88,10 @@ const PASSES = ["compile", "check"] as const;
  * Any other status counts as answered. Without a session the pages behind a
  * sign-in answer 307 and /api/account/info answers 401; the route's own code
  * gives that answer, so the route is compiled.
+ *
+ * The entry of the not-found page is the other way round: 404 is its answer,
+ * and any other status ends the warm-up, because a page serves that path and
+ * the not-found page was not compiled.
  */
 export async function warmUp(options: WarmUpOptions): Promise<void> {
   const { get, log } = options;
@@ -117,7 +134,7 @@ export async function warmUp(options: WarmUpOptions): Promise<void> {
       log(
         `warm-up ${pass}: GET ${route.path} -> ${status} in ${now() - requestedAt} ms`,
       );
-      if (status === 404) {
+      if (status === 404 && !route.notFound) {
         throw new Error(
           `E2E warm-up: GET ${route.path} answered 404 (${pass} pass). ` +
             `The entry ${route.entry} does not exist any more: WARM_UP_ROUTES ` +
@@ -129,6 +146,13 @@ export async function warmUp(options: WarmUpOptions): Promise<void> {
           `E2E warm-up: GET ${route.path} answered ${status} (${pass} pass). ` +
             `The entry ${route.entry} does not compile or crashes; ` +
             "see the [WebServer] lines above.",
+        );
+      }
+      if (route.notFound && status !== 404) {
+        throw new Error(
+          `E2E warm-up: GET ${route.path} answered ${status} (${pass} pass), not 404. ` +
+            `It is listed as a path that no page serves, to compile ${route.entry}: ` +
+            "choose another path in WARM_UP_ROUTES in e2e/support/warm-up.ts.",
         );
       }
     }

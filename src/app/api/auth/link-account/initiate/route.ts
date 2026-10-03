@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "crypto";
 import { getClientIP } from "@/lib/security";
 import {
   isRateLimited,
@@ -106,29 +105,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate secure linking token
-    const token = randomBytes(32).toString("hex");
-    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Create account link request
-    const linkRequest = await prisma.accountLinkRequest.create({
-      data: {
-        userId: user.id,
-        requestType: `link_${provider}`,
-        token,
-        expires,
-        metadata: {
-          provider,
-          initiatedAt: new Date().toISOString(),
-          ipAddress:
-            request.headers.get("x-forwarded-for") ||
-            request.headers.get("x-real-ip") ||
-            "unknown",
-        },
-      },
-    });
-
-    // Log security event
+    // Log security event. It is the only thing this route writes: nothing is
+    // linked here and no token is handed out. The account page starts the
+    // Google sign-in next, and Auth.js links the account when Google returns.
     await prisma.securityEvent.create({
       data: {
         userId: user.id,
@@ -140,19 +119,11 @@ export async function POST(request: NextRequest) {
           request.headers.get("x-real-ip") ||
           "unknown",
         userAgent: request.headers.get("user-agent") || "unknown",
-        metadata: {
-          provider,
-          linkRequestId: linkRequest.id,
-        },
+        metadata: { provider },
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      linkToken: token,
-      expiresAt: expires.toISOString(),
-      provider,
-    });
+    return NextResponse.json({ success: true, provider });
   } catch (error) {
     console.error("Account linking initiation error:", error);
     return NextResponse.json(

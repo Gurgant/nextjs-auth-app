@@ -143,10 +143,6 @@ describe("Navigation Utilities", () => {
       expect(routes.verifyEmail("en", "abc123")).toBe(
         "/en/verify-email/abc123",
       );
-      expect(routes.linkAccount("en")).toBe("/en/link-account");
-      expect(routes.linkAccount("en", "xyz789")).toBe(
-        "/en/link-account/confirm/xyz789",
-      );
     });
   });
 

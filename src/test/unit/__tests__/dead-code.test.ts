@@ -12,6 +12,7 @@ import { ErrorBuilder, createError } from "@/lib/errors/error-builder";
 import { ErrorFactory } from "@/lib/errors/error-factory";
 import { BaseEvent } from "@/lib/events/base/event.base";
 import { RATE_LIMITS } from "@/lib/rate-limit";
+import { routes } from "@/lib/utils/navigation";
 import { RouteValidator, SafeNavigation } from "@/types/routes";
 
 // The error classes publish through the event bus. Check C only reads their
@@ -70,7 +71,15 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // would come back together with the code that names it (an event class with
 // the listener branch that handles it). The retired Server Actions are listed
 // too: every export of a "use server" file is an endpoint, with a caller or
-// without. `kept` is a member that is
+// without. Listed as well is what went with the account-link confirmation
+// page and is no export: the page itself (a file under src/app is an entry
+// point, so A takes it as reached), a member of a string-literal type, a key
+// of an object that is not exported, a model of the Prisma schema, a prop
+// that only the page passed, and the page's texts in the message files (a
+// namespace and five keys: `pnpm validate-translations` compares the files
+// with each other, not with the code, so a text that nothing reads passes
+// it).
+// `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
 // retired, and its row is deleted.
@@ -240,7 +249,11 @@ const RETIRED: {
     holder: "names exported by actions/advanced-auth.ts",
     members: () => namesExportedBy("src/lib/actions/advanced-auth.ts"),
     kept: "setupTwoFactorAuth",
-    retired: ["initiateAccountLinking", "getEnhancedUserAccountInfo"],
+    retired: [
+      "initiateAccountLinking",
+      "getEnhancedUserAccountInfo",
+      "confirmAccountLinking",
+    ],
   },
   {
     holder: "names exported by email.ts",
@@ -259,6 +272,78 @@ const RETIRED: {
     members: () => Object.keys(RATE_LIMITS),
     kept: "emailVerify",
     retired: ["accountLink"],
+  },
+  {
+    holder: "pages and route handlers under src/app",
+    members: () => sourceFiles("src/app"),
+    kept: "src/app/[locale]/verify-email/[token]/page.tsx",
+    retired: ["src/app/[locale]/link-account/confirm/[token]/page.tsx"],
+  },
+  {
+    holder: "routes of utils/navigation",
+    members: () => Object.keys(routes),
+    kept: "verifyEmail",
+    retired: ["linkAccount"],
+  },
+  {
+    holder: "models of prisma/schema.prisma",
+    members: prismaModels,
+    kept: "EmailVerificationToken",
+    retired: ["AccountLinkRequest"],
+  },
+  {
+    holder: "security event types (string literals of security.ts)",
+    members: () => stringLiteralsIn("src/lib/security.ts"),
+    kept: "account_unlinked",
+    retired: ["account_linked"],
+  },
+  {
+    holder: "security alert types (string literals of email.ts)",
+    members: () => stringLiteralsIn("src/lib/email.ts"),
+    kept: "2fa_enabled",
+    retired: ["account_linked"],
+  },
+  {
+    holder: "gradients of the page layouts (string literals of both files)",
+    members: () => [
+      ...stringLiteralsIn("src/components/layouts/gradient-page-layout.tsx"),
+      ...stringLiteralsIn("src/components/layouts/form-page-layout.tsx"),
+    ],
+    kept: "purple-pink",
+    retired: ["green-blue"],
+  },
+  {
+    holder: "props of FormPageLayout",
+    members: () =>
+      interfaceMembers(
+        "src/components/layouts/form-page-layout.tsx",
+        "FormPageLayoutProps",
+      ),
+    kept: "maxWidth",
+    retired: ["gradient"],
+  },
+  {
+    holder: "namespaces of the message files",
+    members: () => messageKeys(),
+    kept: "EmailVerification",
+    retired: ["AccountLinking"],
+  },
+  {
+    holder: "keys of Errors in the message files",
+    members: () => messageKeys("Errors"),
+    kept: "failedToVerifyEmail",
+    retired: [
+      "invalidLinkingToken",
+      "accountLinkingCompleted",
+      "linkingTokenExpired",
+      "failedToConfirmAccountLinking",
+    ],
+  },
+  {
+    holder: "keys of Success in the message files",
+    members: () => messageKeys("Success"),
+    kept: "emailVerified",
+    retired: ["accountLinked"],
   },
 ];
 
@@ -337,6 +422,64 @@ function sourceFiles(dir: string, recursive = true): string[] {
 function namesExportedBy(file: string): string[] {
   const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
   return [...exportedNames(withoutComments(file, source)).keys()];
+}
+
+/**
+ * The text of every string literal in a file of the repository: the members
+ * of a string-literal type, the keys and values of an object, the values of
+ * JSX attributes. Comments are not literals.
+ */
+function stringLiteralsIn(file: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  const texts: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isStringLiteralLike(node)) texts.push(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(parsed);
+  return texts;
+}
+
+/** The models that prisma/schema.prisma declares. */
+function prismaModels(): string[] {
+  const schema = fs.readFileSync(
+    path.join(REPO_ROOT, "prisma/schema.prisma"),
+    "utf8",
+  );
+  return [...schema.matchAll(/^model (\w+) \{/gm)].map((match) => match[1]);
+}
+
+/**
+ * The names of the members of an interface that a file of the repository
+ * declares: the props of a component.
+ */
+function interfaceMembers(file: string, name: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  return parsed.statements
+    .filter(ts.isInterfaceDeclaration)
+    .filter((declaration) => declaration.name.text === name)
+    .flatMap((declaration) => [...declaration.members])
+    .map((member) => member.name?.getText(parsed) ?? "");
+}
+
+/**
+ * The keys of a namespace in every messages/*.json file, or the namespaces
+ * themselves when none is named. A key that one file alone has is in the
+ * list.
+ */
+function messageKeys(namespace?: string): string[] {
+  const directory = path.join(REPO_ROOT, "messages");
+  return fs
+    .readdirSync(directory)
+    .filter((file) => file.endsWith(".json"))
+    .flatMap((file) => {
+      const messages: Record<string, Record<string, unknown>> = JSON.parse(
+        fs.readFileSync(path.join(directory, file), "utf8"),
+      );
+      return Object.keys(namespace ? (messages[namespace] ?? {}) : messages);
+    });
 }
 
 function readTree(): Tree {

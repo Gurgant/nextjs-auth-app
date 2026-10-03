@@ -275,10 +275,6 @@
     "verificationTokenUsed": "Verification token has already been used",
     "verificationTokenExpired": "Verification token has expired",
     "failedToVerifyEmail": "Failed to verify email",
-    "invalidLinkingToken": "Invalid linking token",
-    "accountLinkingCompleted": "Account linking has already been completed",
-    "linkingTokenExpired": "Linking token has expired",
-    "failedToConfirmAccountLinking": "Failed to confirm account linking",
     "twoFactorAlreadyEnabled": "Two-factor authentication is already enabled",
     "failedToSetupTwoFactor": "Failed to setup two-factor authentication",
     "failedToEnableTwoFactor": "Failed to enable 2FA",
@@ -322,7 +318,6 @@
     "passwordChanged": "Password changed successfully!",
     "verificationEmailSent": "Verification email sent successfully",
     "emailVerified": "Email verified successfully",
-    "accountLinked": "Account linked successfully",
     "twoFactorSetupInitiated": "2FA setup initiated",
     "twoFactorEnabled": "2FA enabled successfully",
     "twoFactorVerified": "2FA verified successfully",
@@ -436,20 +431,5 @@
     "needHelp": "Need help? Contact our support team.",
     "metaTitle": "Email Verification - Auth App",
     "metaDescription": "Verify your email address to complete your account setup."
-  },
-  "AccountLinking": {
-    "successTitle": "Account Linked Successfully! 🔗",
-    "successMessage": "Your accounts have been linked successfully. You can now use both authentication methods to sign in.",
-    "enhancedSecurity": "Enhanced Security: You now have multiple sign-in options for better account access.",
-    "manageAccountSettings": "Manage Account Settings",
-    "goToDashboard": "Go to Dashboard",
-    "failureTitle": "Account Linking Failed ❌",
-    "defaultFailureMessage": "The account linking request is invalid or has expired.",
-    "tryAgainInstructions": "Please try initiating the account linking process again from your account settings.",
-    "tryAgainAccountSettings": "Try Again - Account Settings",
-    "backToHome": "Back to Home",
-    "securityNotice": "Secured by enterprise-grade encryption",
-    "metaTitle": "Account Linking Confirmation - Auth App",
-    "metaDescription": "Confirm linking your authentication accounts for enhanced security."
   }
 }
