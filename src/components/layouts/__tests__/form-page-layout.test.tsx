@@ -57,19 +57,9 @@ describe("FormPageLayout", () => {
     const gradientLayout = getByTestId("gradient-layout");
     const centeredLayout = getByTestId("centered-layout");
 
-    expect(gradientLayout).toHaveAttribute("data-gradient", "default");
+    // No gradient is chosen here: GradientPageLayout renders its default.
+    expect(gradientLayout).not.toHaveAttribute("data-gradient");
     expect(centeredLayout).toHaveAttribute("data-maxwidth", "md");
-  });
-
-  it("passes custom gradient prop", () => {
-    const { getByTestId } = render(
-      <FormPageLayout gradient="green-blue">
-        <div>Form</div>
-      </FormPageLayout>,
-    );
-
-    const gradientLayout = getByTestId("gradient-layout");
-    expect(gradientLayout).toHaveAttribute("data-gradient", "green-blue");
   });
 
   it("passes custom maxWidth prop", () => {
@@ -81,19 +71,5 @@ describe("FormPageLayout", () => {
 
     const centeredLayout = getByTestId("centered-layout");
     expect(centeredLayout).toHaveAttribute("data-maxwidth", "lg");
-  });
-
-  it("passes all custom props correctly", () => {
-    const { getByTestId } = render(
-      <FormPageLayout gradient="purple-pink" maxWidth="sm">
-        <div>Form</div>
-      </FormPageLayout>,
-    );
-
-    const gradientLayout = getByTestId("gradient-layout");
-    const centeredLayout = getByTestId("centered-layout");
-
-    expect(gradientLayout).toHaveAttribute("data-gradient", "purple-pink");
-    expect(centeredLayout).toHaveAttribute("data-maxwidth", "sm");
   });
 });

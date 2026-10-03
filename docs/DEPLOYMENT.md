@@ -65,6 +65,32 @@ If the app connects as a restricted database user, grant it `SELECT`,
 every session check fails, without `INSERT` a sign-out revokes nothing (not
 measured: the test database is used with its owner).
 
+The table `AccountLinkRequest` is no longer in the schema: the page that read
+it was removed. Versions up to 2.3.0 wrote a row to it each time a user
+entered the right password before linking Google, and nothing in the
+application deleted those rows (read in the source of 2.3.0). A row went only
+together with its account, when the account was deleted (`onDelete: Cascade`;
+measured on the test database: deleting the user row deleted its link
+request). Measured on the test database on 2026-10-03, with Prisma 6.19.3 and
+no terminal attached:
+
+- With the table **empty**, `pnpm prisma:push` drops it without a warning and
+  without a question (exit code 0).
+- With **one row** in it, `pnpm prisma:push` prints "You are about to drop
+  the `AccountLinkRequest` table, which is not empty (1 rows)." and stops
+  with "Use the --accept-data-loss flag to ignore the data loss warnings"
+  (exit code 1). Nothing is changed: the table and the row are still there.
+  `pnpm prisma:push --accept-data-loss` then drops the table (exit code 0);
+  the user rows stay. The flag accepts every data-loss warning of that push,
+  so check first that this table is the only one named.
+
+In a terminal Prisma asks "Do you want to ignore the warning(s)?" instead of
+stopping (read in the source of the Prisma CLI, not measured). The rows hold
+nothing the application still reads: a token that was valid for 15 minutes,
+the provider, and the raw `X-Forwarded-For` header of the request. Code up
+to 2.3.0 still writes to the table, so its link initiation fails once the
+table is gone and until the new code runs (read in the source, not measured).
+
 ## Before you go live
 
 Work through the **Production Hardening Checklist in `SECURITY.md`** and read

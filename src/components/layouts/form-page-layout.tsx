@@ -3,7 +3,6 @@ import { CenteredContentLayout } from "./centered-content-layout";
 
 interface FormPageLayoutProps {
   children: React.ReactNode;
-  gradient?: "default" | "blue-purple" | "green-blue" | "purple-pink";
   maxWidth?: "sm" | "md" | "lg";
 }
 
@@ -17,18 +16,17 @@ interface FormPageLayoutProps {
  * </FormPageLayout>
  *
  * @example
- * // With custom gradient and width
- * <FormPageLayout gradient="green-blue" maxWidth="lg">
+ * // With custom width
+ * <FormPageLayout maxWidth="lg">
  *   <ComplexForm />
  * </FormPageLayout>
  */
 export function FormPageLayout({
   children,
-  gradient = "default",
   maxWidth = "md",
 }: FormPageLayoutProps) {
   return (
-    <GradientPageLayout gradient={gradient}>
+    <GradientPageLayout>
       <CenteredContentLayout maxWidth={maxWidth}>
         {children}
       </CenteredContentLayout>
