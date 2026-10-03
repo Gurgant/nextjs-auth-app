@@ -104,12 +104,14 @@ re-check, 429 throttling and security events.
 - Registration, password change / add, account deletion and 2FA enabling
   validate input with Zod (in the action or in its command);
   `updateUserProfile` checks the name by hand, and the token / e-mail actions
-  take their argument as is.
+  take the token or the address as is. The "send verification e-mail" action
+  checks its locale against the five supported ones, because the locale goes
+  into the e-mailed link.
 - Rate limits come from `src/lib/rate-limit.ts`.
 - Security events are persisted by the actions, the link / unlink routes and
-  `authorize()` (2FA enable/disable, e-mail verification, link initiation and
-  unlinking, wrong link passwords, lockouts); sign-in and password events are
-  not persisted yet — see `SECURITY.md`.
+  `authorize()` (2FA enable/disable, e-mail verification, link initiation,
+  link confirmation and unlinking, wrong link passwords, lockouts); sign-in
+  and password events are not persisted yet — see `SECURITY.md`.
 
 ## Supporting layers (`src/lib/`)
 
@@ -136,6 +138,14 @@ environment, the others in development only. These entries are not the
 bus. The bus does not wait for its listeners: a request that publishes an
 event goes on without them, and a listener that fails gets up to three
 attempts, one second apart.
+
+The command bus keeps a list of its own, outside the events layer
+(`AuditMiddleware`, `src/lib/commands/middleware/audit.middleware.ts`): its
+newest 1,000 entries, in the memory of one process and read only by tests. An
+entry holds the command name, the command id and the user id, the time, the
+duration, the outcome and, for a command that threw, the class name of the
+error. It holds no input, no output, no error text and nothing of the request
+(`src/lib/commands/__tests__/no-retained-secrets.test.ts`).
 
 ## Internationalization
 
