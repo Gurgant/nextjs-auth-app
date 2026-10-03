@@ -1,5 +1,69 @@
 # Changelog
 
+## [v2.4.0] - 2026-10-03
+
+### 🔒 Security
+
+- The page `/[locale]/link-account/confirm/[token]` is removed. It was the
+  second half of an older way to link an account, by a link sent in an
+  e-mail; nothing in the application sent that e-mail any more. Opened with a
+  valid token, the page needed no session and, while answering a `GET`, set
+  `User.hasGoogleAccount`, wrote a security event `account_linked` and sent a
+  security-alert e-mail, although no Google account was linked. The address
+  now answers 404.
+- `POST /api/auth/link-account/initiate` no longer creates a link token and
+  no longer returns `linkToken` and `expiresAt`, which the browser never
+  used. Its checks are unchanged: session, rate limit, password.
+
+### 🔧 Changed
+
+- Linking and unlinking Google work as before: the account page checks the
+  password, then the user signs in to Google (not measured against Google
+  itself: the E2E suite checks the password step through the real route and
+  database).
+- The `account_link_initiated` security event no longer has `linkRequestId`
+  in its metadata.
+- Nothing writes an `account_linked` security event or sends an
+  `account_linked` alert any more. Rows of that type in an existing database
+  do not show that a Google account was linked (see `SECURITY.md`).
+
+### 🗑️ Removed
+
+- The Server Action `confirmAccountLinking` and `routes.linkAccount`.
+- The Prisma model `AccountLinkRequest` and `User.accountLinkRequests`.
+- The message namespace `AccountLinking` (13 keys) and, in `Errors`,
+  `invalidLinkingToken`, `accountLinkingCompleted`, `linkingTokenExpired`,
+  `failedToConfirmAccountLinking`; in `Success`, `accountLinked`: 18 keys,
+  from all five message files. A project that still uses one of them
+  compiles; next-intl then shows the key's path in place of the text (read in
+  the source of use-intl 4.14.7, not measured).
+- `"account_linked"` from the alert type of `src/lib/email.ts` and from the
+  event type of `src/lib/security.ts`; the `gradient` prop of
+  `FormPageLayout` and the gradient `green-blue`, which only the removed page
+  used.
+
+### ⬆️ Upgrading a database from v2.3.0
+
+- The schema drops the table `AccountLinkRequest`. Measured on the test
+  database: when the table is empty, `pnpm prisma:push` drops it without a
+  question. When it holds rows, the push stops with exit code 1 and changes
+  nothing; `pnpm prisma:push --accept-data-loss` then drops the table and
+  leaves the users. The flag accepts every data-loss warning of that push, so
+  check first that this table is the only one named. Versions up to 2.3.0
+  wrote a row each time a user entered the right password to link Google, so
+  a database where linking was started has rows. Details in
+  `docs/DEPLOYMENT.md`.
+- The test database needs the same push: `pnpm db:push:test`.
+
+### 🧪 Tests
+
+- Jest: 849 tests (was 803). Playwright: 90 tests (was 88).
+- The link-initiation route has its first tests (31), and an E2E test checks
+  that the old address answers 404.
+- The E2E warm-up requests twelve entries (was ten): the link-initiation
+  route and the not-found page are added.
+- Coverage: 56 % of statements (was 55 %).
+
 ## [v2.3.0] - 2026-10-03
 
 A clean-up of code that nothing used, decided item by item, and the defects

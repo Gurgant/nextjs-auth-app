@@ -94,8 +94,7 @@ the default branch; run the latest `main`.
   at a different speed.
 - **CSPRNG tokens** from `crypto.randomBytes`: e-mail-verification tokens are
   drawn from a 62-character alphabet with rejection sampling (no modulo
-  bias); backup codes use the same generator, upper-cased; account-link tokens
-  are 32 random bytes, hex-encoded.
+  bias); backup codes use the same generator, upper-cased.
 - **Last sign-in method.** A successful sign-in stores the method
   (`credentials` or `google`) on the user row and in the cookie
   `last-login-method` (1 year, `SameSite=Lax`, `Secure` in production). The
@@ -123,8 +122,8 @@ the default branch; run the latest `main`.
 - Account server actions and account API routes take the user's identity from
   the **session**, never from a client-supplied id. Exceptions by design: the
   public "send verification e-mail" action acts on the address it is given
-  (rate-limited), and the e-mail-verification and link-confirmation actions
-  act on the owner of the token in the link.
+  (rate-limited), and the e-mail-verification action acts on the owner of the
+  token in the link.
 - **Roles** (`USER`, `PRO_USER`, `ADMIN`): protected pages check the session
   and role on the server and redirect; `withRole()` guards role-restricted API
   routes (`/api/admin/metrics` — ADMIN only, covered by tests).
@@ -196,15 +195,20 @@ The `SecurityEvent` table records: 2FA enabled / disabled; verification e-mail
 sent and e-mail verified (both stored as `email_verified`, told apart by
 `details`); account-link initiation (`account_link_initiated`, written after
 the password check, before the Google step), unlinking (`account_unlinked`),
-wrong passwords when linking / unlinking; the confirmation page
-`/link-account/confirm/[token]` (`account_linked` — it only sets the
-`hasGoogleAccount` flag and does not prove that a Google account was linked);
-account lockouts. **Not recorded** (console or in-memory only): sign-ins,
-failed sign-ins, the completed Google OAuth link, password changes, adding a
-password, backup-code use, account deletion. An e-mail marked verified by a
-Google sign-in is not recorded either: it only sets the date on the user row.
-Security events are deleted together with the account (`onDelete: Cascade`),
-and the link / unlink events store the raw `X-Forwarded-For` header.
+wrong passwords when linking / unlinking; account lockouts. **Not recorded**
+(console or in-memory only): sign-ins, failed sign-ins, the completed Google
+OAuth link, password changes, adding a password, backup-code use, account
+deletion. An e-mail marked verified by a Google sign-in is not recorded
+either: it only sets the date on the user row. Security events are deleted
+together with the account (`onDelete: Cascade`), and the link / unlink events
+store the raw `X-Forwarded-For` header. Nothing writes an `account_linked`
+event any more. Rows of that type in an existing database were written by the
+confirmation page `/link-account/confirm/[token]` of versions up to 2.3.0 or
+by the server action `initiateAccountLinking` of versions up to 2.2.0.
+Neither shows that a Google account was linked: the page set a flag on the
+user row (`hasGoogleAccount` or `hasEmailAccount`), the action recorded that
+a link request was made, and neither created an `Account` row (read in the
+source of 2.0.0 to 2.3.0).
 
 ---
 

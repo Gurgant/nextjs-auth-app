@@ -92,15 +92,21 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
 ## Server actions (`src/lib/actions/`)
 
 `auth.ts` (register, profile, password operations, account deletion) and
-`advanced-auth.ts` (e-mail verification, link confirmation, 2FA lifecycle).
-Starting and undoing a Google link are API routes
+`advanced-auth.ts` (e-mail verification, 2FA lifecycle). The password check
+before linking Google and the unlinking of Google are API routes
 (`src/app/api/auth/link-account/{initiate,unlink}`) with their own password
-re-check, 429 throttling and security events.
+re-check, 429 throttling and security events. `initiate` links nothing and
+returns no token: it checks the password, records `account_link_initiated`
+and answers `{ success, provider }`. The account page then starts the Google
+sign-in, and Auth.js links the Google account to the signed-in user when
+Google returns (read in the source of `@auth/core` 0.41.3, not measured: the
+tests never complete a Google sign-in). The server does not require the
+password check for that — see "Known Limitations" in `SECURITY.md`.
 
 - Account actions take the user's identity from `auth()`, never from a
   client-sent id. Exceptions: the "send verification e-mail" action is keyed
-  by the address it receives, and `verifyEmailToken` / `confirmAccountLinking`
-  act on the owner of the token in the link, without a session.
+  by the address it receives, and `verifyEmailToken` acts on the owner of the
+  token in the link, without a session.
 - Registration, password change / add, account deletion and 2FA enabling
   validate input with Zod (in the action or in its command);
   `updateUserProfile` checks the name by hand, and the token / e-mail actions
@@ -109,9 +115,9 @@ re-check, 429 throttling and security events.
   into the e-mailed link.
 - Rate limits come from `src/lib/rate-limit.ts`.
 - Security events are persisted by the actions, the link / unlink routes and
-  `authorize()` (2FA enable/disable, e-mail verification, link initiation,
-  link confirmation and unlinking, wrong link passwords, lockouts); sign-in
-  and password events are not persisted yet — see `SECURITY.md`.
+  `authorize()` (2FA enable/disable, e-mail verification, link initiation
+  and unlinking, wrong link passwords, lockouts); sign-in and password events
+  are not persisted yet — see `SECURITY.md`.
 
 ## Supporting layers (`src/lib/`)
 
