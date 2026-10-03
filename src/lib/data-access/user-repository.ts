@@ -22,13 +22,3 @@ export async function getUserWithAccountDetails(
   const repository = getUserRepository();
   return await repository.findByIdWithAccountDetails(userId);
 }
-
-/**
- * Get user with basic account information (cached version)
- */
-export async function getUserAccountInfo(
-  userId: string,
-): Promise<UserWithAccountDetails | null> {
-  // This function can be enhanced with caching mechanisms if needed
-  return await getUserWithAccountDetails(userId);
-}

@@ -12,7 +12,6 @@ jest.mock("@/lib/utils/server-translations", () => ({
     fallback ?? key,
   translateSuccess: async (_locale: string, key: string, fallback?: string) =>
     fallback ?? key,
-  translateCommonError: async () => "An error occurred",
 }));
 
 jest.mock("next/headers", () => ({

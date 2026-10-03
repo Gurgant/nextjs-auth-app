@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma";
 import { auth } from "@/lib/auth";
+import { getSafeLocale } from "@/config/i18n";
 import { recordAttempt, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   generateSecureToken,
@@ -12,11 +13,7 @@ import {
   logSecurityEvent,
   getClientIP,
 } from "@/lib/security";
-import {
-  sendVerificationEmail,
-  sendAccountLinkConfirmation,
-  sendSecurityAlert,
-} from "@/lib/email";
+import { sendVerificationEmail, sendSecurityAlert } from "@/lib/email";
 import {
   setupTwoFactor,
   validateTOTPCode,
@@ -29,7 +26,6 @@ import { headers } from "next/headers";
 import {
   createValidationErrorResponse,
   createFieldErrorResponse,
-  createGenericErrorResponse,
   logActionError,
   type ActionResponse,
 } from "@/lib/utils/form-responses";
@@ -55,8 +51,12 @@ async function getSessionUserId(): Promise<string | null> {
 // Email Verification Actions
 export async function sendEmailVerification(
   userEmail: string,
-  locale: string = "en",
+  requestedLocale: string = "en",
 ): Promise<ActionResult> {
+  // No session is needed and the locale goes into the e-mailed link: only a
+  // supported one is accepted, anything else falls back to the default.
+  const locale = getSafeLocale(requestedLocale);
+
   try {
     // Anti mail-bombing: throttle verification sends per email + IP. Counted
     // before any user lookup so it stays uniform whether or not the email exists.
@@ -82,7 +82,11 @@ export async function sendEmailVerification(
     });
 
     if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
+      return await createErrorResponseI18n(
+        "errors.userNotFound",
+        locale,
+        "User not found",
+      );
     }
 
     if (user.emailVerified) {
@@ -224,131 +228,6 @@ export async function verifyEmailToken(
 }
 
 // Account Linking Actions
-export async function initiateAccountLinking(
-  _userId: string,
-  linkType: "google" | "email",
-  locale: string = "en",
-): Promise<ActionResult> {
-  try {
-    const userId = await getSessionUserId();
-    if (!userId) {
-      return createGenericErrorResponse(
-        "unauthorized",
-        "You must be signed in.",
-        locale,
-      );
-    }
-
-    // Throttle link initiations (spam / confirmation-email bombing) per
-    // account + IP.
-    const rlHeaders = await headers();
-    if (
-      recordAttempt(
-        "account-link",
-        [userId, getClientIP(rlHeaders)],
-        RATE_LIMITS.accountLink,
-      ).blocked
-    ) {
-      return {
-        success: false,
-        message:
-          "Too many linking requests. Please try again in a few minutes.",
-      };
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        hasGoogleAccount: true,
-        hasEmailAccount: true,
-      },
-    });
-
-    if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
-    }
-
-    // Check if linking is already in progress
-    const existingRequest = await prisma.accountLinkRequest.findFirst({
-      where: {
-        userId,
-        requestType: `link_${linkType}`,
-        completed: false,
-        expires: { gt: new Date() },
-      },
-    });
-
-    if (existingRequest) {
-      return await createErrorResponseI18n(
-        "errors.accountLinkingInProgress",
-        locale,
-        "Account linking request already in progress",
-      );
-    }
-
-    // Generate linking token
-    const token = generateSecureToken(32);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Create linking request
-    await prisma.accountLinkRequest.create({
-      data: {
-        userId,
-        requestType: `link_${linkType}`,
-        token,
-        expires: expiresAt,
-        metadata: {
-          initiatedAt: new Date().toISOString(),
-          linkType,
-        },
-      },
-    });
-
-    // Send confirmation email
-    const emailSent = await sendAccountLinkConfirmation(
-      user.email,
-      user.name || "",
-      linkType,
-      token,
-      locale,
-    );
-
-    if (!emailSent) {
-      return await createErrorResponseI18n(
-        "errors.failedToSendConfirmationEmail",
-        locale,
-        "Failed to send confirmation email",
-      );
-    }
-
-    // Log security event
-    const headersList = await headers();
-    await logSecurityEvent({
-      userId,
-      eventType: "account_linked",
-      details: `Account linking initiated for ${linkType}`,
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
-    });
-
-    return await createSuccessResponseI18n(
-      "success.confirmationEmailSent",
-      locale,
-      "Confirmation email sent. Please check your email to complete account linking.",
-    );
-  } catch (error) {
-    logActionError("initiateAccountLinking", error);
-    return await createErrorResponseI18n(
-      "errors.failedToInitiateAccountLinking",
-      locale,
-      "Failed to initiate account linking",
-    );
-  }
-}
-
 export async function confirmAccountLinking(
   token: string,
   locale: string = "en",
@@ -447,10 +326,10 @@ export async function setupTwoFactorAuth(
   try {
     const userId = await getSessionUserId();
     if (!userId) {
-      return createGenericErrorResponse(
-        "unauthorized",
-        "You must be signed in.",
+      return await createErrorResponseI18n(
+        "errors.unauthorized",
         locale,
+        "You must be signed in.",
       );
     }
 
@@ -460,7 +339,11 @@ export async function setupTwoFactorAuth(
     });
 
     if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
+      return await createErrorResponseI18n(
+        "errors.userNotFound",
+        locale,
+        "User not found",
+      );
     }
 
     if (user.twoFactorEnabled) {
@@ -515,10 +398,10 @@ export async function enableTwoFactorAuth(
   try {
     const userId = await getSessionUserId();
     if (!userId) {
-      return createGenericErrorResponse(
-        "unauthorized",
-        "You must be signed in.",
+      return await createErrorResponseI18n(
+        "errors.unauthorized",
         locale,
+        "You must be signed in.",
       );
     }
 
@@ -535,7 +418,11 @@ export async function enableTwoFactorAuth(
     });
 
     if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
+      return await createErrorResponseI18n(
+        "errors.userNotFound",
+        locale,
+        "User not found",
+      );
     }
 
     if (user.twoFactorEnabled) {
@@ -671,10 +558,10 @@ export async function disableTwoFactorAuth(
   try {
     const userId = await getSessionUserId();
     if (!userId) {
-      return createGenericErrorResponse(
-        "unauthorized",
-        "You must be signed in.",
+      return await createErrorResponseI18n(
+        "errors.unauthorized",
         locale,
+        "You must be signed in.",
       );
     }
 
@@ -684,7 +571,11 @@ export async function disableTwoFactorAuth(
     });
 
     if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
+      return await createErrorResponseI18n(
+        "errors.userNotFound",
+        locale,
+        "User not found",
+      );
     }
 
     if (!user.twoFactorEnabled) {
@@ -735,76 +626,6 @@ export async function disableTwoFactorAuth(
       "errors.failedToDisableTwoFactor",
       locale,
       "Failed to disable 2FA",
-    );
-  }
-}
-
-// Get comprehensive user account information including verification status
-export async function getEnhancedUserAccountInfo(
-  _userId: string,
-  locale: string = "en",
-): Promise<ActionResult> {
-  try {
-    const userId = await getSessionUserId();
-    if (!userId) {
-      return createGenericErrorResponse(
-        "unauthorized",
-        "You must be signed in.",
-        locale,
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        accounts: {
-          select: {
-            provider: true,
-            type: true,
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
-    }
-
-    const hasGoogleAccount = user.accounts.some(
-      (account) => account.provider === "google",
-    );
-    const hasPassword = !!user.password;
-
-    return await createSuccessResponseI18n(
-      "accountInfoRetrieved",
-      locale,
-      "Account information retrieved successfully",
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        emailVerified: user.emailVerified,
-        emailVerificationRequired: user.emailVerificationRequired,
-        hasGoogleAccount,
-        hasPassword,
-        hasEmailAccount: hasPassword,
-        lastLoginMethod: user.lastLoginMethod,
-        twoFactorEnabled: user.twoFactorEnabled,
-        twoFactorEnabledAt: user.twoFactorEnabledAt,
-        backupCodesCount: user.backupCodes.length,
-        passwordSetAt: user.passwordSetAt,
-        lastPasswordChange: user.lastPasswordChange,
-        lastLoginAt: user.lastLoginAt,
-        accounts: user.accounts,
-        createdAt: user.createdAt,
-      },
-    );
-  } catch (error) {
-    logActionError("getEnhancedUserAccountInfo", error);
-    return await createErrorResponseI18n(
-      "errors.failedToFetchAccountInfo",
-      locale,
-      "Failed to fetch account information",
     );
   }
 }

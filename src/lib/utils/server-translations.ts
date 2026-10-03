@@ -65,30 +65,3 @@ export async function translateSuccess(
     return defaultMessage || successKey;
   }
 }
-
-/**
- * Translate common error types
- */
-export async function translateCommonError(
-  locale: string,
-  type:
-    | "notFound"
-    | "unauthorized"
-    | "forbidden"
-    | "serverError"
-    | "unknown"
-    | "alreadyExists"
-    | "invalidInput",
-): Promise<string> {
-  const errorKeys = {
-    notFound: "notFound",
-    unauthorized: "unauthorized",
-    forbidden: "forbidden",
-    serverError: "serverError",
-    unknown: "unknown",
-    alreadyExists: "alreadyExists",
-    invalidInput: "invalidInput",
-  };
-
-  return translateError(locale, errorKeys[type]);
-}

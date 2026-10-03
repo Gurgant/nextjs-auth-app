@@ -76,8 +76,6 @@ export const RATE_LIMITS = {
   emailVerify: { limit: 5, windowMs: 15 * MINUTE },
   /** New-account registrations, per IP + email. */
   register: { limit: 5, windowMs: 60 * MINUTE },
-  /** Account-link initiations, per account + IP. */
-  accountLink: { limit: 5, windowMs: 60 * MINUTE },
 } satisfies Record<string, RateLimitRule>;
 
 // One process-wide store; LRU eviction bounds memory at `max` live keys.

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getSafeLocale } from "@/config/i18n";
 import { isPublicPlaceholder } from "@/lib/env-rules";
 
 // Real sending only with a real key; unset or the .env.example placeholder
@@ -151,67 +152,6 @@ export function createEmailVerificationTemplate(
   };
 }
 
-// Account linking notification template
-export function createAccountLinkTemplate(
-  userEmail: string,
-  userName: string,
-  linkType: "google" | "email",
-  confirmationLink: string,
-  locale: string = "en",
-): EmailTemplate {
-  const translations = {
-    en: {
-      subject: "Account Linking Request",
-      greeting: `Hello ${userName || "there"},`,
-      message:
-        linkType === "google"
-          ? "Someone requested to link a Google account to your email account."
-          : "Someone requested to link an email/password account to your Google account.",
-      button: "Confirm Account Linking",
-      security:
-        "If this wasn't you, please ignore this email or contact support.",
-      expires: "This link expires in 15 minutes.",
-    },
-    // Add other languages as needed
-  };
-
-  const t =
-    translations[locale as keyof typeof translations] || translations.en;
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <title>${t.subject}</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .button { display: inline-block; padding: 12px 30px; background: #4CAF50; color: white; text-decoration: none; border-radius: 6px; }
-          .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h2>${t.greeting}</h2>
-          <p>${t.message}</p>
-          <p><a href="${confirmationLink}" class="button">${t.button}</a></p>
-          <div class="warning">
-            <strong>⚠️ ${t.security}</strong>
-          </div>
-          <p><small>${t.expires}</small></p>
-        </div>
-      </body>
-    </html>
-  `;
-
-  return {
-    to: userEmail,
-    subject: t.subject,
-    html,
-  };
-}
-
 // Security alert template
 export function createSecurityAlertTemplate(
   userEmail: string,
@@ -315,8 +255,11 @@ export async function sendVerificationEmail(
   userEmail: string,
   userName: string,
   token: string,
-  locale: string = "en",
+  requestedLocale: string = "en",
 ): Promise<boolean> {
+  // The locale becomes part of the link and of the e-mail's HTML: only a
+  // supported one is used, anything else falls back to the default.
+  const locale = getSafeLocale(requestedLocale);
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const verificationLink = `${baseUrl}/${locale}/verify-email/${token}`;
 
@@ -324,27 +267,6 @@ export async function sendVerificationEmail(
     userEmail,
     userName,
     verificationLink,
-    locale,
-  );
-  return await sendEmail(template);
-}
-
-// Helper function to send account linking confirmation
-export async function sendAccountLinkConfirmation(
-  userEmail: string,
-  userName: string,
-  linkType: "google" | "email",
-  token: string,
-  locale: string = "en",
-): Promise<boolean> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const confirmationLink = `${baseUrl}/${locale}/link-account/confirm/${token}`;
-
-  const template = createAccountLinkTemplate(
-    userEmail,
-    userName,
-    linkType,
-    confirmationLink,
     locale,
   );
   return await sendEmail(template);

@@ -16,7 +16,6 @@ jest.mock("@/lib/utils/server-translations", () => ({
             "Failed to disable two-factor authentication",
           failedToSendVerificationEmail: "Failed to send verification email",
           emailAlreadyVerified: "Email is already verified",
-          failedToFetchAccountInfo: "Failed to fetch account information",
         };
 
         return translations[key] || key;
@@ -33,26 +32,14 @@ jest.mock("@/lib/utils/server-translations", () => ({
           twoFactorSetupInitiated: "2FA setup initiated",
           twoFactorDisabled: "2FA disabled successfully",
           verificationEmailSent: "Verification email sent successfully",
-          accountInfoRetrieved: "Account information retrieved successfully",
         };
 
         return translations[key] || key;
       },
     ),
-  translateCommonError: jest
-    .fn()
-    .mockImplementation(async (locale: string, type: string) => {
-      const commonErrors: Record<string, string> = {
-        notFound: "User not found",
-        serverError: "An error occurred on the server",
-        unknown: "Something went wrong. Please try again.",
-      };
-      return commonErrors[type] || "An error occurred";
-    }),
 }));
 
 import {
-  getEnhancedUserAccountInfo,
   setupTwoFactorAuth,
   disableTwoFactorAuth,
   sendEmailVerification,
@@ -94,7 +81,6 @@ jest.mock("@/lib/rate-limit", () => ({
     passwordVerify: { limit: 5, windowMs: 900000 },
     emailVerify: { limit: 5, windowMs: 900000 },
     register: { limit: 5, windowMs: 3600000 },
-    accountLink: { limit: 5, windowMs: 3600000 },
   },
 }));
 
@@ -138,9 +124,6 @@ require("@/lib/security").getClientIP = jest.fn().mockReturnValue("127.0.0.1");
 require("@/lib/email").sendVerificationEmail = jest
   .fn()
   .mockResolvedValue(true);
-require("@/lib/email").sendAccountLinkConfirmation = jest
-  .fn()
-  .mockResolvedValue(true);
 require("@/lib/email").sendSecurityAlert = jest.fn().mockResolvedValue(true);
 
 // Mock implementations for two-factor functions
@@ -163,123 +146,6 @@ require("@/lib/two-factor").generateNewBackupCodes = jest
 describe("Advanced Authentication Actions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe("getEnhancedUserAccountInfo", () => {
-    const mockUser = {
-      id: "user-123",
-      email: "test@example.com",
-      password: "hashed-password",
-      twoFactorEnabled: false,
-      twoFactorSecret: null,
-      backupCodes: [],
-      accounts: [
-        {
-          provider: "google",
-          type: "oauth",
-        },
-      ],
-    };
-
-    it("should return enhanced user account info successfully", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
-
-      const result = await getEnhancedUserAccountInfo("user-123", "en");
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual(
-          expect.objectContaining({
-            id: "user-123",
-            email: "test@example.com",
-            hasGoogleAccount: true,
-            hasPassword: true,
-            hasEmailAccount: true,
-            twoFactorEnabled: false,
-            backupCodesCount: 0,
-            accounts: [
-              {
-                provider: "google",
-                type: "oauth",
-              },
-            ],
-          }),
-        );
-      }
-
-      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: "user-123" },
-        include: {
-          accounts: {
-            select: {
-              provider: true,
-              type: true,
-            },
-          },
-        },
-      });
-    });
-
-    it("should return error when user not found in database", async () => {
-      mockPrisma.user.findUnique.mockResolvedValue(null);
-
-      const result = await getEnhancedUserAccountInfo("user-123", "en");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("User not found");
-    });
-
-    it("should handle database errors gracefully", async () => {
-      mockPrisma.user.findUnique.mockRejectedValue(new Error("Database error"));
-
-      const result = await getEnhancedUserAccountInfo("user-123", "en");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("Failed to fetch account information");
-    });
-
-    it("should correctly detect account types", async () => {
-      // Test user with no password and no Google account
-      const userWithoutPassword = {
-        ...mockUser,
-        password: null,
-        accounts: [], // No accounts
-      };
-
-      mockPrisma.user.findUnique.mockResolvedValue(userWithoutPassword);
-
-      const result = await getEnhancedUserAccountInfo("user-123", "en");
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data).toEqual(
-          expect.objectContaining({
-            hasGoogleAccount: false,
-            hasPassword: false,
-            hasEmailAccount: false,
-          }),
-        );
-      }
-    });
-
-    it("should count backup codes correctly", async () => {
-      const userWithBackupCodes = {
-        ...mockUser,
-        backupCodes: ["code1", "code2", "code3"],
-      };
-
-      mockPrisma.user.findUnique.mockResolvedValue(userWithBackupCodes);
-
-      const result = await getEnhancedUserAccountInfo("user-123", "en");
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(
-          (result.data as { backupCodesCount?: number } | undefined)
-            ?.backupCodesCount,
-        ).toBe(3);
-      }
-    });
   });
 
   describe("setupTwoFactorAuth", () => {
@@ -403,6 +269,38 @@ describe("Advanced Authentication Actions", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("already verified");
+    });
+
+    // The action needs no session and its locale goes into the e-mailed link.
+    it.each(["xx", '"><script>alert(1)</script>', "en-US", ""])(
+      "hands the e-mail the default locale instead of %p",
+      async (locale) => {
+        mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+        await sendEmailVerification("test@example.com", locale);
+
+        expect(
+          require("@/lib/email").sendVerificationEmail,
+        ).toHaveBeenCalledWith(
+          "test@example.com",
+          "",
+          "mock-secure-token",
+          "en",
+        );
+      },
+    );
+
+    it("hands the e-mail a supported locale as it is", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+      await sendEmailVerification("test@example.com", "de");
+
+      expect(require("@/lib/email").sendVerificationEmail).toHaveBeenCalledWith(
+        "test@example.com",
+        "",
+        "mock-secure-token",
+        "de",
+      );
     });
   });
 });

@@ -3,16 +3,8 @@
  * These are async versions that support locale-based translations
  */
 
-import {
-  translateError,
-  translateCommonError,
-  translateSuccess,
-} from "./server-translations";
-import type {
-  ErrorResponse,
-  SuccessResponse,
-  CommonErrorType,
-} from "./form-responses";
+import { translateError, translateSuccess } from "./server-translations";
+import type { ErrorResponse, SuccessResponse } from "./form-responses";
 
 /**
  * Creates an error response with i18n support
@@ -57,39 +49,6 @@ export async function createFieldErrorResponseI18n(
       [field]: [translatedErrorMessage],
     },
   };
-}
-
-/**
- * Creates a generic error response based on common error types with i18n support
- */
-export async function createGenericErrorResponseI18n(
-  type: CommonErrorType,
-  customMessage?: string,
-  locale?: string,
-): Promise<ErrorResponse> {
-  let message: string;
-
-  if (customMessage) {
-    message = locale
-      ? await translateError(locale, customMessage, customMessage)
-      : customMessage;
-  } else if (locale) {
-    message = await translateCommonError(locale, type);
-  } else {
-    // Fallback to English messages
-    const messages: Record<CommonErrorType, string> = {
-      notFound: "Resource not found",
-      unauthorized: "You are not authorized to perform this action",
-      forbidden: "Access forbidden",
-      serverError: "An error occurred on the server",
-      unknown: "Something went wrong. Please try again.",
-      alreadyExists: "This resource already exists",
-      invalidInput: "Invalid input provided",
-    };
-    message = messages[type] || messages.unknown;
-  }
-
-  return createErrorResponseI18n(message);
 }
 
 /**

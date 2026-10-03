@@ -163,6 +163,7 @@ export type CommonErrorType =
  *
  * @param type - The type of error
  * @param customMessage - Optional custom message to override default
+ * @param _locale - Ignored (built-in messages are English; a custom message is returned as given)
  * @returns Error response with appropriate message
  *
  * @example
@@ -175,9 +176,10 @@ export function createGenericErrorResponse(
   customMessage?: string,
   _locale?: string,
 ): ErrorResponse {
-  // TODO: When locale is provided, use async translation
-  // For now, we'll keep the synchronous behavior for backward compatibility
-  // Use createGenericErrorResponseI18n from form-responses-i18n.ts for full i18n support
+  // The locale is ignored: the built-in messages are English and a custom
+  // message is returned as given. For a message in the user's language, use
+  // createErrorResponseI18n (form-responses-i18n.ts) with a key of the
+  // "Errors" messages.
   const messages: Record<CommonErrorType, string> = {
     notFound: "Resource not found",
     unauthorized: "You are not authorized to perform this action",

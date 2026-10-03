@@ -22,7 +22,6 @@ import { resolveFormLocale } from "@/lib/utils/form-locale-server";
 import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
 import {
   createValidationErrorResponse,
-  createGenericErrorResponse,
   logActionError,
   type ActionResponse,
 } from "@/lib/utils/form-responses";
@@ -64,8 +63,30 @@ async function getSessionUserId(): Promise<string | null> {
   return session?.user?.id ?? null;
 }
 
+const MAX_USER_AGENT_LENGTH = 512;
+
+/**
+ * Client IP and User-Agent for the command metadata, which reaches the event
+ * listeners. Taken from the request headers, never from form fields: the IP
+ * as getClientIP reads it (a valid address, which the client controls unless
+ * a trusted proxy overwrites X-Forwarded-For, see SECURITY.md) and the
+ * User-Agent, which the client chooses, cut to 512 characters.
+ */
+function requestMetadata(requestHeaders: Headers): {
+  ipAddress?: string;
+  userAgent?: string;
+} {
+  return {
+    ipAddress: getClientIP(requestHeaders),
+    userAgent:
+      requestHeaders.get("user-agent")?.slice(0, MAX_USER_AGENT_LENGTH) ||
+      undefined,
+  };
+}
+
 export async function registerUser(formData: FormData): Promise<ActionResult> {
   const locale = (formData.get("locale") as string) || "en";
+  const requestHeaders = await headers();
 
   // Anti-abuse: throttle registrations per IP + email. IP is derived
   // server-side (never the client-supplied FormData value, which is spoofable).
@@ -73,7 +94,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
   if (
     recordAttempt(
       "register",
-      [getClientIP(await headers()), registerEmail],
+      [getClientIP(requestHeaders), registerEmail],
       RATE_LIMITS.register,
     ).blocked
   ) {
@@ -95,8 +116,7 @@ export async function registerUser(formData: FormData): Promise<ActionResult> {
     },
     {
       locale,
-      ipAddress: formData.get("ipAddress") as string | undefined,
-      userAgent: formData.get("userAgent") as string | undefined,
+      ...requestMetadata(requestHeaders),
     },
   );
 
@@ -247,7 +267,11 @@ export async function addPasswordToGoogleUser(
       : null;
 
     if (!userWithAccounts) {
-      return createGenericErrorResponse("notFound", "User not found", locale);
+      return await createErrorResponseI18n(
+        "errors.userNotFound",
+        locale,
+        "User not found",
+      );
     }
 
     // Check if user already has a password
@@ -329,10 +353,11 @@ export async function changeUserPassword(
 
   // Throttle current-password verification attempts per account + IP so a
   // leaked session cannot be used to brute-force the current password.
+  const requestHeaders = await headers();
   if (
     recordAttempt(
       "password-change",
-      [authedUserId, getClientIP(await headers())],
+      [authedUserId, getClientIP(requestHeaders)],
       RATE_LIMITS.passwordVerify,
     ).blocked
   ) {
@@ -359,8 +384,7 @@ export async function changeUserPassword(
       {
         userId: authedUserId,
         locale,
-        ipAddress: formData.get("ipAddress") as string | undefined,
-        userAgent: formData.get("userAgent") as string | undefined,
+        ...requestMetadata(requestHeaders),
       },
     );
   } catch (error) {
@@ -370,154 +394,5 @@ export async function changeUserPassword(
       locale,
       "Failed to change password. Please try again.",
     );
-  }
-}
-
-// Migrate user account metadata (run once for existing users)
-export async function migrateUserAccountMetadata(
-  _userId?: string, // ignored: identity derived from the session
-): Promise<ActionResult> {
-  try {
-    const authedUserId = await getSessionUserId();
-    if (!authedUserId) {
-      return await createErrorResponseI18n(
-        "errors.unauthorized",
-        "en",
-        "You must be signed in.",
-      );
-    }
-    const userRepo = repositories.getUserRepository();
-    const user = await userRepo.findById(authedUserId);
-    const userWithAccounts = user
-      ? await userRepo.findByEmailWithAccounts(user.email)
-      : null;
-
-    if (!userWithAccounts) {
-      return createGenericErrorResponse("notFound", "User not found");
-    }
-
-    const hasGoogleAccount =
-      userWithAccounts.accounts?.some(
-        (account) => account.provider === "google",
-      ) || false;
-    const hasPassword = !!userWithAccounts.password;
-    const hasEmailAccount = hasPassword;
-
-    // Update user with metadata
-    await userRepo.update(authedUserId, {
-      hasGoogleAccount,
-      hasEmailAccount,
-      passwordSetAt:
-        userWithAccounts.password && !userWithAccounts.passwordSetAt
-          ? userWithAccounts.createdAt
-          : userWithAccounts.passwordSetAt,
-      lastPasswordChange:
-        userWithAccounts.password && !userWithAccounts.lastPasswordChange
-          ? userWithAccounts.createdAt
-          : userWithAccounts.lastPasswordChange,
-      lastLoginAt: userWithAccounts.lastLoginAt || new Date(),
-    });
-
-    console.log("User metadata migrated:", {
-      userId: authedUserId,
-      hasGoogleAccount,
-      hasEmailAccount,
-    });
-
-    return await createSuccessResponseI18n(
-      "success.accountMetadataUpdated",
-      "en",
-      "Account metadata updated successfully",
-    );
-  } catch (error) {
-    logActionError("migrateUserAccountMetadata", error);
-    return await createErrorResponseI18n(
-      "errors.failedToMigrateAccountMetadata",
-      "en",
-      "Failed to migrate account metadata",
-    );
-  }
-}
-
-// Get user account information
-export async function getUserAccountInfo(_userId?: string) {
-  try {
-    const authedUserId = await getSessionUserId();
-    if (!authedUserId) {
-      return null;
-    }
-    const userRepo = repositories.getUserRepository();
-    const user = await userRepo.findById(authedUserId);
-
-    if (!user) {
-      return null;
-    }
-
-    const userWithAccounts = await userRepo.findByEmailWithAccounts(user.email);
-
-    if (!userWithAccounts) {
-      return null;
-    }
-
-    const hasGoogleAccount =
-      userWithAccounts.accounts?.some(
-        (account) => account.provider === "google",
-      ) || false;
-    const hasPassword = !!userWithAccounts.password;
-
-    // Auto-migrate if metadata is missing
-    if (
-      userWithAccounts.hasGoogleAccount === null ||
-      userWithAccounts.hasEmailAccount === null
-    ) {
-      await migrateUserAccountMetadata(authedUserId);
-
-      // Re-fetch updated user data
-      const updatedUser = await userRepo.findById(authedUserId);
-      const updatedUserWithAccounts = updatedUser
-        ? await userRepo.findByEmailWithAccounts(updatedUser.email)
-        : null;
-
-      if (updatedUserWithAccounts) {
-        return {
-          id: updatedUserWithAccounts.id,
-          email: updatedUserWithAccounts.email,
-          name: updatedUserWithAccounts.name,
-          hasGoogleAccount: updatedUserWithAccounts.hasGoogleAccount,
-          hasPassword: !!updatedUserWithAccounts.password,
-          hasEmailAccount: updatedUserWithAccounts.hasEmailAccount,
-          lastLoginMethod: updatedUserWithAccounts.lastLoginMethod,
-          passwordSetAt: updatedUserWithAccounts.passwordSetAt,
-          lastPasswordChange: updatedUserWithAccounts.lastPasswordChange,
-          lastLoginAt: updatedUserWithAccounts.lastLoginAt,
-          accounts: updatedUserWithAccounts.accounts || [],
-          createdAt: updatedUserWithAccounts.createdAt,
-        };
-      }
-    }
-
-    return {
-      id: userWithAccounts.id,
-      email: userWithAccounts.email,
-      name: userWithAccounts.name,
-      hasGoogleAccount:
-        userWithAccounts.hasGoogleAccount !== null
-          ? userWithAccounts.hasGoogleAccount
-          : hasGoogleAccount,
-      hasPassword,
-      hasEmailAccount:
-        userWithAccounts.hasEmailAccount !== null
-          ? userWithAccounts.hasEmailAccount
-          : hasPassword,
-      lastLoginMethod: userWithAccounts.lastLoginMethod,
-      passwordSetAt: userWithAccounts.passwordSetAt,
-      lastPasswordChange: userWithAccounts.lastPasswordChange,
-      lastLoginAt: userWithAccounts.lastLoginAt,
-      accounts: userWithAccounts.accounts || [],
-      createdAt: userWithAccounts.createdAt,
-    };
-  } catch (error) {
-    console.error("Get user account info error:", error);
-    return null;
   }
 }
