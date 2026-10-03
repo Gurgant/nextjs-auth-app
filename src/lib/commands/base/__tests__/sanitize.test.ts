@@ -1,7 +1,8 @@
 /**
  * @jest-environment node
  *
- * The one sanitizer used for command input and output (events and audit log).
+ * The one sanitizer used for command input and output (the events the bus
+ * publishes; the audit log keeps neither).
  */
 import {
   REDACTED,

@@ -3,10 +3,11 @@
  *
  * The "not signed in" and "user not found" answers of the account actions
  * are the Errors messages of the requested locale (messages/<locale>.json),
- * not an English literal. The real server-translation helpers are used;
- * getTranslations (mocked in jest.setup.js) is given an implementation that
- * reads messages/<locale>.json. The two keys expected here are in all five
- * files; for a missing key that implementation returns undefined, where
+ * not an English literal; a locale argument that is not one of the five is
+ * answered in the default locale. The real server-translation helpers are
+ * used; getTranslations (mocked in jest.setup.js) is given an implementation
+ * that reads messages/<locale>.json. The two keys expected here are in all
+ * five files; for a missing key that implementation returns undefined, where
  * next-intl returns "Errors.<key>".
  */
 import { getTranslations } from "next-intl/server";
@@ -118,6 +119,13 @@ const LOOKUP_ACTIONS: Record<string, (locale: Locale) => Answer> = {
     sendEmailVerification("nobody@example.com", locale),
 };
 
+// The two session actions whose locale is an argument: the client sends it,
+// so it can be any text.
+const LOCALE_ARGUMENT_ACTIONS: Record<string, (locale: string) => Answer> = {
+  setupTwoFactorAuth: (locale) => setupTwoFactorAuth("ignored", locale),
+  disableTwoFactorAuth: (locale) => disableTwoFactorAuth("ignored", locale),
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   jest.spyOn(console, "log").mockImplementation(() => {});
@@ -171,3 +179,29 @@ describe.each(LOCALES)("%s", (locale) => {
     },
   );
 });
+
+// Only the five supported locales are used for a locale argument: anything
+// else is answered in the default locale, from its messages file, not with
+// the literal the code falls back to when a message cannot be looked up.
+describe.each(["xx", "en-US", '"><script>alert(1)</script>', ""])(
+  "the locale argument %p, which is not a supported locale",
+  (unsupported) => {
+    it.each(Object.keys(LOCALE_ARGUMENT_ACTIONS))(
+      "%s answers in the default locale",
+      async (action) => {
+        mockAuth.mockResolvedValue(null);
+
+        await expect(
+          LOCALE_ARGUMENT_ACTIONS[action](unsupported),
+        ).resolves.toEqual({
+          success: false,
+          message: MESSAGES.en.Errors.unauthorized,
+        });
+        expect(getTranslations).toHaveBeenLastCalledWith({
+          locale: "en",
+          namespace: "Errors",
+        });
+      },
+    );
+  },
+);

@@ -1,7 +1,7 @@
 /**
- * Redaction of command input and output before they are copied into events
- * and audit entries. Both functions return a copy: the object handed to the
- * command, and the object the command returns to its caller, are never
+ * Redaction of command input and output before they are copied into the
+ * events the bus publishes. Both functions return a copy: the object handed
+ * to the command, and the object the command returns to its caller, are never
  * changed.
  */
 

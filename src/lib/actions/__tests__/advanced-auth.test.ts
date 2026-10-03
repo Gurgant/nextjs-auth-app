@@ -109,6 +109,13 @@ jest.mock("@/lib/two-factor");
 // Get the mocked prisma
 const { prisma: mockPrisma } = require("@/lib/prisma");
 
+// Get the mocked translation helper: its first argument is the locale an
+// action answers in
+const { translateSuccess } = require("@/lib/utils/server-translations");
+
+// Values a client can send as the locale argument of an action
+const UNSUPPORTED_LOCALES = ["xx", '"><script>alert(1)</script>', "en-US", ""];
+
 // Mock implementations for security functions
 require("@/lib/security").generateSecureToken = jest
   .fn()
@@ -183,6 +190,32 @@ describe("Advanced Authentication Actions", () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain("User not found");
     });
+
+    // The locale is an argument the client sends: only a supported one is used.
+    it("answers in a supported locale as requested", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+      const result = await setupTwoFactorAuth("user-123", "de");
+
+      expect(result.success).toBe(true);
+      expect(translateSuccess.mock.calls).toEqual([
+        ["de", "success.twoFactorSetupInitiated", "2FA setup initiated"],
+      ]);
+    });
+
+    it.each(UNSUPPORTED_LOCALES)(
+      "answers in the default locale instead of %p",
+      async (locale) => {
+        mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+        const result = await setupTwoFactorAuth("user-123", locale);
+
+        expect(result.success).toBe(true);
+        expect(translateSuccess.mock.calls).toEqual([
+          ["en", "success.twoFactorSetupInitiated", "2FA setup initiated"],
+        ]);
+      },
+    );
   });
 
   describe("disableTwoFactorAuth", () => {
@@ -227,6 +260,32 @@ describe("Advanced Authentication Actions", () => {
       expect(result.success).toBe(false);
       expect(result.message).toContain("not enabled");
     });
+
+    // The locale is an argument the client sends: only a supported one is used.
+    it("answers in a supported locale as requested", async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+      const result = await disableTwoFactorAuth("user-123", "de");
+
+      expect(result.success).toBe(true);
+      expect(translateSuccess.mock.calls).toEqual([
+        ["de", "success.twoFactorDisabled", "2FA disabled successfully"],
+      ]);
+    });
+
+    it.each(UNSUPPORTED_LOCALES)(
+      "answers in the default locale instead of %p",
+      async (locale) => {
+        mockPrisma.user.findUnique.mockResolvedValue(mockUser);
+
+        const result = await disableTwoFactorAuth("user-123", locale);
+
+        expect(result.success).toBe(true);
+        expect(translateSuccess.mock.calls).toEqual([
+          ["en", "success.twoFactorDisabled", "2FA disabled successfully"],
+        ]);
+      },
+    );
   });
 
   describe("sendEmailVerification", () => {
@@ -272,7 +331,7 @@ describe("Advanced Authentication Actions", () => {
     });
 
     // The action needs no session and its locale goes into the e-mailed link.
-    it.each(["xx", '"><script>alert(1)</script>', "en-US", ""])(
+    it.each(UNSUPPORTED_LOCALES)(
       "hands the e-mail the default locale instead of %p",
       async (locale) => {
         mockPrisma.user.findUnique.mockResolvedValue(mockUser);

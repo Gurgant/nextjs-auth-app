@@ -151,20 +151,34 @@ describe("CommandBus", () => {
       expect(payload.error).toBe("boom");
     });
 
-    it("gives the caller the real token while the audit entry is redacted", async () => {
+    it("gives the caller the real token while the audit entry keeps no input, output or request data", async () => {
       const audit = new AuditMiddleware();
       bus.use(audit);
       bus.register(TokenCommand);
 
-      const out = await bus.execute(TokenCommand, {});
+      const out = await bus.execute(
+        TokenCommand,
+        { email: "alice@example.com", password: "Plain123!" },
+        {
+          userId: "u1",
+          locale: "de",
+          ipAddress: "203.0.113.9",
+          userAgent: "Client-Chosen-Agent/1.0",
+        },
+      );
 
       expect(out.data.token).toBe("nested-secret");
-      expect(audit.getAuditLogs()).toHaveLength(1);
-      expect(audit.getAuditLogs()[0].output).toEqual({
-        success: true,
-        token: "[REDACTED]",
-        data: { token: "[REDACTED]", userId: "u1" },
-      });
+      expect(audit.getAuditLogs()).toStrictEqual([
+        {
+          commandName: "TokenCommand",
+          commandId: publishedEvent("system.command_executed").payload
+            .commandId,
+          userId: "u1",
+          timestamp: expect.any(Date),
+          duration: expect.any(Number),
+          success: true,
+        },
+      ]);
     });
   });
 
@@ -186,6 +200,69 @@ describe("CommandBus", () => {
         ["RefusingCommand", false],
         // An answer without a `success` field does not say success.
         ["NoInputCommand", false],
+      ]);
+    });
+
+    it("the audit entry says the same outcome, and names the class of a thrown error", async () => {
+      const audit = new AuditMiddleware();
+      bus.use(audit);
+      bus.registerMany([
+        TokenCommand,
+        RefusingCommand,
+        NoInputCommand,
+        ThrowingCommand,
+      ]);
+
+      await bus.execute(TokenCommand, {});
+      await bus.execute(RefusingCommand, undefined);
+      await bus.execute(NoInputCommand, undefined);
+      await expect(bus.execute(ThrowingCommand, {})).rejects.toThrow("boom");
+
+      expect(
+        audit
+          .getAuditLogs()
+          .map(({ commandName, success, errorType }) => [
+            commandName,
+            success,
+            errorType,
+          ]),
+      ).toEqual([
+        ["TokenCommand", true, undefined],
+        ["RefusingCommand", false, undefined],
+        ["NoInputCommand", false, undefined],
+        ["FailingCommand", false, "Error"],
+      ]);
+    });
+
+    it("a step that fails after the command returned adds a second entry for the same command id", async () => {
+      const audit = new AuditMiddleware();
+      bus.use(audit);
+      bus.register(TokenCommand);
+      // Publishing the executed event fails; the failed event is published.
+      mockPublish.mockRejectedValueOnce(new TypeError("late"));
+
+      await expect(bus.execute(TokenCommand, {})).rejects.toThrow("late");
+
+      const { commandId } = publishedEvent("system.command_failed").payload;
+      expect(audit.getAuditLogs()).toStrictEqual([
+        // What the command answered ...
+        {
+          commandName: "TokenCommand",
+          commandId,
+          userId: undefined,
+          timestamp: expect.any(Date),
+          duration: expect.any(Number),
+          success: true,
+        },
+        // ... then what the bus caught: not thrown by the command.
+        {
+          commandName: "TokenCommand",
+          commandId,
+          userId: undefined,
+          timestamp: expect.any(Date),
+          success: false,
+          errorType: "TypeError",
+        },
       ]);
     });
   });
@@ -218,15 +295,21 @@ describe("CommandBus", () => {
       await bus.execute(RefusingCommand, undefined);
       await bus.execute(NoInputCommand, undefined);
 
+      // The line says "Completed" for every command that returned: whether it
+      // succeeded is in the `success` field.
       const logged = logSpy.mock.calls
-        .filter(([line]) => String(line).endsWith("Completed successfully"))
-        .map(([, fields]) => fields.success);
+        .filter(([line]) => String(line).includes("Completed"))
+        .map(([line, fields]) => [line, fields.success]);
       const published = mockPublish.mock.calls
         .map(([event]) => event)
         .filter((event) => event.type === "system.command_executed")
         .map(({ payload }) => payload.success);
-      expect(logged).toEqual([true, false, false]);
-      expect(logged).toEqual(published);
+      expect(logged).toEqual([
+        ["[Command:TokenCommand] Completed", true],
+        ["[Command:RefusingCommand] Completed", false],
+        ["[Command:NoInputCommand] Completed", false],
+      ]);
+      expect(logged.map(([, success]) => success)).toEqual(published);
     });
   });
 

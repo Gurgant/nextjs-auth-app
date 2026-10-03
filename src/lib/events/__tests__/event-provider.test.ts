@@ -41,8 +41,10 @@ function loadLayer(): Layer {
 const listenersRan = () =>
   new Promise<void>((resolve) => setImmediate(resolve));
 
-// What a submitted form can put into the metadata of an event. The listeners
-// keep neither field.
+// What a client can put into the metadata of an event. Both values come from
+// the request, not from form fields: the User-Agent header and, unless a
+// trusted proxy overwrites X-Forwarded-For, the client IP. The listeners keep
+// neither field.
 const CLIENT_METADATA = {
   ipAddress: "203.0.113.9",
   userAgent: "Client-Chosen-Agent/1.0",

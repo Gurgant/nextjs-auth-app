@@ -107,6 +107,29 @@ describe("commands do not return raw exception messages (CMD-9)", () => {
       expect(result.message).not.toBe(GENERIC);
       expect(result.message).toMatch(/already exists/i);
     });
+
+    it("logs that refusal without the e-mail address or the name", async () => {
+      mockRepo.findByEmail.mockResolvedValue({ id: "u1" });
+      const printed = (spy: jest.SpyInstance) =>
+        spy.mock.calls
+          .flat()
+          .map((part) =>
+            typeof part === "string" ? part : JSON.stringify(part),
+          )
+          .join("\n");
+      const logSpy = console.log as unknown as jest.SpyInstance;
+      const warnSpy = console.warn as unknown as jest.SpyInstance;
+
+      await new RegisterUserCommand().execute(registration);
+
+      const lines = [printed(errorSpy), printed(warnSpy), printed(logSpy)].join(
+        "\n",
+      );
+      // The refusal is logged, so the check below has something to look at.
+      expect(lines).toContain("ResourceAlreadyExistsError");
+      expect(lines).not.toContain(registration.email);
+      expect(lines).not.toContain(registration.name);
+    });
   });
 
   describe("ChangePasswordCommand", () => {
