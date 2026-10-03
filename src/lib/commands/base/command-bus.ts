@@ -1,5 +1,6 @@
 import { ICommand, CommandMetadata } from "./command.interface";
 import { sanitizeCommandInput, sanitizeCommandOutput } from "./sanitize";
+import { answerSaysSuccess } from "./outcome";
 import { ICommandMiddleware } from "../middleware/middleware.interface";
 import { randomUUID } from "crypto";
 import { eventBus } from "@/lib/events";
@@ -130,7 +131,7 @@ export class CommandBus {
             commandId: fullMetadata.commandId,
             input: sanitizeCommandInput(input),
             output: sanitizeCommandOutput(output),
-            success: true,
+            success: answerSaysSuccess(output),
             duration,
             executedAt: new Date(),
           },

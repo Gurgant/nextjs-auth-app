@@ -1,15 +1,8 @@
 import { IEventHandler, IEvent } from "../base/event.interface";
 import {
   UserRegisteredEvent,
-  UserLoggedInEvent,
   PasswordChangedEvent,
 } from "../domain/auth.events";
-import {
-  LoginFailedEvent,
-  AccountLockedEvent,
-  SuspiciousActivityEvent,
-  SecurityAlertEvent,
-} from "../domain/security.events";
 import {
   CommandExecutedEvent,
   CommandFailedEvent,
@@ -26,6 +19,9 @@ type AuditSeverity =
   | "medium"
   | "high";
 
+// An entry keeps ids, outcomes and fixed labels: no e-mail address, no name,
+// no text a client can choose (IP address, user agent) and no free-text error
+// message.
 interface AuditLogEntry {
   id: string;
   timestamp: Date;
@@ -35,8 +31,6 @@ interface AuditLogEntry {
   action: string;
   details: Record<string, unknown>;
   severity: AuditSeverity;
-  ipAddress?: string;
-  userAgent?: string;
 }
 
 export class AuditLogHandler implements IEventHandler {
@@ -64,8 +58,6 @@ export class AuditLogHandler implements IEventHandler {
       eventType: event.type,
       eventId: event.metadata.eventId,
       userId: event.metadata.userId,
-      ipAddress: event.metadata.ipAddress,
-      userAgent: event.metadata.userAgent,
     };
 
     // Map specific events to audit entries
@@ -76,29 +68,8 @@ export class AuditLogHandler implements IEventHandler {
           ...baseEntry,
           action: "User Registration",
           details: {
-            email: regEvent.payload.email,
             provider: regEvent.payload.provider,
           },
-          severity: "info",
-        };
-
-      case "user.logged_in":
-        const loginEvent = event as UserLoggedInEvent;
-        return {
-          ...baseEntry,
-          action: "User Login",
-          details: {
-            method: loginEvent.payload.method,
-            provider: loginEvent.payload.provider,
-          },
-          severity: "info",
-        };
-
-      case "user.logged_out":
-        return {
-          ...baseEntry,
-          action: "User Logout",
-          details: {},
           severity: "info",
         };
 
@@ -111,56 +82,6 @@ export class AuditLogHandler implements IEventHandler {
               .requiresLogout,
           },
           severity: "warning",
-        };
-
-      case "security.login_failed":
-        const failedLogin = event as LoginFailedEvent;
-        return {
-          ...baseEntry,
-          action: "Login Failed",
-          details: {
-            email: failedLogin.payload.email,
-            reason: failedLogin.payload.reason,
-            attemptNumber: failedLogin.payload.attemptNumber,
-          },
-          severity: "warning",
-        };
-
-      case "security.account_locked":
-        const lockEvent = event as AccountLockedEvent;
-        return {
-          ...baseEntry,
-          action: "Account Locked",
-          details: {
-            reason: lockEvent.payload.reason,
-            lockedUntil: lockEvent.payload.lockedUntil,
-          },
-          severity: "error",
-        };
-
-      case "security.suspicious_activity":
-        const suspicious = event as SuspiciousActivityEvent;
-        return {
-          ...baseEntry,
-          action: "Suspicious Activity Detected",
-          details: {
-            activityType: suspicious.payload.activityType,
-            details: suspicious.payload.details,
-          },
-          severity: suspicious.payload.severity,
-        };
-
-      case "security.alert":
-        const alert = event as SecurityAlertEvent;
-        return {
-          ...baseEntry,
-          action: "Security Alert",
-          details: {
-            alertType: alert.payload.alertType,
-            message: alert.payload.message,
-            affectedUsers: alert.payload.affectedUsers,
-          },
-          severity: alert.payload.severity,
         };
 
       case "system.command_executed":
@@ -176,35 +97,36 @@ export class AuditLogHandler implements IEventHandler {
         };
 
       case "system.command_failed":
+        // The error text is free text: the entry names the command only.
         const cmdFailed = event as CommandFailedEvent;
         return {
           ...baseEntry,
           action: `Command Failed: ${cmdFailed.payload.commandName}`,
-          details: {
-            error: cmdFailed.payload.error,
-          },
+          details: {},
           severity: "error",
         };
 
       case "system.error_occurred":
+        // Type and code only: the message and the context can hold the
+        // input, such as the address of a refused registration.
         const error = event as ErrorOccurredEvent;
+        const code = error.payload.context?.code;
         return {
           ...baseEntry,
           action: "System Error",
           details: {
             errorType: error.payload.errorType,
-            message: error.payload.message,
-            context: error.payload.context,
+            code: typeof code === "string" ? code : undefined,
           },
           severity: error.payload.severity,
         };
 
       default:
-        // Log all other events as info
+        // Any other event: its type only, none of its data
         return {
           ...baseEntry,
           action: event.type,
-          details: event.payload as Record<string, unknown>,
+          details: {},
           severity: "info",
         };
     }

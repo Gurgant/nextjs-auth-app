@@ -1,13 +1,6 @@
 import { IEventHandler, IEvent } from "../base/event.interface";
-import { UserRegisteredEvent, UserLoggedInEvent } from "../domain/auth.events";
-import {
-  LoginFailedEvent,
-  RateLimitExceededEvent,
-} from "../domain/security.events";
-import {
-  CommandExecutedEvent,
-  PerformanceMetricEvent,
-} from "../domain/system.events";
+import { UserRegisteredEvent } from "../domain/auth.events";
+import { CommandExecutedEvent } from "../domain/system.events";
 
 interface AnalyticsMetric {
   name: string;
@@ -37,39 +30,9 @@ export class AnalyticsHandler implements IEventHandler {
         });
         break;
 
-      case "user.logged_in":
-        const loginEvent = event as UserLoggedInEvent;
-        this.incrementCounter("users.logged_in");
-        this.incrementCounter(`users.logged_in.${loginEvent.payload.method}`);
-        this.trackMetric("user_login", 1, {
-          method: loginEvent.payload.method,
-          provider: loginEvent.payload.provider || "credentials",
-        });
-        break;
-
       case "user.password_changed":
         this.incrementCounter("users.password_changed");
         this.trackMetric("password_change", 1, {});
-        break;
-
-      case "security.login_failed":
-        const failedLogin = event as LoginFailedEvent;
-        this.incrementCounter("security.login_failed");
-        this.incrementCounter(
-          `security.login_failed.${failedLogin.payload.reason}`,
-        );
-        this.trackMetric("login_failure", 1, {
-          reason: failedLogin.payload.reason,
-        });
-        break;
-
-      case "security.rate_limit_exceeded":
-        const rateLimit = event as RateLimitExceededEvent;
-        this.incrementCounter("security.rate_limit_exceeded");
-        this.trackMetric("rate_limit_exceeded", 1, {
-          action: rateLimit.payload.action,
-          limit: rateLimit.payload.limit.toString(),
-        });
         break;
 
       case "system.command_executed":
@@ -86,19 +49,7 @@ export class AnalyticsHandler implements IEventHandler {
         // Update average duration gauge
         this.updateGauge(
           `command.${cmdEvent.payload.commandName}.avg_duration`,
-          this.calculateAverageDuration(
-            cmdEvent.payload.commandName,
-            cmdEvent.payload.duration,
-          ),
-        );
-        break;
-
-      case "system.performance_metric":
-        const perfEvent = event as PerformanceMetricEvent;
-        this.trackMetric(
-          perfEvent.payload.metric,
-          perfEvent.payload.value,
-          perfEvent.payload.tags || {},
+          this.calculateAverageDuration(cmdEvent.payload.commandName),
         );
         break;
     }
@@ -138,18 +89,17 @@ export class AnalyticsHandler implements IEventHandler {
     }
   }
 
-  private calculateAverageDuration(
-    commandName: string,
-    newDuration: number,
-  ): number {
+  // The newest duration is already among the metrics (trackMetric runs
+  // first), so it is counted once.
+  private calculateAverageDuration(commandName: string): number {
     const metrics = this.metrics.filter(
       (m) => m.name === "command_duration" && m.tags.command === commandName,
     );
 
-    if (metrics.length === 0) return newDuration;
+    if (metrics.length === 0) return 0;
 
-    const total = metrics.reduce((sum, m) => sum + m.value, 0) + newDuration;
-    return total / (metrics.length + 1);
+    const total = metrics.reduce((sum, m) => sum + m.value, 0);
+    return total / metrics.length;
   }
 
   /**
@@ -162,8 +112,6 @@ export class AnalyticsHandler implements IEventHandler {
       recentMetrics: this.metrics.slice(-100),
       totals: {
         registrations: this.counters.get("users.registered") || 0,
-        logins: this.counters.get("users.logged_in") || 0,
-        failedLogins: this.counters.get("security.login_failed") || 0,
         commands: this.counters.get("commands.executed") || 0,
       },
     };

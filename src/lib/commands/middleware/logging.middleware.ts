@@ -1,5 +1,6 @@
 import { ICommandMiddleware } from "./middleware.interface";
 import { CommandMetadata } from "../base/command.interface";
+import { answerSaysSuccess } from "../base/outcome";
 
 /**
  * Length of the JSON form of a command input, for the log line only.
@@ -41,8 +42,7 @@ export class LoggingMiddleware implements ICommandMiddleware {
       commandId: metadata.commandId,
       userId: metadata.userId,
       duration: `${duration}ms`,
-      success:
-        (output as { success?: unknown } | null | undefined)?.success !== false,
+      success: answerSaysSuccess(output),
     });
   }
 
