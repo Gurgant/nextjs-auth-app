@@ -70,3 +70,46 @@ it("returns false when the provider reports an error", async () => {
   const { sendEmail } = loadWithKey("re_test_key");
   await expect(sendEmail(TEMPLATE)).resolves.toBe(false);
 });
+
+/**
+ * sendVerificationEmail(): the locale becomes part of the e-mailed link and
+ * of the e-mail's HTML, so only one of the five supported locales is used;
+ * any other value falls back to the default.
+ */
+describe("sendVerificationEmail", () => {
+  async function sent(locale: string) {
+    mockSend.mockResolvedValue({ data: { id: "msg_1" }, error: null });
+    const { sendVerificationEmail } = loadWithKey("re_test_key");
+    await expect(
+      sendVerificationEmail("user@example.com", "User", "tok123", locale),
+    ).resolves.toBe(true);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+    return mockSend.mock.calls[0][0] as { html: string; text: string };
+  }
+
+  // [locale handed in, text that must not appear in the e-mail]
+  it.each([
+    ['"><img src=x onerror=alert(1)>', '"><img src=x onerror=alert(1)>'],
+    ["../../evil", "../../evil"],
+    ["en-US", "en-US"],
+    ["", "//verify-email"],
+  ])(
+    "builds the link with the default locale for %p",
+    async (locale, absent) => {
+      const { html, text } = await sent(locale);
+
+      expect(html).toContain("/en/verify-email/tok123");
+      expect(text).toContain("/en/verify-email/tok123");
+      expect(html).not.toContain(absent);
+      expect(text).not.toContain(absent);
+    },
+  );
+
+  it("keeps a supported locale", async () => {
+    const { html, text } = await sent("fr");
+
+    expect(html).toContain("/fr/verify-email/tok123");
+    expect(text).toContain("/fr/verify-email/tok123");
+    expect(html).toContain("Vérifiez votre adresse e-mail");
+  });
+});

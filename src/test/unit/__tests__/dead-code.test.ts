@@ -11,6 +11,7 @@ import * as validationErrors from "@/lib/errors/domain/validation-errors";
 import { ErrorBuilder, createError } from "@/lib/errors/error-builder";
 import { ErrorFactory } from "@/lib/errors/error-factory";
 import { BaseEvent } from "@/lib/events/base/event.base";
+import { RATE_LIMITS } from "@/lib/rate-limit";
 
 // The error classes publish through the event bus. Check C only reads their
 // shape and needs no bus.
@@ -74,12 +75,6 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {
     "owner decision: see role-guard.tsx above",
   "src/lib/auth/rbac.ts#requireRole":
     "pending owner decision: guard a server route with it, or delete it",
-  "src/lib/utils/form-responses-i18n.ts#createGenericErrorResponseI18n":
-    "pending owner decision: use it where form-responses.ts points to it, or delete it",
-  "src/lib/actions/auth.ts#getUserAccountInfo":
-    "pending owner decision: Server Action without a caller; deleting it changes the action surface",
-  "src/lib/data-access/user-repository.ts#getUserAccountInfo":
-    "pending owner decision: wrapper of getUserWithAccountDetails without a caller; delete it, or add the cache its comment announces",
   "src/lib/performance/web-vitals.ts#initWebVitals":
     "pending owner decision: wire it, or delete it together with the web-vitals dependency",
   "src/lib/performance/web-vitals.ts#getPerformanceSnapshot":
@@ -91,9 +86,12 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {
 };
 
 // Retired members that A and B cannot see: a member of a class or of an
-// object, a name that a test still mentions, an export under src/test, and an
-// export that would come back together with the code that names it (an event
-// class with the listener branch that handles it). `kept` is a member that is
+// object, a name that a test still mentions or that its own file writes
+// once more (in a log text), an export under src/test, and an export that
+// would come back together with the code that names it (an event class with
+// the listener branch that handles it). The retired Server Actions are listed
+// too: every export of a "use server" file is an endpoint, with a caller or
+// without. `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
 // retired, and its row is deleted.
@@ -234,6 +232,36 @@ const RETIRED: {
     members: () => namesExportedBy("src/test/builders/base.builder.ts"),
     kept: "ChainableBuilder",
     retired: ["CompositeBuilder"],
+  },
+  {
+    holder: "names exported by actions/auth.ts",
+    members: () => namesExportedBy("src/lib/actions/auth.ts"),
+    kept: "registerUser",
+    retired: ["getUserAccountInfo", "migrateUserAccountMetadata"],
+  },
+  {
+    holder: "names exported by actions/advanced-auth.ts",
+    members: () => namesExportedBy("src/lib/actions/advanced-auth.ts"),
+    kept: "setupTwoFactorAuth",
+    retired: ["initiateAccountLinking", "getEnhancedUserAccountInfo"],
+  },
+  {
+    holder: "names exported by email.ts",
+    members: () => namesExportedBy("src/lib/email.ts"),
+    kept: "sendVerificationEmail",
+    retired: ["sendAccountLinkConfirmation", "createAccountLinkTemplate"],
+  },
+  {
+    holder: "names exported by utils/server-translations.ts",
+    members: () => namesExportedBy("src/lib/utils/server-translations.ts"),
+    kept: "translateError",
+    retired: ["translateCommonError"],
+  },
+  {
+    holder: "RATE_LIMITS",
+    members: () => Object.keys(RATE_LIMITS),
+    kept: "emailVerify",
+    retired: ["accountLink"],
   },
 ];
 
