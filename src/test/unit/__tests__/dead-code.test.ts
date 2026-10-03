@@ -88,25 +88,12 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {
     "owner decision: recording API of the performance monitor, not used yet",
   "src/lib/monitoring/performance.ts#recordDbQuery":
     "owner decision: recording API of the performance monitor, not used yet",
-  "src/lib/events/event-provider.ts#emitEvent":
-    "owner decision: read and drain API of the events layer, no caller",
-  "src/lib/events/event-provider.ts#getEventHistory":
-    "owner decision: read and drain API of the events layer, no caller",
-  "src/lib/events/event-provider.ts#getAnalyticsSummary":
-    "owner decision: read and drain API of the events layer, no caller",
-  "src/lib/events/event-provider.ts#processNotificationQueue":
-    "owner decision: the only drain of the notification e-mail queue, no caller",
-  "src/lib/events/domain/auth.events.ts#AuthEvents":
-    "owner decision: aggregate of event classes, some never published",
-  "src/lib/events/domain/security.events.ts#SecurityEvents":
-    "owner decision: aggregate of event classes, some never published",
-  "src/lib/events/domain/system.events.ts#SystemEvents":
-    "owner decision: aggregate of event classes, some never published",
 };
 
 // Retired members that A and B cannot see: a member of a class or of an
-// object, a name that a test still mentions, and an export under src/test.
-// `kept` is a member that is
+// object, a name that a test still mentions, an export under src/test, and an
+// export that would come back together with the code that names it (an event
+// class with the listener branch that handles it). `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
 // retired, and its row is deleted.
@@ -194,6 +181,47 @@ const RETIRED: {
     ],
     kept: "toJSON",
     retired: ["fromJSON"],
+  },
+  {
+    holder: "event classes exported by lib/events",
+    members: () => sourceFiles("src/lib/events").flatMap(namesExportedBy),
+    kept: "UserRegisteredEvent",
+    retired: [
+      "UserLoggedInEvent",
+      "UserLoggedOutEvent",
+      "PasswordResetRequestedEvent",
+      "PasswordResetCompletedEvent",
+      "EmailVerificationSentEvent",
+      "EmailVerifiedEvent",
+      "TwoFactorEnabledEvent",
+      "TwoFactorDisabledEvent",
+      "SuspiciousActivityEvent",
+      "LoginFailedEvent",
+      "AccountLockedEvent",
+      "AccountUnlockedEvent",
+      "RateLimitExceededEvent",
+      "UnauthorizedAccessEvent",
+      "SecurityAlertEvent",
+      "DatabaseErrorEvent",
+      "ApplicationStartedEvent",
+      "ApplicationStoppedEvent",
+      "HealthCheckEvent",
+      "PerformanceMetricEvent",
+    ],
+  },
+  {
+    holder: "listeners, store and provider names exported by lib/events",
+    members: () => sourceFiles("src/lib/events").flatMap(namesExportedBy),
+    kept: "AuditLogHandler",
+    retired: [
+      "NotificationHandler",
+      "getNotificationHandler",
+      "InMemoryEventStore",
+      "IEventStore",
+      "EventFilter",
+      "getEventStore",
+      "eventStore",
+    ],
   },
   {
     holder: "names exported by two-factor.ts",

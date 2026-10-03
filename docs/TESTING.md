@@ -41,8 +41,9 @@ Prisma client (`src/generated/**`). Until v2.1.0 the generated client was
 counted as well, which made up most of the statements: counted that way, the
 same run gives 9 %. The tests
 concentrate on the authentication and security modules; large parts of the UI
-and of the event / error infrastructure have no unit tests. There is no
-coverage threshold.
+and of the error infrastructure have no unit tests. The events layer is tested
+with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).
+There is no coverage threshold.
 
 ## End-to-end (Playwright)
 

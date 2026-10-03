@@ -1,14 +1,7 @@
 import { EventBus } from "./base/event-bus";
-import { InMemoryEventStore } from "./store/in-memory-event-store";
 import { AuditLogHandler } from "./handlers/audit-log.handler";
 import { AnalyticsHandler } from "./handlers/analytics.handler";
-import { NotificationHandler } from "./handlers/notification.handler";
-import {
-  IEventBus,
-  IEventStore,
-  IEvent,
-  EventFilter,
-} from "./base/event.interface";
+import { IEventBus } from "./base/event.interface";
 
 // Type definitions for better type safety
 interface AuditLogFilter {
@@ -21,23 +14,14 @@ interface AuditLogFilter {
 
 // Singleton instances
 let eventBusInstance: IEventBus | null = null;
-let eventStoreInstance: IEventStore | null = null;
 let auditHandlerInstance: AuditLogHandler | null = null;
 let analyticsHandlerInstance: AnalyticsHandler | null = null;
-let notificationHandlerInstance: NotificationHandler | null = null;
 
 export function getEventBus(): IEventBus {
   if (!eventBusInstance) {
     eventBusInstance = createEventBus();
   }
   return eventBusInstance;
-}
-
-export function getEventStore(): IEventStore {
-  if (!eventStoreInstance) {
-    eventStoreInstance = new InMemoryEventStore(10000);
-  }
-  return eventStoreInstance;
 }
 
 function createEventBus(): IEventBus {
@@ -48,28 +32,20 @@ function createEventBus(): IEventBus {
     retryDelay: 1000,
   });
 
-  // Create and register handlers
+  // Two example listeners. What they keep stays in the memory of this
+  // process: it is lost at restart and not shared between instances.
   auditHandlerInstance = new AuditLogHandler();
   analyticsHandlerInstance = new AnalyticsHandler();
-  notificationHandlerInstance = new NotificationHandler();
 
   // Subscribe handlers to the bus
   bus.subscribeHandler(auditHandlerInstance);
   bus.subscribeHandler(analyticsHandlerInstance);
-  bus.subscribeHandler(notificationHandlerInstance);
-
-  // Subscribe event store
-  const store = getEventStore();
-  bus.subscribe("*", async (event) => {
-    await store.append(event);
-  });
 
   return bus;
 }
 
 // Export singleton instances
 export const eventBus = getEventBus();
-export const eventStore = getEventStore();
 
 // Export handler instances for direct access
 export function getAuditHandler(): AuditLogHandler {
@@ -86,25 +62,6 @@ export function getAnalyticsHandler(): AnalyticsHandler {
   return analyticsHandlerInstance!;
 }
 
-export function getNotificationHandler(): NotificationHandler {
-  if (!notificationHandlerInstance) {
-    getEventBus(); // Initialize if needed
-  }
-  return notificationHandlerInstance!;
-}
-
-// Utility function to emit events with type safety
-export async function emitEvent(event: IEvent): Promise<void> {
-  await eventBus.publish(event);
-}
-
-// Utility function to get event history with type safety
-export async function getEventHistory(
-  filters?: EventFilter,
-): Promise<IEvent[]> {
-  return await eventStore.getEvents(filters);
-}
-
 // Utility function to get analytics summary
 export function getAnalyticsSummary() {
   return getAnalyticsHandler().getSummary();
@@ -113,9 +70,4 @@ export function getAnalyticsSummary() {
 // Utility function to get audit logs with type safety
 export function getAuditLogs(filters?: AuditLogFilter) {
   return getAuditHandler().getAuditLogs(filters);
-}
-
-// Utility function to process notification queue
-export async function processNotificationQueue(): Promise<void> {
-  await getNotificationHandler().processEmailQueue();
 }

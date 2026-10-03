@@ -22,25 +22,6 @@ export interface IEventHandler<TEvent extends IEvent = IEvent> {
   handle(event: TEvent): Promise<void> | void;
 }
 
-export interface IEventStore {
-  append(event: IEvent): Promise<void>;
-  getEvents(filter?: EventFilter): Promise<IEvent[]>;
-  getEventsByType(type: string, limit?: number): Promise<IEvent[]>;
-  getEventsByUser(userId: string, limit?: number): Promise<IEvent[]>;
-  getEventsByCorrelation(correlationId: string): Promise<IEvent[]>;
-  getEventCount(): Promise<number>;
-}
-
-export interface EventFilter {
-  type?: string | string[];
-  userId?: string;
-  correlationId?: string;
-  startDate?: Date;
-  endDate?: Date;
-  limit?: number;
-  offset?: number;
-}
-
 export interface EventSubscription {
   id: string;
   eventType: string;

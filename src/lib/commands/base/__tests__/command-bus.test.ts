@@ -50,6 +50,18 @@ class NoInputCommand implements ICommand<undefined, string> {
   }
 }
 
+// Answers a refusal instead of throwing, as the commands of the app do.
+class RefusingCommand
+  implements ICommand<undefined, { success: boolean; message: string }>
+{
+  readonly name = "RefusingCommand";
+  readonly description = "Answers with success: false";
+
+  async execute(): Promise<{ success: boolean; message: string }> {
+    return { success: false, message: "Refused" };
+  }
+}
+
 // The `name` property differs from the class identifier on purpose.
 class ThrowingCommand implements ICommand<Record<string, unknown>, string> {
   readonly name = "FailingCommand";
@@ -156,6 +168,28 @@ describe("CommandBus", () => {
     });
   });
 
+  describe("outcome of a command", () => {
+    it("the executed event says success only when the command's answer does", async () => {
+      bus.registerMany([TokenCommand, RefusingCommand, NoInputCommand]);
+
+      await bus.execute(TokenCommand, {});
+      await bus.execute(RefusingCommand, undefined);
+      await bus.execute(NoInputCommand, undefined);
+
+      expect(
+        mockPublish.mock.calls
+          .map(([event]) => event)
+          .filter((event) => event.type === "system.command_executed")
+          .map(({ payload }) => [payload.commandName, payload.success]),
+      ).toEqual([
+        ["TokenCommand", true],
+        ["RefusingCommand", false],
+        // An answer without a `success` field does not say success.
+        ["NoInputCommand", false],
+      ]);
+    });
+  });
+
   describe("logging middleware (CB-2)", () => {
     let logSpy: jest.SpyInstance;
 
@@ -174,6 +208,25 @@ describe("CommandBus", () => {
       await expect(bus.execute(NoInputCommand, undefined)).resolves.toBe(
         "done",
       );
+    });
+
+    it("logs the outcome that the executed event publishes", async () => {
+      bus.use(new LoggingMiddleware());
+      bus.registerMany([TokenCommand, RefusingCommand, NoInputCommand]);
+
+      await bus.execute(TokenCommand, {});
+      await bus.execute(RefusingCommand, undefined);
+      await bus.execute(NoInputCommand, undefined);
+
+      const logged = logSpy.mock.calls
+        .filter(([line]) => String(line).endsWith("Completed successfully"))
+        .map(([, fields]) => fields.success);
+      const published = mockPublish.mock.calls
+        .map(([event]) => event)
+        .filter((event) => event.type === "system.command_executed")
+        .map(({ payload }) => payload.success);
+      expect(logged).toEqual([true, false, false]);
+      expect(logged).toEqual(published);
     });
   });
 
