@@ -5,9 +5,9 @@ to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                            |
 | ----------- | --------------------- | ----- | ------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 779   | lib, hooks, components, actions, API route handlers                       |
+| Unit        | Jest (jsdom / node)   | 825   | lib, hooks, components, actions, API route handlers                       |
 | Integration | Jest + test DB        | 24    | UserRepository, registration, lockout, session checks on real PostgreSQL  |
-| End-to-end  | Playwright (Chromium) | 88    | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser |
+| End-to-end  | Playwright (Chromium) | 90    | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (803 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (779) — no DB
+pnpm test             # every Jest suite (849 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (825) — no DB
 pnpm test:integration # the real-DB integration file only (port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -34,7 +34,7 @@ URL (e.g. `15433`) or adjust that file:
 DATABASE_URL="postgresql://postgres:postgres123@127.0.0.1:15433/nextjs_auth_db" pnpm test
 ```
 
-Coverage (measured): **55 % of statements** of the files matched by
+Coverage (measured): **56 % of statements** of the files matched by
 `collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
 and route handlers), `src/middleware.ts`, `index.ts` barrels and the generated
 Prisma client (`src/generated/**`, counted until v2.1.0, when it made up most
@@ -156,8 +156,11 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   first pass is requested again. Neither pass checks whether a route was
   compiled; a compile in the second pass still comes before the first test.
   The routes are listed in one place only, `WARM_UP_ROUTES` in
-  `e2e/support/warm-up.ts`: ten routes, one per dev-server entry (the locale
-  is a parameter of the same entry, so `/en/...` is enough).
+  `e2e/support/warm-up.ts`: twelve requests, one per dev-server entry (the
+  locale is a parameter of the same entry, so `/en/...` is enough). The last
+  one is for the page `next dev` serves when no page matches (the entry
+  `/_not-found`): one spec opens the URL of a page that was removed. It is
+  requested through a path that no page serves.
 - The warm-up is a bounded wait, not a retry. Each request is sent once per
   pass, with 60 s for one request and 300 s for the whole warm-up, and each is
   logged with its status and its time. A request that gets no answer, a 404
@@ -165,8 +168,13 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   the setup at once and names the route; nothing is repeated and no test runs.
   Any other status counts as answered: without a session the pages behind a
   sign-in answer 307 and `/api/account/info` answers 401, and it is the
-  route's own code that gives that answer. The warm-up asserts nothing about
-  the app, and every test still runs once, with the same timeouts.
+  route's own code that gives that answer; the link route
+  (`/api/auth/link-account/initiate`) exports only POST and answers the GET
+  with 405, after `next dev` compiled it. For the not-found entry the rule
+  is the other way round: 404 is its answer, and any other status fails the
+  setup, because then a page serves that path and the not-found page was not
+  compiled. The warm-up asserts nothing about the app, and every test still
+  runs once, with the same timeouts.
 - **Compile guard.** `e2e/support/compile-guard.ts` is a Playwright reporter
   that reads the dev server's output. If `next dev` prints a "Compiled" line
   once the first test has begun, the run **fails** even when every test
@@ -260,6 +268,13 @@ test passed and the run ended with exit code 1:
 Two runs of the same spec file ended with exit code 0 and a notice from the
 guard: the `webServer` `name` again, this time without `CI`, and a server
 started beforehand with `pnpm dev` and reused with `E2E_REUSE_SERVER=1`.
+
+Measured again on 2026-10-03, after the requests for
+`/api/auth/link-account/initiate` and for the not-found page were added to the
+list (`CI=1 pnpm test:e2e`, one full run on the same machine): every test
+passed, all 14 "Compiled" lines of the dev server came before the first test,
+and the warm-up took 36.0 s. The two new requests were answered with 405 and
+404, the ten before them as on 2026-10-02.
 
 ### In CI
 

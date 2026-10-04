@@ -156,11 +156,7 @@ export function createEmailVerificationTemplate(
 export function createSecurityAlertTemplate(
   userEmail: string,
   userName: string,
-  alertType:
-    | "suspicious_login"
-    | "password_changed"
-    | "2fa_enabled"
-    | "account_linked",
+  alertType: "suspicious_login" | "password_changed" | "2fa_enabled",
   details: string,
   locale: string = "en",
 ): EmailTemplate {
@@ -276,11 +272,7 @@ export async function sendVerificationEmail(
 export async function sendSecurityAlert(
   userEmail: string,
   userName: string,
-  alertType:
-    | "suspicious_login"
-    | "password_changed"
-    | "2fa_enabled"
-    | "account_linked",
+  alertType: "suspicious_login" | "password_changed" | "2fa_enabled",
   details: string,
   locale: string = "en",
 ): Promise<boolean> {

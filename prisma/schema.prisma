@@ -78,7 +78,6 @@ model User {
   twoFactorEnabledAt        DateTime?
   twoFactorSecret           String?
   accounts                  Account[]
-  accountLinkRequests       AccountLinkRequest[]
   emailVerificationTokens   EmailVerificationToken[]
   passwordResetTokens       PasswordResetToken[]
   securityEvents            SecurityEvent[]
@@ -112,22 +111,6 @@ model EmailVerificationToken {
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([expires])
-  @@index([userId])
-}
-
-model AccountLinkRequest {
-  id          String   @id @default(cuid())
-  userId      String
-  requestType String
-  token       String   @unique
-  expires     DateTime
-  completed   Boolean  @default(false)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([expires])

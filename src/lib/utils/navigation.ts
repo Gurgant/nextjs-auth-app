@@ -115,10 +115,6 @@ export const routes = {
   },
   verifyEmail: (locale: Locale, token: string) =>
     localizedPath(`verify-email/${token}`, locale),
-  linkAccount: (locale: Locale, token?: string) =>
-    token
-      ? localizedPath(`link-account/confirm/${token}`, locale)
-      : localizedPath("link-account", locale),
 } as const;
 
 /**

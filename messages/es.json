@@ -270,10 +270,6 @@
     "verificationTokenUsed": "El token de verificación ya ha sido usado",
     "verificationTokenExpired": "El token de verificación ha expirado",
     "failedToVerifyEmail": "Falló al verificar el correo",
-    "invalidLinkingToken": "Token de vinculación inválido",
-    "accountLinkingCompleted": "La vinculación de cuenta ya ha sido completada",
-    "linkingTokenExpired": "El token de vinculación ha expirado",
-    "failedToConfirmAccountLinking": "Falló al confirmar la vinculación de cuenta",
     "twoFactorAlreadyEnabled": "La autenticación de dos factores ya está habilitada",
     "failedToSetupTwoFactor": "Falló al configurar la autenticación de dos factores",
     "failedToEnableTwoFactor": "Falló al habilitar 2FA",
@@ -312,7 +308,6 @@
     "passwordChanged": "¡Contraseña cambiada exitosamente!",
     "verificationEmailSent": "Correo de verificación enviado exitosamente",
     "emailVerified": "Correo verificado exitosamente",
-    "accountLinked": "Cuenta vinculada exitosamente",
     "twoFactorSetupInitiated": "Configuración 2FA iniciada",
     "twoFactorEnabled": "2FA habilitado exitosamente",
     "twoFactorVerified": "2FA verificado exitosamente",
@@ -426,20 +421,5 @@
     "needHelp": "¿Necesitas ayuda? Contacta a nuestro equipo de soporte.",
     "metaTitle": "Verificación de Correo - App de Autenticación",
     "metaDescription": "Verifica tu dirección de correo para completar la configuración de tu cuenta."
-  },
-  "AccountLinking": {
-    "successTitle": "¡Cuenta Vinculada Exitosamente! 🔗",
-    "successMessage": "Tus cuentas han sido vinculadas exitosamente. Ahora puedes usar ambos métodos de autenticación para iniciar sesión.",
-    "enhancedSecurity": "Seguridad Mejorada: Ahora tienes múltiples opciones de inicio de sesión para mejor acceso a tu cuenta.",
-    "manageAccountSettings": "Gestionar Configuración de Cuenta",
-    "goToDashboard": "Ir al Dashboard",
-    "failureTitle": "Vinculación de Cuenta Falló ❌",
-    "defaultFailureMessage": "La solicitud de vinculación de cuenta es inválida o ha expirado.",
-    "tryAgainInstructions": "Por favor intenta iniciar el proceso de vinculación de cuenta nuevamente desde la configuración de tu cuenta.",
-    "tryAgainAccountSettings": "Intentar de Nuevo - Configuración de Cuenta",
-    "backToHome": "Volver al Inicio",
-    "securityNotice": "Protegido con cifrado de nivel empresarial",
-    "metaTitle": "Confirmación de Vinculación de Cuenta - App de Autenticación",
-    "metaDescription": "Confirma la vinculación de tus cuentas de autenticación para mayor seguridad."
   }
 }

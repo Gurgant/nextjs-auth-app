@@ -3,13 +3,12 @@ import { cn } from "@/lib/utils";
 interface GradientPageLayoutProps {
   children: React.ReactNode;
   className?: string;
-  gradient?: "default" | "blue-purple" | "green-blue" | "purple-pink";
+  gradient?: "default" | "blue-purple" | "purple-pink";
 }
 
 const gradients = {
   default: "from-blue-50 via-white to-purple-50",
   "blue-purple": "from-blue-50 via-white to-purple-50",
-  "green-blue": "from-green-50 via-white to-blue-50",
   "purple-pink": "from-purple-50 via-white to-pink-50",
 } as const;
 
@@ -24,7 +23,7 @@ const gradients = {
  *
  * @example
  * // With custom gradient
- * <GradientPageLayout gradient="green-blue" className="py-12">
+ * <GradientPageLayout gradient="purple-pink" className="py-12">
  *   <YourContent />
  * </GradientPageLayout>
  */

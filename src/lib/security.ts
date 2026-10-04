@@ -49,7 +49,6 @@ export interface SecurityEventData {
     | "2fa_disabled"
     | "2fa_verified"
     | "2fa_failed"
-    | "account_linked"
     | "account_unlinked"
     | "email_verified"
     | "account_created"

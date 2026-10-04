@@ -91,7 +91,6 @@ async function globalSetup(config: FullConfig) {
  */
 async function cleanDatabase(prisma: PrismaClient) {
   await prisma.$transaction([
-    prisma.accountLinkRequest.deleteMany(),
     prisma.passwordResetToken.deleteMany(),
     prisma.emailVerificationToken.deleteMany(),
     prisma.securityEvent.deleteMany(),

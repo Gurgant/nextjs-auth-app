@@ -275,10 +275,6 @@
     "verificationTokenUsed": "Il token di verifica è già stato utilizzato",
     "verificationTokenExpired": "Il token di verifica è scaduto",
     "failedToVerifyEmail": "Verifica email fallita",
-    "invalidLinkingToken": "Token di collegamento non valido",
-    "accountLinkingCompleted": "Il collegamento dell'account è già stato completato",
-    "linkingTokenExpired": "Il token di collegamento è scaduto",
-    "failedToConfirmAccountLinking": "Conferma collegamento account fallita",
     "twoFactorAlreadyEnabled": "L'autenticazione a due fattori è già abilitata",
     "failedToSetupTwoFactor": "Configurazione autenticazione a due fattori fallita",
     "failedToEnableTwoFactor": "Abilitazione 2FA fallita",
@@ -322,7 +318,6 @@
     "passwordChanged": "Password cambiata con successo!",
     "verificationEmailSent": "Email di verifica inviata con successo",
     "emailVerified": "Email verificata con successo",
-    "accountLinked": "Account collegato con successo",
     "twoFactorSetupInitiated": "Configurazione 2FA avviata",
     "twoFactorEnabled": "2FA abilitato con successo",
     "twoFactorVerified": "2FA verificato con successo",
@@ -436,20 +431,5 @@
     "needHelp": "Hai bisogno di aiuto? Contatta il nostro team di supporto.",
     "metaTitle": "Verifica Email - App di Autenticazione",
     "metaDescription": "Verifica il tuo indirizzo email per completare la configurazione del tuo account."
-  },
-  "AccountLinking": {
-    "successTitle": "Account Collegato con Successo! 🔗",
-    "successMessage": "I tuoi account sono stati collegati con successo. Ora puoi utilizzare entrambi i metodi di autenticazione per accedere.",
-    "enhancedSecurity": "Sicurezza Migliorata: Ora hai multiple opzioni di accesso per un migliore accesso al tuo account.",
-    "manageAccountSettings": "Gestisci Impostazioni Account",
-    "goToDashboard": "Vai alla Dashboard",
-    "failureTitle": "Collegamento Account Fallito ❌",
-    "defaultFailureMessage": "La richiesta di collegamento account è invalida o è scaduta.",
-    "tryAgainInstructions": "Per favore prova ad iniziare il processo di collegamento account di nuovo dalle impostazioni del tuo account.",
-    "tryAgainAccountSettings": "Riprova - Impostazioni Account",
-    "backToHome": "Torna alla Home",
-    "securityNotice": "Protetto da crittografia di livello aziendale",
-    "metaTitle": "Conferma Collegamento Account - App di Autenticazione",
-    "metaDescription": "Conferma il collegamento dei tuoi account di autenticazione per una sicurezza migliorata."
   }
 }

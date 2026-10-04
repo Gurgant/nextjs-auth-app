@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/generated/prisma";
 import { auth } from "@/lib/auth";
 import { getSafeLocale } from "@/config/i18n";
 import { recordAttempt, RATE_LIMITS } from "@/lib/rate-limit";
@@ -223,97 +222,6 @@ export async function verifyEmailToken(
       "errors.failedToVerifyEmail",
       locale,
       "Failed to verify email",
-    );
-  }
-}
-
-// Account Linking Actions
-export async function confirmAccountLinking(
-  token: string,
-  locale: string = "en",
-): Promise<ActionResult> {
-  try {
-    const linkRequest = await prisma.accountLinkRequest.findUnique({
-      where: { token },
-      include: { user: true },
-    });
-
-    if (!linkRequest) {
-      return await createErrorResponseI18n(
-        "errors.invalidLinkingToken",
-        locale,
-        "Invalid linking token",
-      );
-    }
-
-    if (linkRequest.completed) {
-      return await createErrorResponseI18n(
-        "errors.accountLinkingCompleted",
-        locale,
-        "Account linking has already been completed",
-      );
-    }
-
-    if (new Date() > linkRequest.expires) {
-      return await createErrorResponseI18n(
-        "errors.linkingTokenExpired",
-        locale,
-        "Linking token has expired",
-      );
-    }
-
-    const linkType = linkRequest.requestType.replace("link_", "") as
-      | "google"
-      | "email";
-
-    // Update user account linking status
-    const updateData: Prisma.UserUpdateInput = {};
-    if (linkType === "google") {
-      updateData.hasGoogleAccount = true;
-    } else if (linkType === "email") {
-      updateData.hasEmailAccount = true;
-    }
-
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: linkRequest.userId },
-        data: updateData,
-      }),
-      prisma.accountLinkRequest.update({
-        where: { id: linkRequest.id },
-        data: { completed: true },
-      }),
-    ]);
-
-    // Send security alert
-    await sendSecurityAlert(
-      linkRequest.user.email,
-      linkRequest.user.name || "",
-      "account_linked",
-      `${linkType} account has been linked to your account`,
-    );
-
-    // Log security event
-    const headersList = await headers();
-    await logSecurityEvent({
-      userId: linkRequest.userId,
-      eventType: "account_linked",
-      details: `${linkType} account linked successfully`,
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
-    });
-
-    return await createSuccessResponseI18n(
-      "success.accountLinked",
-      locale,
-      "Account linked successfully",
-    );
-  } catch (error) {
-    logActionError("confirmAccountLinking", error);
-    return await createErrorResponseI18n(
-      "errors.failedToConfirmAccountLinking",
-      locale,
-      "Failed to confirm account linking",
     );
   }
 }

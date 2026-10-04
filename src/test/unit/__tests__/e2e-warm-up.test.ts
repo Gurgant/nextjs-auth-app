@@ -23,6 +23,12 @@ const ROUTES: readonly WarmUpRoute[] = [
   { path: "/api/c", entry: "/api/c" },
 ];
 
+// A list that ends with the entry of the not-found page.
+const ROUTES_WITH_NOT_FOUND: readonly WarmUpRoute[] = [
+  { path: "/en/a", entry: "/[locale]/a" },
+  { path: "/en/none", entry: "/_not-found", notFound: true },
+];
+
 /**
  * A fake server on a fake clock. `answers` are consumed in request order: a
  * number is the HTTP status, an Error is a transport failure; each request
@@ -51,17 +57,24 @@ function fakeServer(answers: readonly (number | Error)[], msPerRequest = 100) {
 
 describe("E2E warm-up: warmUp()", () => {
   it("requests every listed route once per pass, in list order, compile pass then check pass", async () => {
-    const server = fakeServer([]);
+    // Every page answers 200; the path that no page serves answers 404.
+    const statuses = WARM_UP_ROUTES.map((route) =>
+      route.notFound ? 404 : 200,
+    );
+    const server = fakeServer([...statuses, ...statuses]);
 
     await warmUp({ get: server.get, log: server.log, now: server.now });
 
     const listed = WARM_UP_ROUTES.map((route) => route.path);
+    const answered = (pass: string) =>
+      listed.map(
+        (p, index) =>
+          `warm-up ${pass}: GET ${p} -> ${statuses[index]} in 100 ms`,
+      );
     expect(server.requested.map((r) => r.path)).toEqual([...listed, ...listed]);
-    expect(server.logged.slice(0, listed.length)).toEqual(
-      listed.map((p) => `warm-up compile: GET ${p} -> 200 in 100 ms`),
-    );
+    expect(server.logged.slice(0, listed.length)).toEqual(answered("compile"));
     expect(server.logged.slice(listed.length, 2 * listed.length)).toEqual(
-      listed.map((p) => `warm-up check: GET ${p} -> 200 in 100 ms`),
+      answered("check"),
     );
     expect(server.logged[2 * listed.length]).toBe(
       `warm-up complete: ${listed.length} routes, 2 passes, ${2 * listed.length * 100} ms`,
@@ -134,6 +147,69 @@ describe("E2E warm-up: warmUp()", () => {
       "warm-up compile: GET /en/b -> 404 in 100 ms",
     ]);
     expect(server.requested.map((r) => r.path)).toEqual(["/en/a", "/en/b"]);
+  });
+
+  it("counts 404 as answered for the entry of the not-found page", async () => {
+    const server = fakeServer([200, 404, 200, 404]);
+
+    await warmUp({
+      get: server.get,
+      log: server.log,
+      now: server.now,
+      routes: ROUTES_WITH_NOT_FOUND,
+    });
+
+    expect(server.logged).toEqual([
+      "warm-up compile: GET /en/a -> 200 in 100 ms",
+      "warm-up compile: GET /en/none -> 404 in 100 ms",
+      "warm-up check: GET /en/a -> 200 in 100 ms",
+      "warm-up check: GET /en/none -> 404 in 100 ms",
+      "warm-up complete: 2 routes, 2 passes, 400 ms",
+    ]);
+  });
+
+  it.each([200, 307, 401])(
+    "fails at once when the path listed for the not-found page answers %i",
+    async (status) => {
+      const server = fakeServer([200, status]);
+
+      await expect(
+        warmUp({
+          get: server.get,
+          log: server.log,
+          now: server.now,
+          routes: ROUTES_WITH_NOT_FOUND,
+        }),
+      ).rejects.toThrow(
+        `E2E warm-up: GET /en/none answered ${status} (compile pass), not 404. ` +
+          "It is listed as a path that no page serves, to compile /_not-found: " +
+          "choose another path in WARM_UP_ROUTES in e2e/support/warm-up.ts.",
+      );
+
+      expect(server.logged).toEqual([
+        "warm-up compile: GET /en/a -> 200 in 100 ms",
+        `warm-up compile: GET /en/none -> ${status} in 100 ms`,
+      ]);
+      expect(server.requested.map((r) => r.path)).toEqual([
+        "/en/a",
+        "/en/none",
+      ]);
+    },
+  );
+
+  it("fails on a 5xx of the not-found page as on any other", async () => {
+    const server = fakeServer([200, 500]);
+
+    await expect(
+      warmUp({
+        get: server.get,
+        log: server.log,
+        now: server.now,
+        routes: ROUTES_WITH_NOT_FOUND,
+      }),
+    ).rejects.toThrow(
+      "E2E warm-up: GET /en/none answered 500 (compile pass). The entry /_not-found does not compile or crashes",
+    );
   });
 
   it.each([500, 503])("fails at once on %i", async (status) => {
@@ -222,29 +298,49 @@ describe("E2E warm-up: WARM_UP_ROUTES", () => {
     expect(entries.length).toBeGreaterThan(0);
   });
 
-  it.each(WARM_UP_ROUTES.map((route) => [route.entry, route.path]))(
+  // The not-found page is built into Next: no file under src/app is its entry.
+  const served = WARM_UP_ROUTES.filter((route) => !route.notFound);
+  const notFound = WARM_UP_ROUTES.filter((route) => route.notFound);
+
+  /** /en/x is the locale "en" of the entry /[locale]/x. */
+  const asEntry = (requestPath: string) =>
+    requestPath.replace(/^\/en(?=\/|$)/, "/[locale]");
+
+  /** The page or route file of an entry under src/app, if there is one. */
+  const filesOf = (entry: string) =>
+    ["page.tsx", "route.ts"].filter((file) =>
+      fs.existsSync(
+        path.join(REPO_ROOT, "src", "app", ...entry.split("/"), file),
+      ),
+    );
+
+  it.each(served.map((route) => [route.entry, route.path]))(
     "entry %s (requested as %s) exists under src/app",
     (entry) => {
-      const dir = path.join(REPO_ROOT, "src", "app", ...entry.split("/"));
-      const files = ["page.tsx", "route.ts"].filter((file) =>
-        fs.existsSync(path.join(dir, file)),
-      );
-
-      expect(files).toHaveLength(1);
+      expect(filesOf(entry)).toHaveLength(1);
     },
   );
 
-  it.each(WARM_UP_ROUTES.map((route) => [route.path, route.entry]))(
+  it.each(served.map((route) => [route.path, route.entry]))(
     "path %s is a request for entry %s",
     (requestPath, entry) => {
-      // /en/x is the locale "en" of /[locale]/x; an API path is its own
-      // entry, or lies under a catch-all entry.
-      const asEntry = requestPath.replace(/^\/en(?=\/|$)/, "/[locale]");
+      // An API path is its own entry, or lies under a catch-all entry.
       const catchAll = /^(.*\/)\[\.\.\.\w+\]$/.exec(entry);
 
       expect(
-        catchAll ? asEntry.startsWith(catchAll[1]) : asEntry === entry,
+        catchAll
+          ? asEntry(requestPath).startsWith(catchAll[1])
+          : asEntry(requestPath) === entry,
       ).toBe(true);
     },
   );
+
+  it("lists the not-found page once, as /_not-found, behind a path that no page or route serves", () => {
+    expect(notFound.map((route) => route.entry)).toEqual(["/_not-found"]);
+    expect(notFound.flatMap((route) => filesOf(asEntry(route.path)))).toEqual(
+      [],
+    );
+    // The same lookup finds the file of a path that is served.
+    expect(filesOf(asEntry("/en/register"))).toEqual(["page.tsx"]);
+  });
 });

@@ -269,10 +269,6 @@
     "verificationTokenUsed": "Le token de vérification a déjà été utilisé",
     "verificationTokenExpired": "Le token de vérification a expiré",
     "failedToVerifyEmail": "Échec de la vérification de l'email",
-    "invalidLinkingToken": "Token de liaison invalide",
-    "accountLinkingCompleted": "La liaison de compte a déjà été complétée",
-    "linkingTokenExpired": "Le token de liaison a expiré",
-    "failedToConfirmAccountLinking": "Échec de la confirmation de la liaison de compte",
     "twoFactorAlreadyEnabled": "L'authentification à deux facteurs est déjà activée",
     "failedToSetupTwoFactor": "Échec de la configuration de l'authentification à deux facteurs",
     "failedToEnableTwoFactor": "Échec de l'activation de 2FA",
@@ -311,7 +307,6 @@
     "passwordChanged": "Mot de passe changé avec succès!",
     "verificationEmailSent": "Email de vérification envoyé avec succès",
     "emailVerified": "Email vérifié avec succès",
-    "accountLinked": "Compte lié avec succès",
     "twoFactorSetupInitiated": "Configuration 2FA initiée",
     "twoFactorEnabled": "2FA activé avec succès",
     "twoFactorVerified": "2FA vérifié avec succès",
@@ -425,20 +420,5 @@
     "needHelp": "Besoin d'aide? Contactez notre équipe de support.",
     "metaTitle": "Vérification d'Email - App d'Authentification",
     "metaDescription": "Vérifiez votre adresse email pour compléter la configuration de votre compte."
-  },
-  "AccountLinking": {
-    "successTitle": "Compte Lié avec Succès! 🔗",
-    "successMessage": "Vos comptes ont été liés avec succès. Vous pouvez maintenant utiliser les deux méthodes d'authentification pour vous connecter.",
-    "enhancedSecurity": "Sécurité Renforcée : Vous avez maintenant plusieurs options de connexion pour un meilleur accès à votre compte.",
-    "manageAccountSettings": "Gérer les Paramètres du Compte",
-    "goToDashboard": "Aller au Tableau de Bord",
-    "failureTitle": "Liaison de Compte Échouée ❌",
-    "defaultFailureMessage": "La demande de liaison de compte est invalide ou a expiré.",
-    "tryAgainInstructions": "Veuillez essayer d'initier le processus de liaison de compte à nouveau depuis les paramètres de votre compte.",
-    "tryAgainAccountSettings": "Essayer à Nouveau - Paramètres du Compte",
-    "backToHome": "Retour à l'Accueil",
-    "securityNotice": "Sécurisé par un chiffrement de niveau entreprise",
-    "metaTitle": "Confirmation de Liaison de Compte - App d'Authentification",
-    "metaDescription": "Confirmez la liaison de vos comptes d'authentification pour une sécurité renforcée."
   }
 }
