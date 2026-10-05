@@ -1,41 +1,15 @@
-// Mock server translations FIRST before any other imports
+// Mock server translations FIRST before any other imports. The actions pass
+// an English fallback message with every key, and the mock answers with it.
 jest.mock("@/lib/utils/server-translations", () => ({
   translateError: jest
     .fn()
     .mockImplementation(
-      async (locale: string, key: string, fallback?: string) => {
-        // Return fallback message if provided, otherwise return a default English message based on key
-        if (fallback) return fallback;
-
-        const translations: Record<string, string> = {
-          twoFactorAlreadyEnabled:
-            "Two-factor authentication is already enabled",
-          twoFactorNotEnabled: "Two-factor authentication is not enabled",
-          failedToSetupTwoFactor: "Failed to setup two-factor authentication",
-          failedToDisableTwoFactor:
-            "Failed to disable two-factor authentication",
-          failedToSendVerificationEmail: "Failed to send verification email",
-          emailAlreadyVerified: "Email is already verified",
-        };
-
-        return translations[key] || key;
-      },
+      async (locale: string, key: string, fallback?: string) => fallback || key,
     ),
   translateSuccess: jest
     .fn()
     .mockImplementation(
-      async (locale: string, key: string, fallback?: string) => {
-        // Return fallback message if provided, otherwise return a default English message based on key
-        if (fallback) return fallback;
-
-        const translations: Record<string, string> = {
-          twoFactorSetupInitiated: "2FA setup initiated",
-          twoFactorDisabled: "2FA disabled successfully",
-          verificationEmailSent: "Verification email sent successfully",
-        };
-
-        return translations[key] || key;
-      },
+      async (locale: string, key: string, fallback?: string) => fallback || key,
     ),
 }));
 
@@ -43,17 +17,13 @@ import {
   setupTwoFactorAuth,
   disableTwoFactorAuth,
   sendEmailVerification,
+  verifyEmailToken,
 } from "../advanced-auth";
-import { prisma } from "@/lib/prisma";
 
-// Mock Next.js headers
+// Mock Next.js headers. No test reads one: what the actions take from the
+// request goes through @/lib/security, which is mocked below.
 jest.mock("next/headers", () => ({
-  headers: jest.fn().mockResolvedValue(
-    new Map([
-      ["user-agent", "test-user-agent"],
-      ["x-forwarded-for", "127.0.0.1"],
-    ]),
-  ),
+  headers: jest.fn().mockResolvedValue(new Map()),
 }));
 
 // Account-scoped actions derive the acting user from the session — mock it so
@@ -70,17 +40,8 @@ jest.mock("@/lib/rate-limit", () => ({
     remaining: 99,
     retryAfterSeconds: 0,
   })),
-  isRateLimited: jest.fn(() => ({
-    blocked: false,
-    remaining: 99,
-    retryAfterSeconds: 0,
-  })),
-  clearAttempts: jest.fn(),
   RATE_LIMITS: {
-    twoFactor: { limit: 5, windowMs: 900000 },
-    passwordVerify: { limit: 5, windowMs: 900000 },
     emailVerify: { limit: 5, windowMs: 900000 },
-    register: { limit: 5, windowMs: 3600000 },
   },
 }));
 
@@ -91,13 +52,10 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: jest.fn(),
       update: jest.fn(),
     },
-    account: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
-      delete: jest.fn(),
-    },
     emailVerificationToken: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
     },
     $transaction: jest.fn(),
   },
@@ -109,9 +67,12 @@ jest.mock("@/lib/two-factor");
 // Get the mocked prisma
 const { prisma: mockPrisma } = require("@/lib/prisma");
 
-// Get the mocked translation helper: its first argument is the locale an
+// Get the mocked translation helpers: their first argument is the locale an
 // action answers in
-const { translateSuccess } = require("@/lib/utils/server-translations");
+const {
+  translateError,
+  translateSuccess,
+} = require("@/lib/utils/server-translations");
 
 // Values a client can send as the locale argument of an action
 const UNSUPPORTED_LOCALES = ["xx", '"><script>alert(1)</script>', "en-US", ""];
@@ -121,7 +82,6 @@ require("@/lib/security").generateSecureToken = jest
   .fn()
   .mockReturnValue("mock-secure-token");
 require("@/lib/security").encrypt = jest.fn().mockReturnValue("encrypted-data");
-require("@/lib/security").decrypt = jest.fn().mockReturnValue("decrypted-data");
 require("@/lib/security").logSecurityEvent = jest
   .fn()
   .mockResolvedValue(undefined);
@@ -133,22 +93,12 @@ require("@/lib/email").sendVerificationEmail = jest
   .mockResolvedValue(true);
 require("@/lib/email").sendSecurityAlert = jest.fn().mockResolvedValue(true);
 
-// Mock implementations for two-factor functions
+// Mock implementation for the one two-factor function these tests reach
 require("@/lib/two-factor").setupTwoFactor = jest.fn().mockResolvedValue({
   secret: "JBSWY3DPEHPK3PXP",
   qrCodeUrl: "otpauth://totp/TestApp?secret=JBSWY3DPEHPK3PXP",
   backupCodes: ["backup1", "backup2"],
 });
-require("@/lib/two-factor").validateTOTPCode = jest.fn().mockReturnValue(true);
-require("@/lib/two-factor").validateBackupCode = jest
-  .fn()
-  .mockReturnValue({ valid: true, remainingCodes: [] });
-require("@/lib/two-factor").encryptBackupCodes = jest
-  .fn()
-  .mockReturnValue(["encrypted1", "encrypted2"]);
-require("@/lib/two-factor").generateNewBackupCodes = jest
-  .fn()
-  .mockReturnValue(["new1", "new2"]);
 
 describe("Advanced Authentication Actions", () => {
   beforeEach(() => {
@@ -361,5 +311,109 @@ describe("Advanced Authentication Actions", () => {
         "de",
       );
     });
+  });
+
+  describe("verifyEmailToken", () => {
+    const validToken = {
+      id: "token-row-1",
+      userId: "user-123",
+      used: false,
+      expires: new Date(Date.now() + 30 * 60 * 1000),
+    };
+
+    it("verifies the e-mail of the owner of the token", async () => {
+      mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(
+        validToken,
+      );
+
+      const result = await verifyEmailToken("token-1", "en");
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Email verified successfully");
+      expect(mockPrisma.emailVerificationToken.findUnique).toHaveBeenCalledWith(
+        { where: { token: "token-1" }, include: { user: true } },
+      );
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it("should return error when the token is unknown", async () => {
+      mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(null);
+
+      const result = await verifyEmailToken("no-such-token", "en");
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("Invalid verification token");
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    // The action is an endpoint that needs no session, and the locale is an
+    // argument the client sends: only a supported one is used.
+    it("answers in a supported locale as requested", async () => {
+      mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(
+        validToken,
+      );
+
+      const result = await verifyEmailToken("token-1", "de");
+
+      expect(result.success).toBe(true);
+      expect(translateSuccess.mock.calls).toEqual([
+        ["de", "success.emailVerified", "Email verified successfully"],
+      ]);
+    });
+
+    it.each(UNSUPPORTED_LOCALES)(
+      "answers in the default locale instead of %p",
+      async (locale) => {
+        mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(
+          validToken,
+        );
+
+        const result = await verifyEmailToken("token-1", locale);
+
+        expect(result.success).toBe(true);
+        expect(translateSuccess.mock.calls).toEqual([
+          ["en", "success.emailVerified", "Email verified successfully"],
+        ]);
+      },
+    );
+
+    it.each(UNSUPPORTED_LOCALES)(
+      "refuses an unknown token in the default locale instead of %p",
+      async (locale) => {
+        mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(null);
+
+        const result = await verifyEmailToken("no-such-token", locale);
+
+        expect(result.success).toBe(false);
+        expect(translateError.mock.calls).toEqual([
+          [
+            "en",
+            "errors.invalidVerificationToken",
+            "Invalid verification token",
+          ],
+        ]);
+      },
+    );
+
+    // What a client sends as an argument of a server action need not be a
+    // string.
+    it.each([[["de"]], [{ toString: () => "de" }], [42], [null]])(
+      "answers in the default locale when the locale is %p, not a string",
+      async (locale) => {
+        mockPrisma.emailVerificationToken.findUnique.mockResolvedValue(
+          validToken,
+        );
+
+        const result = await verifyEmailToken(
+          "token-1",
+          locale as unknown as string,
+        );
+
+        expect(result.success).toBe(true);
+        expect(translateSuccess.mock.calls).toEqual([
+          ["en", "success.emailVerified", "Email verified successfully"],
+        ]);
+      },
+    );
   });
 });

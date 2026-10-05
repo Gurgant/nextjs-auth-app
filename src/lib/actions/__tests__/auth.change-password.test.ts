@@ -39,6 +39,7 @@ jest.mock("@/lib/rate-limit", () => ({
 
 jest.mock("@/lib/security", () => ({
   getClientIP: () => "127.0.0.1",
+  requestMetadata: () => ({ ipAddress: "127.0.0.1" }),
 }));
 
 jest.mock("@/lib/utils/form-locale-server", () => ({

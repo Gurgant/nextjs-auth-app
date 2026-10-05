@@ -48,7 +48,7 @@ export class RegisterUserCommand extends BaseCommand<
     input: RegisterUserInput,
     metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
-    this.logExecution(metadata);
+    const run = this.logExecution(metadata);
 
     try {
       // Validate input
@@ -127,7 +127,7 @@ export class RegisterUserCommand extends BaseCommand<
         { userId: user.id },
       );
 
-      this.logSuccess();
+      this.logSuccess(run);
       return response;
     } catch (error) {
       const baseError = ErrorFactory.wrap(error, {
@@ -135,7 +135,7 @@ export class RegisterUserCommand extends BaseCommand<
         correlationId: metadata?.commandId,
       });
       baseError.log();
-      this.logError(baseError);
+      this.logError(run, baseError);
       return createErrorResponse(COMMAND_FAILED_MESSAGE);
     }
   }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { getClientIP } from "@/lib/security";
+import { requestMetadata } from "@/lib/security";
 import {
   isRateLimited,
   recordAttempt,
@@ -22,7 +22,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate-limit password re-verification (brute-force) per account + IP.
-    const rlKeys = [session.user.id, getClientIP(request.headers)];
+    // The security events record the same client IP, and the User-Agent.
+    const client = requestMetadata(request.headers);
+    const rlKeys = [session.user.id, client.ipAddress];
     const limited = isRateLimited(
       "link-pw",
       rlKeys,
@@ -80,11 +82,8 @@ export async function POST(request: NextRequest) {
           eventType: "account_link_failed",
           details: "Password verification failed during account linking",
           success: false,
-          ipAddress:
-            request.headers.get("x-forwarded-for") ||
-            request.headers.get("x-real-ip") ||
-            "unknown",
-          userAgent: request.headers.get("user-agent") || "unknown",
+          ipAddress: client.ipAddress,
+          userAgent: client.userAgent,
         },
       });
 
@@ -114,11 +113,8 @@ export async function POST(request: NextRequest) {
         eventType: "account_link_initiated",
         details: `Account linking initiated for provider: ${provider}`,
         success: true,
-        ipAddress:
-          request.headers.get("x-forwarded-for") ||
-          request.headers.get("x-real-ip") ||
-          "unknown",
-        userAgent: request.headers.get("user-agent") || "unknown",
+        ipAddress: client.ipAddress,
+        userAgent: client.userAgent,
         metadata: { provider },
       },
     });

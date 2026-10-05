@@ -4,6 +4,9 @@
  * CommandBus: what execute() returns, what it publishes, and how handlers are
  * looked up. The event bus is replaced by a recorder; the middleware is real.
  */
+import { readFileSync } from "fs";
+import { join } from "path";
+import { runInNewContext } from "vm";
 import type { ICommand } from "../command.interface";
 
 interface PublishedEvent {
@@ -71,6 +74,74 @@ class ThrowingCommand implements ICommand<Record<string, unknown>, string> {
     throw new Error("boom");
   }
 }
+
+// `throw` takes any value, not only an Error. The value is held by the class,
+// not passed as input: the failed event carries the input.
+const throwing = (thrown: unknown) =>
+  class implements ICommand<Record<string, unknown>, string> {
+    readonly name = "ThrowingAnything";
+    readonly description = "Throws a value that need not be an Error";
+
+    async execute(): Promise<string> {
+      throw thrown;
+    }
+  };
+
+// What can be thrown that is not an Error, each with the kind the bus names.
+// The texts are not in the input of the command: none of them may be found in
+// the failed event the bus publishes, nor in the line the logging middleware
+// logs. The line the bus itself prints with `enableLogging` on shows what was
+// caught as it is: the bus of this file has it off.
+const THROWN_TEXT = "Refused bob@example.com";
+const NOT_ERRORS: [string, unknown, string][] = [
+  ["null", null, "null"],
+  ["undefined", undefined, "undefined"],
+  ["a string", THROWN_TEXT, "string"],
+  ["a number", 42, "number"],
+  ["a boolean", false, "boolean"],
+  ["a bigint", BigInt(7), "bigint"],
+  ["a symbol", Symbol(THROWN_TEXT), "symbol"],
+  ["a function", () => THROWN_TEXT, "function"],
+  ["an object with a message", { message: THROWN_TEXT }, "object"],
+];
+
+/** What execute() rejected with: the value itself, whatever it is. */
+async function thrownBy(run: Promise<unknown>): Promise<unknown> {
+  let caught: unknown = "execute() did not throw";
+  try {
+    await run;
+  } catch (thrown) {
+    caught = thrown;
+  }
+  return caught;
+}
+
+/** What a call threw: the value itself. */
+function thrownBySync(call: () => unknown): unknown {
+  try {
+    call();
+  } catch (thrown) {
+    return thrown;
+  }
+  return "the call did not throw";
+}
+
+// An Error of another realm is an Error, and is not `instanceof Error` here:
+// one made in another vm context and, under Jest, one that Node itself makes
+// for a failed `fs` call. Each with its message.
+const NO_SUCH_FILE = join(__dirname, "no-such-file");
+const OTHER_REALM_ERRORS: [string, unknown, string][] = [
+  [
+    "made in another vm context",
+    runInNewContext("new RangeError('boom')"),
+    "boom",
+  ],
+  [
+    "made by Node itself (fs)",
+    thrownBySync(() => readFileSync(NO_SUCH_FILE)),
+    `ENOENT: no such file or directory, open '${NO_SUCH_FILE}'`,
+  ],
+];
 
 // Two different classes with the SAME class name, which is what a minifier
 // can produce in two scopes. Only the `name` property tells them apart.
@@ -265,6 +336,129 @@ describe("CommandBus", () => {
         },
       ]);
     });
+  });
+
+  describe("what a command threw", () => {
+    const INPUT = { email: "alice@example.com", password: "Plain123!" };
+    let errorSpy: jest.SpyInstance;
+    let logSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it("an Error: rethrown as the same object, published with its message and stack", async () => {
+      const error = new Error("boom");
+      const Command = throwing(error);
+      bus.register(Command);
+
+      expect(await thrownBy(bus.execute(Command, INPUT))).toBe(error);
+
+      expect(publishedEvent("system.command_failed").payload).toStrictEqual({
+        commandName: "ThrowingAnything",
+        commandId: expect.any(String),
+        error: "boom",
+        errorStack: error.stack,
+        input: { email: "alice@example.com", password: "[REDACTED]" },
+        failedAt: expect.any(Date),
+      });
+    });
+
+    // An Error by its prototype chain only, as a constructor function written
+    // without `class` makes them: `instanceof Error`, and not a native Error.
+    it("an Error by its prototype chain only: rethrown as the same object, published with its message", async () => {
+      const error: unknown = Object.assign(Object.create(Error.prototype), {
+        message: "boom",
+      });
+      const Command = throwing(error);
+      bus.register(Command);
+
+      expect(await thrownBy(bus.execute(Command, INPUT))).toBe(error);
+
+      expect(publishedEvent("system.command_failed").payload.error).toBe(
+        "boom",
+      );
+    });
+
+    it.each(OTHER_REALM_ERRORS)(
+      "an Error %s: rethrown as the same object, published with its message and stack",
+      async (_case, error, message) => {
+        expect(error instanceof Error).toBe(false);
+        const Command = throwing(error);
+        bus.register(Command);
+
+        expect(await thrownBy(bus.execute(Command, INPUT))).toBe(error);
+
+        expect(publishedEvent("system.command_failed").payload).toStrictEqual({
+          commandName: "ThrowingAnything",
+          commandId: expect.any(String),
+          error: message,
+          errorStack: expect.stringContaining(message),
+          input: { email: "alice@example.com", password: "[REDACTED]" },
+          failedAt: expect.any(Date),
+        });
+      },
+    );
+
+    it.each(NOT_ERRORS)(
+      "%s: rethrown as it is, published with its kind and never its text",
+      async (_case, thrown, kind) => {
+        const Command = throwing(thrown);
+        bus.register(Command);
+
+        expect(await thrownBy(bus.execute(Command, INPUT))).toBe(thrown);
+
+        expect(publishedEvent("system.command_failed").payload).toStrictEqual({
+          commandName: "ThrowingAnything",
+          commandId: expect.any(String),
+          error: `Non-Error value thrown: ${kind}`,
+          errorStack: undefined,
+          input: { email: "alice@example.com", password: "[REDACTED]" },
+          failedAt: expect.any(Date),
+        });
+      },
+    );
+
+    // Both are in the pipeline of the app in development. The logging
+    // middleware reads what was thrown as well, before the bus publishes the
+    // failed event.
+    it.each(NOT_ERRORS)(
+      "%s: the same with the logging and the audit middleware in the pipeline",
+      async (_case, thrown, kind) => {
+        const audit = new AuditMiddleware();
+        bus.use(new LoggingMiddleware());
+        bus.use(audit);
+        const Command = throwing(thrown);
+        bus.register(Command);
+
+        expect(await thrownBy(bus.execute(Command, INPUT))).toBe(thrown);
+
+        const { payload } = publishedEvent("system.command_failed");
+        expect(payload.error).toBe(`Non-Error value thrown: ${kind}`);
+        expect(errorSpy.mock.calls).toStrictEqual([
+          [
+            "[Command:ThrowingAnything] Failed with error",
+            {
+              commandId: payload.commandId,
+              userId: undefined,
+              error: `Non-Error value thrown: ${kind}`,
+              stack: undefined,
+            },
+          ],
+        ]);
+        expect(
+          audit
+            .getAuditLogs()
+            .map(({ commandId, success }) => [commandId, success]),
+        ).toEqual([[payload.commandId, false]]);
+      },
+    );
   });
 
   describe("logging middleware (CB-2)", () => {

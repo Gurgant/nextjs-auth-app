@@ -1,6 +1,7 @@
 import { ICommand, CommandMetadata } from "./command.interface";
 import { sanitizeCommandInput, sanitizeCommandOutput } from "./sanitize";
 import { answerSaysSuccess } from "./outcome";
+import { describeThrown } from "./thrown";
 import { ICommandMiddleware } from "../middleware/middleware.interface";
 import { randomUUID } from "crypto";
 import { eventBus } from "@/lib/events";
@@ -152,14 +153,15 @@ export class CommandBus {
         }
       }
 
-      // Emit command failed event
+      // Emit command failed event. What was caught need not be an Error.
+      const thrown = describeThrown(error);
       await eventBus.publish(
         new CommandFailedEvent(
           {
             commandName,
             commandId: fullMetadata.commandId,
-            error: (error as Error).message,
-            errorStack: (error as Error).stack,
+            error: thrown.message,
+            errorStack: thrown.stack,
             input: sanitizeCommandInput(input),
             failedAt: new Date(),
           },

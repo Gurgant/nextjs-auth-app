@@ -52,7 +52,7 @@ export class ChangePasswordCommand extends BaseCommand<
     input: ChangePasswordInput,
     metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
-    this.logExecution(metadata);
+    const run = this.logExecution(metadata);
 
     try {
       // Validate input
@@ -153,7 +153,7 @@ export class ChangePasswordCommand extends BaseCommand<
         },
       );
 
-      this.logSuccess();
+      this.logSuccess(run);
       return response;
     } catch (error) {
       const baseError = ErrorFactory.wrap(error, {
@@ -161,7 +161,7 @@ export class ChangePasswordCommand extends BaseCommand<
         correlationId: metadata?.commandId,
       });
       baseError.log();
-      this.logError(baseError);
+      this.logError(run, baseError);
       return createErrorResponse(COMMAND_FAILED_MESSAGE);
     }
   }

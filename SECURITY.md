@@ -200,8 +200,13 @@ wrong passwords when linking / unlinking; account lockouts. **Not recorded**
 OAuth link, password changes, adding a password, backup-code use, account
 deletion. An e-mail marked verified by a Google sign-in is not recorded
 either: it only sets the date on the user row. Security events are deleted
-together with the account (`onDelete: Cascade`), and the link / unlink events
-store the raw `X-Forwarded-For` header. Nothing writes an `account_linked`
+together with the account (`onDelete: Cascade`). Each records the client IP as
+the rate limiter reads it (a valid address or none, see "Abuse prevention")
+and at most the first 512 characters of the `User-Agent`. Rows written by
+versions 2.0.0 to 2.4.0 hold the whole `User-Agent`; in their link / unlink
+events the address is the raw `X-Forwarded-For` header (without it the raw
+`X-Real-IP`), and a missing address or `User-Agent` is stored as `unknown`
+(read in the source of those versions). Nothing writes an `account_linked`
 event any more. Rows of that type in an existing database were written by the
 confirmation page `/link-account/confirm/[token]` of versions up to 2.3.0 or
 by the server action `initiateAccountLinking` of versions up to 2.2.0.

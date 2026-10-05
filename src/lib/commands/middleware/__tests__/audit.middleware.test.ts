@@ -15,7 +15,7 @@ const metadataFor = (commandId: string): CommandMetadata => ({
 });
 
 // The metadata of a command as an action builds it from a request (see
-// requestMetadata in src/lib/actions/auth.ts). An entry keeps the two ids.
+// requestMetadata in src/lib/security.ts). An entry keeps the two ids.
 const REQUEST_METADATA: CommandMetadata = {
   commandId: "c1",
   userId: "u1",

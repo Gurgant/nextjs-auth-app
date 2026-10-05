@@ -6,7 +6,8 @@
  * never values from form fields: the IP as getClientIP reads it (the client
  * controls it unless a trusted proxy overwrites X-Forwarded-For, see
  * SECURITY.md) and the User-Agent cut to 512 characters. The command bus is
- * spied and answers at once; getClientIP is the real one.
+ * spied and answers at once; requestMetadata and getClientIP
+ * (src/lib/security.ts) are the real ones.
  */
 const mockHeaders = jest.fn<Promise<Headers>, []>();
 jest.mock("next/headers", () => ({
@@ -30,7 +31,7 @@ jest.mock("@/lib/rate-limit", () => ({
   },
 }));
 
-// @/lib/security (getClientIP) imports the Prisma client; nothing here uses it.
+// @/lib/security imports the Prisma client; nothing here uses it.
 jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 jest.mock("@/lib/utils/form-locale-server", () => ({

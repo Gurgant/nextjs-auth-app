@@ -2,8 +2,11 @@
  * @jest-environment node
  *
  * LoggingMiddleware.before measures the input for a log line; an input that
- * has no JSON form must not abort the command.
+ * has no JSON form must not abort the command. LoggingMiddleware.onError logs
+ * what the bus caught, which need not be an Error: reading it must not throw
+ * in its turn.
  */
+import { runInNewContext } from "vm";
 import { LoggingMiddleware } from "../logging.middleware";
 import type { CommandMetadata } from "../../base/command.interface";
 
@@ -64,4 +67,90 @@ describe("LoggingMiddleware.before (CB-2)", () => {
       expect.objectContaining({ inputSize: 7 }),
     );
   });
+});
+
+describe("LoggingMiddleware.onError", () => {
+  const INPUT = { email: "alice@example.com" };
+  // Not in the input: the text of a thrown value must not be in the line the
+  // middleware logs.
+  const THROWN_TEXT = "Refused bob@example.com";
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  it("logs the message and the stack of an Error", async () => {
+    const error = new Error("boom");
+
+    await expect(
+      new LoggingMiddleware().onError("Failing", INPUT, error, metadata),
+    ).resolves.toBeUndefined();
+
+    expect(errorSpy.mock.calls).toStrictEqual([
+      [
+        "[Command:Failing] Failed with error",
+        {
+          commandId: "c1",
+          userId: undefined,
+          error: "boom",
+          stack: error.stack,
+        },
+      ],
+    ]);
+  });
+
+  // An Error made in another realm is an Error, and is not `instanceof Error`
+  // here (see OTHER_REALM_ERRORS in base/__tests__/command-bus.test.ts).
+  it("logs the message and the stack of an Error of another realm", async () => {
+    const error: unknown = runInNewContext("new RangeError('boom')");
+    expect(error instanceof Error).toBe(false);
+
+    await expect(
+      new LoggingMiddleware().onError("Failing", INPUT, error, metadata),
+    ).resolves.toBeUndefined();
+
+    expect(errorSpy.mock.calls).toStrictEqual([
+      [
+        "[Command:Failing] Failed with error",
+        {
+          commandId: "c1",
+          userId: undefined,
+          error: "boom",
+          stack: expect.stringContaining("RangeError: boom"),
+        },
+      ],
+    ]);
+  });
+
+  // The bus hands over whatever was thrown.
+  it.each([
+    ["null", null, "null"],
+    ["undefined", undefined, "undefined"],
+    ["a string", THROWN_TEXT, "string"],
+    ["an object with a message", { message: THROWN_TEXT }, "object"],
+  ])(
+    "logs the kind of %s, never its text, and does not throw",
+    async (_case, thrown, kind) => {
+      await expect(
+        new LoggingMiddleware().onError("Failing", INPUT, thrown, metadata),
+      ).resolves.toBeUndefined();
+
+      expect(errorSpy.mock.calls).toStrictEqual([
+        [
+          "[Command:Failing] Failed with error",
+          {
+            commandId: "c1",
+            userId: undefined,
+            error: `Non-Error value thrown: ${kind}`,
+            stack: undefined,
+          },
+        ],
+      ]);
+    },
+  );
 });
