@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma";
 import bcrypt from "bcryptjs";
 import { requestMetadata } from "@/lib/security";
 import {
@@ -9,15 +10,21 @@ import {
   clearAttempts,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import { issueLinkGrant } from "@/lib/auth/link-grant";
+import {
+  linkAccountRefusal,
+  readLinkAccountRequest,
+} from "@/lib/auth/link-account-request";
 
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated session
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
+      return linkAccountRefusal(
+        401,
+        "authentication_required",
+        "Authentication required",
       );
     }
 
@@ -31,32 +38,22 @@ export async function POST(request: NextRequest) {
       RATE_LIMITS.passwordVerify,
     );
     if (limited.blocked) {
-      return NextResponse.json(
-        { error: "Too many attempts. Please try again later." },
-        {
-          status: 429,
-          headers: { "Retry-After": String(limited.retryAfterSeconds) },
-        },
+      return linkAccountRefusal(
+        429,
+        "too_many_attempts",
+        "Too many attempts. Please try again later.",
+        { "Retry-After": String(limited.retryAfterSeconds) },
       );
     }
 
-    const { password, provider } = await request.json();
-
-    // Validate required fields
-    if (!password || !provider) {
-      return NextResponse.json(
-        { error: "Password and provider are required" },
-        { status: 400 },
-      );
+    // Password and provider, checked before anything is read from the
+    // database. A request refused here is no password attempt: it is not
+    // counted toward the throttle.
+    const body = await readLinkAccountRequest(request);
+    if (!body.ok) {
+      return linkAccountRefusal(400, body.code, body.error);
     }
-
-    // Validate provider
-    if (!["google"].includes(provider)) {
-      return NextResponse.json(
-        { error: "Unsupported provider" },
-        { status: 400 },
-      );
-    }
+    const { password, provider } = body;
 
     // Get user with current accounts
     const user = await prisma.user.findUnique({
@@ -65,9 +62,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user || !user.password) {
-      return NextResponse.json(
-        { error: "User not found or no password set" },
-        { status: 404 },
+      return linkAccountRefusal(
+        404,
+        user ? "password_not_set" : "user_not_found",
+        "User not found or no password set",
       );
     }
 
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+      return linkAccountRefusal(401, "invalid_password", "Invalid password");
     }
 
     // Correct password — reset the throttle counter.
@@ -98,33 +96,39 @@ export async function POST(request: NextRequest) {
       (acc) => acc.provider === provider,
     );
     if (existingAccount) {
-      return NextResponse.json(
-        { error: "Account already linked to this provider" },
-        { status: 400 },
+      return linkAccountRefusal(
+        400,
+        "already_linked",
+        "Account already linked to this provider",
       );
     }
 
-    // Log security event. It is the only thing this route writes: nothing is
+    // Every check has passed: record the grant that lets Auth.js link one
+    // account of this provider to this user when the provider returns
+    // (src/lib/auth/link-gate.ts spends it), and the event that says so. In
+    // one transaction: a grant without its event could be spent with nothing
+    // in the audit trail. The two are all this route writes: nothing is
     // linked here and no token is handed out. The account page starts the
-    // Google sign-in next, and Auth.js links the account when Google returns.
-    await prisma.securityEvent.create({
-      data: {
-        userId: user.id,
-        eventType: "account_link_initiated",
-        details: `Account linking initiated for provider: ${provider}`,
-        success: true,
-        ipAddress: client.ipAddress,
-        userAgent: client.userAgent,
-        metadata: { provider },
-      },
+    // Google sign-in next.
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await issueLinkGrant(user.id, provider, new Date(), tx);
+
+      await tx.securityEvent.create({
+        data: {
+          userId: user.id,
+          eventType: "account_link_initiated",
+          details: `Account linking initiated for provider: ${provider}`,
+          success: true,
+          ipAddress: client.ipAddress,
+          userAgent: client.userAgent,
+          metadata: { provider },
+        },
+      });
     });
 
     return NextResponse.json({ success: true, provider });
   } catch (error) {
     console.error("Account linking initiation error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return linkAccountRefusal(500, "internal_error", "Internal server error");
   }
 }

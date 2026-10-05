@@ -51,8 +51,10 @@ the default branch; run the latest `main`.
   sign-out — it is checked against the database
   (`src/lib/auth/session-revocation.ts`, wired as `jwt.decode` in
   `src/lib/auth.ts`). Auth.js decodes it the same way when a Google sign-in
-  returns to a browser that already has a session cookie (read in the source
-  of `@auth/core` 0.41.3, not measured).
+  returns to a browser that already has a session cookie: its decision
+  function, run by the integration test with this check, takes a signed-out
+  session for no session (measured); that the Google callback hands it the
+  cookie was read in the source of `@auth/core` 0.41.3, not measured.
   - **Signing out** ends that session: its id is stored in `RevokedSession`,
     and a copy of the cookie, or a response that arrives late, no longer works.
     Other sessions of the same user are not touched.
@@ -116,6 +118,45 @@ the default branch; run the latest `main`.
   Auth.js calls them (`signIn` before the decision, `jwt` only after an
   accepted sign-in) was read in the source of `@auth/core` 0.41.3, not
   measured against Google.
+- **Linking Google needs the password, and the server enforces it.** A Google
+  account is linked to an existing user only after that user's password was
+  checked on the server, within 5 minutes of the check and once per check.
+  The password step (`POST /api/auth/link-account/initiate`) records a grant
+  on the user's row (`User.linkGrantProvider`, `User.linkGrantExpiresAt`).
+  Auth.js writes `Account` rows through one method of its adapter, and the
+  application wraps that method (`src/lib/auth/link-gate.ts`): onto an
+  existing user it links only after it has spent the grant, in one `UPDATE`,
+  and only when the user row it read before that shows no Google account
+  (two password steps whose links overlap can each link one: see "Not one
+  transaction" in Known Limitations). Otherwise it refuses: no `Account` row
+  is written, Google's tokens are not stored, an `account_link_refused`
+  event is recorded, and the browser is sent to a page that says what
+  happened and how to link. A first Google sign-in of a new visitor needs no
+  grant. Before this version Auth.js linked any Google account that a
+  signed-in user completed a Google sign-in with.
+  - **Measured** on 2026-10-05 on real PostgreSQL (the integration test, see
+    `docs/TESTING.md`), through the adapter object the application hands to
+    Auth.js and through Auth.js's own decision function
+    (`handleLoginOrRegister` of `@auth/core` 0.41.3) run with that adapter: a
+    live session without the password step links nothing; after the password
+    step one account is linked, and a second attempt is refused; a grant
+    ends 300 seconds after the password step (compared by PostgreSQL) and is
+    bound to its user and to its provider; of two attempts that overlap on
+    one grant, one links (of two that overlap with a grant each, both do:
+    see Known Limitations); a new visitor is created and linked; a returning
+    Google user signs in and nothing is linked; a signed-out session counts
+    as no session. Measured in a browser
+    (`e2e/tests/account-linking.e2e.ts`): the real route writes the grant and
+    links nothing, and the address a refused link is sent to shows the
+    refusal in the visitor's language.
+  - **Read in the source of `@auth/core` 0.41.3, not measured** (no test
+    completes a Google sign-in, and no run against Google was made): the
+    exchange with Google before that function; that Auth.js answers the
+    gate's refusal with a redirect, without a new session cookie and without
+    the `signIn` event; and that this redirect ends on the refusal page and
+    not on the "Configuration Error" page (see Known Limitations). A unit
+    test (`src/test/unit/__tests__/authjs-source-pin.test.ts`) fails when one
+    of the files that were read is no longer the file that was read.
 
 ### Authorization
 
@@ -194,15 +235,22 @@ Applied to all routes via `next.config.ts`:
 The `SecurityEvent` table records: 2FA enabled / disabled; verification e-mail
 sent and e-mail verified (both stored as `email_verified`, told apart by
 `details`); account-link initiation (`account_link_initiated`, written after
-the password check, before the Google step), unlinking (`account_unlinked`),
-wrong passwords when linking / unlinking; account lockouts. **Not recorded**
-(console or in-memory only): sign-ins, failed sign-ins, the completed Google
-OAuth link, password changes, adding a password, backup-code use, account
-deletion. An e-mail marked verified by a Google sign-in is not recorded
-either: it only sets the date on the user row. Security events are deleted
-together with the account (`onDelete: Cascade`). Each records the client IP as
-the rate limiter reads it (a valid address or none, see "Abuse prevention")
-and at most the first 512 characters of the `User-Agent`. Rows written by
+the password check, in one transaction with the link grant, before the
+Google step), a Google account linked to an existing user
+(`account_link_completed`, written by the link gate after the `Account` row,
+with the provider and the Google account id), a refused link
+(`account_link_refused`, with the provider and the reason: `no_grant` or
+`already_linked`), unlinking (`account_unlinked`), wrong passwords when
+linking / unlinking; account lockouts. **Not recorded** (console or in-memory
+only): sign-ins, failed sign-ins, the Google account of a new user (a first
+Google sign-in), password changes, adding a password, backup-code use,
+account deletion. An e-mail marked verified by a Google sign-in is not
+recorded either: it only sets the date on the user row. Security events are
+deleted together with the account (`onDelete: Cascade`). Each records the
+client IP as the rate limiter reads it (a valid address or none, see "Abuse
+prevention") and at most the first 512 characters of the `User-Agent`; the
+two events of the link gate record neither, because Auth.js hands an adapter
+no request. Rows written by
 versions 2.0.0 to 2.4.0 hold the whole `User-Agent`; in their link / unlink
 events the address is the raw `X-Forwarded-For` header (without it the raw
 `X-Real-IP`), and a missing address or `User-Agent` is stored as `unknown`
@@ -213,7 +261,8 @@ by the server action `initiateAccountLinking` of versions up to 2.2.0.
 Neither shows that a Google account was linked: the page set a flag on the
 user row (`hasGoogleAccount` or `hasEmailAccount`), the action recorded that
 a link request was made, and neither created an `Account` row (read in the
-source of 2.0.0 to 2.3.0).
+source of 2.0.0 to 2.3.0). The name was not taken up again for that reason:
+`account_link_completed` is written only after an `Account` row was created.
 
 ---
 
@@ -294,16 +343,142 @@ Read these before deploying. They are real, not hypothetical.
 - **Google sign-in is not challenged for a TOTP code.** 2FA is enforced only for
   e-mail + password sign-in; a user who enabled 2FA and linked Google can sign
   in with Google alone.
-- **Linking Google is not gated by the password check on the server.** The
-  account page asks for the password (`/api/auth/link-account/initiate`) before
-  starting Google sign-in, but Auth.js links any Google account that a
-  signed-in user completes OAuth with, whether or not that check ran.
+- **Linking Google needs the password, within these limits.**
+  - **The grant belongs to the user, not to the browser.** From a correct
+    password step until its grant is spent, **any** live session of that user
+    can complete a Google sign-in and have its own Google account linked: a
+    copy of the session cookie, another device, the same browser left
+    unattended. That is normally a matter of seconds, and the full 5 minutes
+    when the Google step is abandoned, or when Auth.js itself refuses it
+    because the chosen Google account belongs to another user (that refusal
+    does not spend the grant: measured). The owner's own attempt is then
+    refused, while the account page shows Google as linked; it does not show
+    which Google account. What a session could do at any time without the
+    password, it can now do only while the owner is linking. The link leaves
+    an `account_link_completed` event with the Google account id; nobody is
+    notified.
+  - **A grant is not withdrawn.** It survives a sign-out, a password change
+    and a cancelled Google step, until it is spent or its 5 minutes are over.
+    Only a live session can use it, and a password change ends every earlier
+    session.
+  - **It is as strong as the password step.** That step asks for no TOTP
+    code, and its throttle is the in-memory one (5 wrong passwords per 15
+    minutes, per process; see the rate-limiting limits below).
+  - **Accounts that sign in with Google only are not protected against a
+    hijacked session.** The gate refuses them a second Google account (they
+    have no password to confirm with; before this version it was linked
+    without a question). But adding a password needs only a session (next
+    point), and with that password the holder of the session can unlink
+    Google and link another Google account.
+  - **"New user" is read from the row.** A user without a password, without
+    an `Account` row and with an e-mail that is not verified is taken for the
+    row Auth.js created a moment before, and is linked without a grant. No
+    path of this application leaves a signed-in user in that state:
+    registration writes a password and an `Account` row, and unlinking needs
+    a password. A provider you add that signs users in without any of the
+    three, or an edit of the database by hand, reopens the hole for those
+    users. The other way round: an event or a provider of your own that
+    writes a password, an `Account` row or `emailVerified` between Auth.js's
+    `createUser` and its `linkAccount` makes first Google sign-ins fail, and
+    the user row that is left behind then blocks that address
+    (`OAuthAccountNotLinked`). Measured on 2026-10-05 with Auth.js's decision
+    function and a `createUser` event that sets `emailVerified`; a row left
+    behind with none of the three blocks its address in the same way
+    (measured).
+  - **`allowDangerousEmailAccountLinking` links only what a first sign-in
+    links.** With that provider option, which the application does not set,
+    Auth.js links a Google account to the user who has the same e-mail
+    address, without a session. No password step comes before that link, so
+    the gate refuses it onto a user that has a password, an `Account` row or
+    a verified e-mail. A row with none of the three is linked without a
+    grant, as the row of a first sign-in is. Measured on 2026-10-05 with
+    Auth.js's decision function and that option (the integration test), not
+    against Google.
+  - **Not one transaction, a fixed window, the application's clock.** The
+    gate reads the user row, spends the grant and writes the `Account` row
+    in three statements. Whether the user already has a Google account is
+    taken from the row as it was read before the spend, so two password
+    steps whose Google steps return at the same moment can link **two**
+    Google accounts to one user. Measured on 2026-10-05 at the adapter: the
+    integration test holds the first link back between its spend and its
+    write; at that moment the database shows no grant and no Google account
+    for the user, the state in which the password step writes a grant (the
+    test writes the second one itself), and both links are then made. It
+    takes the password twice, so it is no way round the gate. The unlink
+    route removes one `Account` row per call and clears the
+    `hasGoogleAccount` flag of the user row at the first, so such a user has
+    to unlink twice; the account page reads the `Account` rows and shows
+    Google as linked until then (read in the code, not measured). The grant
+    is spent before the `Account` row is written: if that write fails, the
+    password step has to be repeated. Someone who needs more than 5 minutes
+    at Google is refused after doing everything right (the 5 minutes are a
+    design constant; no consent step was timed). The grant is stamped and
+    compared with the clock of the application server, so a difference
+    between the clocks of two instances shifts the window by that much.
+  - **The refusal page depends on request context.** An adapter cannot give
+    Auth.js an error code of its own: Auth.js wraps every adapter error and
+    redirects to the error page with `error=Configuration`. So the gate notes
+    the refusal for the request it runs in (`AsyncLocalStorage`), and a
+    wrapper around the route handlers of Auth.js replaces that redirect
+    (`src/lib/auth/link-refusal.ts`). The wrapper is unit-tested; that the
+    note reaches it through Auth.js was read in the source, not measured. If
+    it does not, the link is refused all the same, and the visitor reads
+    "Configuration Error" on the English page. Each refusal makes Auth.js log
+    an `AdapterError` at error level, twice, with a stack trace (read in the
+    source, not measured). The refusal page keeps the heading "Sign In
+    Error".
+  - **Audit.** The two events of the gate carry no IP address and no
+    `User-Agent`. A session holder can cause `account_link_refused` rows
+    without a throttle, each at the price of one round trip to Google. Such a
+    row is stored as a failure: it counts as an error in the error rate of
+    `GET /api/admin/metrics` (the events of the last hour) and toward its
+    `highErrorRate` alert, and refused links push other events out of the
+    lists of recent events (the last 10 of that endpoint, the last 5 of the
+    admin page). Whoever holds an `ADMIN` session sees in those lists that a
+    link was started (`account_link_initiated`): on the admin page with the
+    user's e-mail address, in the endpoint without the user (the page and
+    the endpoint were read in the code, not measured). A refused attempt has
+    still passed the `signIn` callback, which updates `lastLoginAt` and the
+    two account flags of the user whose e-mail is the Google address, if
+    there is one (as before).
+  - **What it rests on.** That Auth.js writes `Account` rows through
+    `adapter.linkAccount` only, and creates a user right before it links it,
+    was read in `@auth/core` 0.41.3 (and that call is measured, see Security
+    Features). A later version that writes accounts another way would pass
+    the gate by; one that creates users another way would block first Google
+    sign-ins.
+  - **Left as it is.** A successful link shows no notice, and under the
+    English locale the visitor lands on the home page, not on the account
+    page: the `redirect` callback sends every address that contains `/en`
+    there (read in the code, not measured). Linking ends no other session. A
+    session that ends during the Google step makes Auth.js create a new user
+    for a Google address it does not know (measured with a signed-out
+    session).
+- **Google's tokens are stored in plain text, and nothing reads them.** For
+  every Google account the Prisma adapter stores the account as Auth.js hands
+  it over, in the `Account` row: `access_token`, `id_token`, `expires_at`,
+  `scope`, `token_type` and, because `src/lib/auth-config.ts` asks Google for
+  offline access (`access_type: "offline"`, `prompt: "consent"`), a
+  `refresh_token`. The scope Auth.js asks for is `openid profile email`. The
+  row is written once, when the user is created or the account is linked; a
+  later sign-in with that account does not update it. Nothing in the
+  application reads these columns: it calls no Google API and refreshes no
+  token (a search of `src/` for the column names finds the type declarations,
+  tests and test builders, and no other code). A copy of the database or of
+  a backup therefore holds a refresh token for every linked Google account.
+  Read in the source of `@auth/core` 0.41.3 (`lib/utils/providers.js`,
+  `lib/actions/callback/`) and of `@auth/prisma-adapter` 2.11.3, not measured
+  against Google: no test completes a Google sign-in. That the adapter stores
+  a token it is handed is measured (the integration test, with an access
+  token).
 - **Sensitive actions do not require re-authentication**: disabling 2FA,
   adding a password to a Google account and deleting the account need only a
   session. Together with the previous points, a hijacked session can turn 2FA
-  off, set its own password or delete the account. Changing the password
-  (which asks for the current one) ends a hijacked session along with every
-  other session of the user.
+  off, set its own password or delete the account. For an account that signs
+  in with Google only, setting a password is also the way round the link
+  gate: with that password the session can unlink Google and link another
+  Google account. Changing the password (which asks for the current one) ends
+  a hijacked session along with every other session of the user.
 - **TOTP codes are not marked as used**: a captured code can be replayed within
   its validity window (up to about 90 s). **Backup-code removal is not
   atomic**: two concurrent sign-ins can both accept the same code.
@@ -350,7 +525,11 @@ Read these before deploying. They are real, not hypothetical.
   usage, `NODE_ENV` and the package version (database errors are logged, not
   returned).
 - **`next-auth` v5 is a beta** (pinned to `5.0.0-beta.32`); keep it pinned and
-  review its changelog before upgrading.
+  review its changelog before upgrading. The link gate relies on what its
+  `@auth/core` 0.41.3 does in `lib/actions/callback/handle-login.js` and
+  `lib/init.js`: after an upgrade
+  `src/test/unit/__tests__/authjs-source-pin.test.ts` fails until the files
+  it names were read again and their new hashes recorded.
 - **No migration files** — the starter uses `prisma db push`; baseline your own
   migrations for production.
 - This is a **starter/template** from a study project. Review the checklist
@@ -379,6 +558,14 @@ Read these before deploying. They are real, not hypothetical.
 - [ ] Require re-authentication for disabling 2FA, adding a password and
       deleting the account, and 2FA for Google sign-ins, if your threat model
       needs them.
+- [ ] If linking Google has to hold against a second session of the same
+      user while the owner is linking, bind the link grant to the browser
+      that entered the password, and tell the owner when an account was
+      linked (see Known Limitations).
+- [ ] Decide whether you need Google's tokens: the starter stores them in
+      plain text in `Account` and never reads them. If you call no Google
+      API, do not ask for offline access and do not store them; if you do,
+      encrypt them.
 - [ ] Tighten the **Content-Security-Policy** (nonces if you render dynamically;
       add any third-party origins you use).
 - [ ] Rotate secrets periodically and monitor the security-event table.

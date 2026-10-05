@@ -6,7 +6,7 @@ import { repositories } from "@/lib/repositories";
 import type { CredentialCheckResult } from "@/lib/repositories";
 import { z } from "zod";
 import { loginEmailSchema, loginPasswordSchema } from "@/lib/validation";
-import { decrypt, getClientIP, logSecurityEvent } from "@/lib/security";
+import { decrypt, logSecurityEvent, requestMetadata } from "@/lib/security";
 import { validateTOTPCode, validateBackupCode } from "@/lib/two-factor";
 import {
   isRateLimited,
@@ -18,6 +18,7 @@ import { getLockoutPolicy } from "@/lib/auth/lockout";
 import { parseLoginMethod } from "@/lib/auth/last-login-method";
 import { rememberLoginMethod } from "@/lib/auth/remember-login-method";
 import { resolveEmailVerified } from "@/lib/auth/google-email-verification";
+import { withLinkGate } from "@/lib/auth/link-gate";
 import {
   newSessionId,
   readSessionVersion,
@@ -57,7 +58,7 @@ class TwoFactorInvalid extends CredentialsSignin {
 }
 
 interface LoginContext {
-  ip?: string;
+  ipAddress?: string;
   userAgent?: string;
 }
 
@@ -86,7 +87,7 @@ async function registerFailedLogin(
           attempts: result.attempts,
           lockedUntil: result.lockedUntil.toISOString(),
         },
-        ipAddress: ctx.ip,
+        ipAddress: ctx.ipAddress,
         userAgent: ctx.userAgent,
       });
     }
@@ -103,7 +104,10 @@ export const isGoogleConfigured = Boolean(
 );
 
 export const authOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Auth.js writes Account rows through this adapter. The gate decides which
+  // of them it may write: linking a provider to an existing user needs the
+  // password step first (src/lib/auth/link-gate.ts).
+  adapter: withLinkGate(PrismaAdapter(prisma)),
   trustHost: true, // Required for E2E tests and development
   providers: [
     ...(isGoogleConfigured
@@ -141,12 +145,10 @@ export const authOptions = {
         }
         const { email, password } = validation.data;
 
-        const headers = request?.headers;
-        const ctx: LoginContext = {
-          ip: headers ? getClientIP(headers) : undefined,
-          userAgent: headers?.get("user-agent") ?? undefined,
-        };
-        const rlKeys = [email, ctx.ip];
+        const ctx: LoginContext = request?.headers
+          ? requestMetadata(request.headers)
+          : {};
+        const rlKeys = [email, ctx.ipAddress];
         if (isRateLimited(LOGIN_RL_SCOPE, rlKeys, RATE_LIMITS.login).blocked) {
           console.warn("Credentials login rate limit exceeded");
           return null;

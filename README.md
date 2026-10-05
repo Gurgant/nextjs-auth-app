@@ -25,8 +25,9 @@ Playwright tests.
   - E-mail verification (sent through Resend; simulated while no API key is
     set)
   - Link Google to a password account, or add a password to a Google account
-    (the account page asks for the password before linking, but the server
-    does not enforce that step — see [SECURITY.md](SECURITY.md))
+    (the server links a Google account to an existing user only after it has
+    checked that user's password; for the limits see
+    [SECURITY.md](SECURITY.md))
   - The sign-in method used last is remembered: a "Last used" badge on the
     account page and, when Google is configured, on the sign-in page (from a
     cookie that holds only the method name)
@@ -66,8 +67,8 @@ Playwright tests.
   "Active Sessions" is always 0 (it counts the Auth.js `Session` table, which
   JWT sessions never write to) and the
   users / security / settings quick links lead to pages that do not exist.
-  The user dashboard's "Upgrade to Pro" and "Help & Support" cards and the
-  error page's "Contact support" link also point to missing pages.
+  The user dashboard's "Upgrade to Pro" and "Help & Support" cards also
+  point to missing pages.
 - **Real data**: user counts, recent users and security events on the admin
   page; sign-in methods and 2FA status on the account page. The dashboards and
   the account page's profile card (name, e-mail) show the copy taken into the
@@ -79,7 +80,7 @@ Playwright tests.
   6-digit TOTP code).
 - **Translations** cover the page text of sign-in, registration and account.
   Many server messages (sign-up and password-change results, rate-limit and
-  2FA / linking errors), the dashboards, the admin page and the 2FA sign-in prompt are
+  2FA errors), the dashboards, the admin page and the 2FA sign-in prompt are
   English only.
 - **Security limitations** — Google sign-in is not asked for a TOTP code,
   there is no list of a user's sessions (one cannot be ended from another

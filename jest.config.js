@@ -33,5 +33,47 @@ const customJestConfig = {
   ],
 };
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig);
+// Two packages of Auth.js are ES modules that the integration test loads as
+// they are (the Prisma adapter, and the function of @auth/core that decides
+// whether an account is linked). next/jest transforms nothing under
+// node_modules except the packages it names in two generated patterns, one for
+// a hoisted layout and one for pnpm's; these packages are added to both, for
+// the tests only (next.config.ts and the build are not touched).
+const TRANSFORMED_ESM_PACKAGES = ["@auth/core", "@auth/prisma-adapter"];
+const HOISTED = "/node_modules/(?!.pnpm)(?!(";
+const PNPM = "/node_modules/.pnpm/(?!(";
+
+function transformEsmPackages(config) {
+  const byName = TRANSFORMED_ESM_PACKAGES.join("|");
+  // pnpm names the directory "@auth+core@<version>". "[+]" and not "\+":
+  // Jest rewrites backslashes in these patterns on Windows.
+  const byPnpmDirectory = TRANSFORMED_ESM_PACKAGES.map((name) =>
+    name.replace("/", "[+]"),
+  ).join("|");
+  let extended = 0;
+  const transformIgnorePatterns = config.transformIgnorePatterns.map(
+    (pattern) => {
+      if (pattern.startsWith(HOISTED)) {
+        extended++;
+        return `${HOISTED}${byName}|${pattern.slice(HOISTED.length)}`;
+      }
+      if (pattern.startsWith(PNPM)) {
+        extended++;
+        return `${PNPM}${byPnpmDirectory}|${pattern.slice(PNPM.length)}`;
+      }
+      return pattern;
+    },
+  );
+  // A Next.js upgrade that changes the patterns must fail here, not leave the
+  // packages untransformed.
+  if (extended !== 2) {
+    throw new Error(
+      "next/jest no longer generates the two node_modules patterns that jest.config.js extends",
+    );
+  }
+  return { ...config, transformIgnorePatterns };
+}
+
+// next/jest returns an async function (it loads the Next.js config); so does this file.
+const createConfig = createJestConfig(customJestConfig);
+module.exports = async () => transformEsmPackages(await createConfig());

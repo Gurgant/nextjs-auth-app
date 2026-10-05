@@ -39,6 +39,9 @@
       "oauthCallbackError": "Errore di Connessione OAuth",
       "oauthCallbackErrorDescription": "C'è stato un problema di connessione con il tuo provider OAuth.",
       "oauthCallbackErrorDetails": "Questo potrebbe essere dovuto a problemi di rete, interruzione del provider o problemi di configurazione. Per favore prova ad accedere di nuovo.",
+      "linkNotConfirmed": "Account Google Non Collegato",
+      "linkNotConfirmedDescription": "Questo account Google non è stato collegato, perché il collegamento non è stato confermato con la tua password.",
+      "linkNotConfirmedDetails": "Per collegare un account Google, apri le impostazioni del tuo account, scegli Collega Account, inserisci la password e completa il passaggio su Google entro 5 minuti. Ogni conferma vale una sola volta. Un account che accede solo con Google non può collegare un secondo account Google. Se le impostazioni del tuo account mostrano un account Google collegato che non hai collegato tu, scollegalo e cambia la password.",
       "howToResolve": "Come risolvere questo:",
       "signInWithEmailFirst": "Accedi prima con la tua email e password",
       "goToAccountSettings": "Vai alle Impostazioni Account",
@@ -46,9 +49,7 @@
       "tryEmailSignIn": "Prova Accesso Email",
       "tryDifferentAccount": "Prova Account Diverso",
       "tryAgain": "Riprova",
-      "goBack": "Indietro",
-      "needHelp": "Hai bisogno di aiuto?",
-      "contactSupport": "Contatta Support"
+      "goBack": "Indietro"
     }
   },
   "Common": {
@@ -142,7 +143,17 @@
     "oauthAuthenticationFailed": "Autenticazione OAuth fallita",
     "failedToLinkAccount": "Collegamento account fallito",
     "failedToUnlinkAccount": "Scollegamento account fallito",
-    "accountUnlinkedSuccessfully": "Account scollegato con successo"
+    "accountUnlinkedSuccessfully": "Account scollegato con successo",
+    "linkErrors": {
+      "authenticationRequired": "La tua sessione è terminata. Accedi di nuovo.",
+      "tooManyAttempts": "Troppi tentativi. Riprova più tardi.",
+      "invalidRequest": "Non è stato possibile leggere la richiesta. Ricarica la pagina e riprova.",
+      "unsupportedProvider": "Questo provider di accesso non può essere collegato o scollegato qui.",
+      "passwordNotSet": "Questo account non ha ancora una password. Imposta prima una password.",
+      "invalidPassword": "La password non è corretta.",
+      "alreadyLinked": "Un account Google è già collegato a questo account.",
+      "notLinked": "Nessun account Google è collegato a questo account."
+    }
   },
   "CredentialsForm": {
     "invalidCredentials": "Email o password non validi",

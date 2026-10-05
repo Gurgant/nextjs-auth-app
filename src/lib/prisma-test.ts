@@ -34,6 +34,18 @@ export function getPrismaTestClient(): PrismaClient {
 // Export the singleton instance
 export const prismaTest = getPrismaTestClient();
 
+/**
+ * A second client on the same test database, with a connection pool of its
+ * own: for a test that holds a row lock while calls on the shared client wait
+ * for it. The caller disconnects it.
+ */
+export function openSecondPrismaTestClient(): PrismaClient {
+  return new PrismaClient({
+    datasources: { db: { url: TEST_DATABASE_URL } },
+    log: ["error"],
+  });
+}
+
 // Cleanup function to properly disconnect
 export async function cleanupPrismaTest() {
   if (prismaTestInstance) {

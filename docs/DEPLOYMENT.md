@@ -65,6 +65,46 @@ If the app connects as a restricted database user, grant it `SELECT`,
 every session check fails, without `INSERT` a sign-out revokes nothing (not
 measured: the test database is used with its owner).
 
+Linking Google needs two columns of `User`: `linkGrantProvider` and
+`linkGrantExpiresAt` (see "Linking Google needs the password" in
+`SECURITY.md`). Both are additive and nullable. Measured on the test database
+on 2026-10-05, with Prisma 6.19.3 and no terminal attached, with two user
+rows, two `Account` rows and one `SecurityEvent` row in it: `pnpm prisma:push`
+printed "Your database is now in sync with your Prisma schema." and ended
+with exit code 0, without a warning and without a question. The rows of the
+three tables were the same before and after (every column that was there
+before, compared), and the two new columns were `NULL`.
+
+Push **before** starting the new code, as for `RevokedSession`. Measured with
+the new Prisma client against the test database without the two columns: a
+query that names its columns works, but reading a whole user row fails ("The
+column `User.linkGrantProvider` does not exist in the current database",
+P2022), and so does creating a user. Sign-in reads the whole row (read in the
+source), so the new code signs nobody in until the columns exist. Code from
+before the columns is not disturbed by them: measured with the Prisma client
+generated from the schema without them, against the database that has them,
+a whole user row was read and a user was created. If the app connects as a
+restricted database user, the grant needs `UPDATE` on `"User"`, which sign-in
+needs already (not measured: the test database is used with its owner).
+
+The dropped table and columns described below ask for the opposite order,
+and one `pnpm prisma:push` does both. So with "push" and "start the new code"
+alone there is a moment in which sign-in fails, whichever comes first. Either
+stop the application for the push, or add the two columns by hand first:
+
+```sql
+ALTER TABLE "User"
+  ADD COLUMN "linkGrantProvider" TEXT,
+  ADD COLUMN "linkGrantExpiresAt" TIMESTAMP(3);
+```
+
+then start the new code, then push. Measured on the test database, with user
+rows in it: after this statement `pnpm prisma:push` found nothing to add
+("The database is already in sync with the Prisma schema.", exit code 0; that
+database had no table or column left to drop), and the new client read a
+whole user row and created a user. The sequence as a whole, on a database of
+2.4.0 with the code of 2.4.0 running, was not measured.
+
 The table `AccountLinkRequest` is no longer in the schema: the page that read
 it was removed. Versions up to 2.3.0 wrote a row to it each time a user
 entered the right password before linking Google, and nothing in the
@@ -120,14 +160,16 @@ database on 2026-10-05, with Prisma 6.19.3 and no terminal attached:
   warnings name nothing but this table and these columns.
 
 Start the new code **before** this push: the opposite of the order that
-`RevokedSession` needs. Measured with the Prisma client of 2.4.0 against the
+`RevokedSession` and the two link-grant columns need (for those columns, see
+above). Measured with the Prisma client of 2.4.0 against the
 pushed schema: a query that names its columns still works, but reading a
 whole user row fails ("The column `User.lastLoginIp` does not exist in the
 current database", P2022), and so does creating a user. Sign-in reads the
 whole row (read in the source), so the old code signs nobody in once the
-columns are gone. The new code does not need them: its integration suite
-passes against a database that still has the old schema (the E2E suite was
-not run that way). Coming from 2.0.0 or 2.1.0, which have no `RevokedSession`
+columns are gone. The new code does not need them: measured before the two
+link-grant columns were added to the schema, its integration suite passed
+against a database that still had the old schema (the E2E suite was not run
+that way). Coming from 2.0.0 or 2.1.0, which have no `RevokedSession`
 table, the two orders contradict each other; stop the application for the
 push (not measured).
 

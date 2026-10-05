@@ -18,8 +18,11 @@ export default function SignInPage() {
     const error = searchParams.get("error");
 
     if (error) {
-      // If there's an error parameter, redirect to our error page
-      router.replace(`/${locale}/auth/error?error=${error}`);
+      // If there's an error parameter, redirect to our error page. The
+      // value comes from the address: encoded, it stays one parameter.
+      router.replace(
+        `/${locale}/auth/error?error=${encodeURIComponent(error)}`,
+      );
       return;
     }
 

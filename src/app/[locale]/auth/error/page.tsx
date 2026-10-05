@@ -2,8 +2,6 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import type { Route } from "next";
 import { AlertCircle, ArrowLeft, Mail, Key, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +57,16 @@ export default function AuthErrorPage() {
           icon: <AlertCircle className="h-6 w-6 text-orange-500" />,
           color: "orange",
         };
+      // Not a code of Auth.js: the server sends a refused account link here
+      // (src/lib/auth/link-refusal.ts).
+      case "LinkNotConfirmed":
+        return {
+          title: t("error.linkNotConfirmed"),
+          description: t("error.linkNotConfirmedDescription"),
+          details: t("error.linkNotConfirmedDetails"),
+          icon: <Key className="h-6 w-6 text-orange-500" />,
+          color: "orange",
+        };
       default:
         return {
           title: t("error.authenticationError"),
@@ -83,6 +91,11 @@ export default function AuthErrorPage() {
   const handleTryDifferentAccount = () => {
     // Clear any cached OAuth state and redirect to home page
     router.push(`/${locale}`);
+  };
+
+  const handleGoToAccount = () => {
+    // Where a link is confirmed with the password
+    router.push(`/${locale}/account`);
   };
 
   const handleGoBack = () => {
@@ -149,26 +162,41 @@ export default function AuthErrorPage() {
               </div>
             )}
 
-            {error !== "OAuthAccountNotLinked" && (
+            {error === "LinkNotConfirmed" && (
               <div className="grid grid-cols-1 gap-3">
                 <Button
-                  onClick={handleSignInWithEmail}
+                  onClick={handleGoToAccount}
                   className="w-full"
                   variant="default"
+                  data-testid="link-refused-to-account"
                 >
-                  <Mail className="w-4 h-4 mr-2" />
-                  {t("error.tryEmailSignIn")}
-                </Button>
-
-                <Button
-                  onClick={handleTryDifferentAccount}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {t("error.tryAgain")}
+                  <Key className="w-4 h-4 mr-2" />
+                  {t("error.goToAccountSettings")}
                 </Button>
               </div>
             )}
+
+            {error !== "OAuthAccountNotLinked" &&
+              error !== "LinkNotConfirmed" && (
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    onClick={handleSignInWithEmail}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    {t("error.tryEmailSignIn")}
+                  </Button>
+
+                  <Button
+                    onClick={handleTryDifferentAccount}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {t("error.tryAgain")}
+                  </Button>
+                </div>
+              )}
 
             <div className="pt-4 border-t">
               <Button onClick={handleGoBack} variant="ghost" className="w-full">
@@ -185,18 +213,6 @@ export default function AuthErrorPage() {
             )}
           </CardContent>
         </Card>
-
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            {t("error.needHelp")}{" "}
-            <Link
-              href={`/${locale}/support` as Route}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              {t("error.contactSupport")}
-            </Link>
-          </p>
-        </div>
       </div>
     </CenteredContentLayout>
   );

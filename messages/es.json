@@ -39,6 +39,9 @@
       "oauthCallbackError": "Error de Conexión OAuth",
       "oauthCallbackErrorDescription": "Hubo un problema conectando con tu proveedor OAuth.",
       "oauthCallbackErrorDetails": "Esto podría deberse a problemas de red, caída del proveedor o problemas de configuración. Por favor intenta iniciar sesión de nuevo.",
+      "linkNotConfirmed": "Cuenta de Google No Vinculada",
+      "linkNotConfirmedDescription": "Esta cuenta de Google no se ha vinculado, porque la vinculación no se confirmó con tu contraseña.",
+      "linkNotConfirmedDetails": "Para vincular una cuenta de Google, abre la configuración de tu cuenta, elige Vincular Cuenta, ingresa tu contraseña y completa el paso de Google en un plazo de 5 minutos. Cada confirmación sirve una sola vez. Una cuenta que solo inicia sesión con Google no puede vincular una segunda cuenta de Google. Si la configuración de tu cuenta muestra una cuenta de Google vinculada que no has vinculado tú, desvincúlala y cambia tu contraseña.",
       "howToResolve": "Cómo resolver esto:",
       "signInWithEmailFirst": "Inicia sesión con tu email y contraseña primero",
       "goToAccountSettings": "Ve a Configuración de Cuenta",
@@ -46,9 +49,7 @@
       "tryEmailSignIn": "Intentar Inicio de Sesión con Email",
       "tryDifferentAccount": "Intentar Cuenta Diferente",
       "tryAgain": "Intentar de Nuevo",
-      "goBack": "Volver",
-      "needHelp": "¿Necesitas ayuda?",
-      "contactSupport": "Contactar Soporte"
+      "goBack": "Volver"
     }
   },
   "Common": {
@@ -142,7 +143,17 @@
     "oauthAuthenticationFailed": "Falló la autenticación OAuth",
     "failedToLinkAccount": "Falló al vincular la cuenta",
     "failedToUnlinkAccount": "Falló al desvincular la cuenta",
-    "accountUnlinkedSuccessfully": "Cuenta desvinculada exitosamente"
+    "accountUnlinkedSuccessfully": "Cuenta desvinculada exitosamente",
+    "linkErrors": {
+      "authenticationRequired": "Tu sesión ha terminado. Inicia sesión de nuevo.",
+      "tooManyAttempts": "Demasiados intentos. Inténtalo de nuevo más tarde.",
+      "invalidRequest": "No se pudo leer la solicitud. Recarga la página e inténtalo de nuevo.",
+      "unsupportedProvider": "Este proveedor de inicio de sesión no se puede vincular ni desvincular aquí.",
+      "passwordNotSet": "Esta cuenta aún no tiene contraseña. Establece una contraseña primero.",
+      "invalidPassword": "La contraseña no es correcta.",
+      "alreadyLinked": "Ya hay una cuenta de Google vinculada a esta cuenta.",
+      "notLinked": "No hay ninguna cuenta de Google vinculada a esta cuenta."
+    }
   },
   "CredentialsForm": {
     "invalidCredentials": "Email o contraseña inválidos",

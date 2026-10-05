@@ -39,6 +39,9 @@
       "oauthCallbackError": "Erreur de Connexion OAuth",
       "oauthCallbackErrorDescription": "Il y a eu un problème de connexion avec votre fournisseur OAuth.",
       "oauthCallbackErrorDetails": "Cela pourrait être dû à des problèmes de réseau, une panne du fournisseur ou des problèmes de configuration. Veuillez essayer de vous connecter à nouveau.",
+      "linkNotConfirmed": "Compte Google Non Lié",
+      "linkNotConfirmedDescription": "Ce compte Google n'a pas été lié, car la liaison n'a pas été confirmée avec votre mot de passe.",
+      "linkNotConfirmedDetails": "Pour lier un compte Google, ouvrez les paramètres de votre compte, choisissez Lier le Compte, saisissez votre mot de passe et terminez l'étape Google dans les 5 minutes. Chaque confirmation ne sert qu'une fois. Un compte qui se connecte uniquement avec Google ne peut pas lier un second compte Google. Si les paramètres de votre compte affichent un compte Google lié que vous n'avez pas lié vous-même, déliez-le et changez votre mot de passe.",
       "howToResolve": "Comment résoudre ceci:",
       "signInWithEmailFirst": "Connectez-vous d'abord avec votre email et mot de passe",
       "goToAccountSettings": "Allez aux Paramètres du Compte",
@@ -46,9 +49,7 @@
       "tryEmailSignIn": "Essayer la Connexion Email",
       "tryDifferentAccount": "Essayer un Compte Différent",
       "tryAgain": "Réessayer",
-      "goBack": "Retour",
-      "needHelp": "Besoin d'aide?",
-      "contactSupport": "Contacter le Support"
+      "goBack": "Retour"
     }
   },
   "Common": {
@@ -142,7 +143,17 @@
     "oauthAuthenticationFailed": "Échec de l'authentification OAuth",
     "failedToLinkAccount": "Échec de la liaison de compte",
     "failedToUnlinkAccount": "Échec de la déliaison de compte",
-    "accountUnlinkedSuccessfully": "Compte délié avec succès"
+    "accountUnlinkedSuccessfully": "Compte délié avec succès",
+    "linkErrors": {
+      "authenticationRequired": "Votre session a pris fin. Veuillez vous reconnecter.",
+      "tooManyAttempts": "Trop de tentatives. Veuillez réessayer plus tard.",
+      "invalidRequest": "La requête n'a pas pu être lue. Rechargez la page et réessayez.",
+      "unsupportedProvider": "Ce fournisseur de connexion ne peut pas être lié ou délié ici.",
+      "passwordNotSet": "Ce compte n'a pas encore de mot de passe. Définissez d'abord un mot de passe.",
+      "invalidPassword": "Le mot de passe n'est pas correct.",
+      "alreadyLinked": "Un compte Google est déjà lié à ce compte.",
+      "notLinked": "Aucun compte Google n'est lié à ce compte."
+    }
   },
   "CredentialsForm": {
     "invalidCredentials": "Email ou mot de passe invalide",

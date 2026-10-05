@@ -96,6 +96,11 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // (src/types/routes.ts) is listed for the reason the event classes are: it
 // would come back together with the import that reaches it, and A would
 // then take it as used.
+// Two rows read the string literals of a file under src/app, whose code A and
+// B do not look into: an answer of the unlink route that no request could
+// get, and the two texts of the link that the auth error page had to
+// /support, a page that does not exist (the texts themselves are gone from
+// the message files, where message-keys.test.ts would report them as unread).
 // `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
@@ -619,6 +624,19 @@ const RETIRED: {
     members: () => stringLiteralsIn("src/lib/security.ts"),
     kept: "account_unlinked",
     retired: ["account_linked", "password_reset"],
+  },
+  {
+    holder: "answers of the unlink route (string literals of its route.ts)",
+    members: () =>
+      stringLiteralsIn("src/app/api/auth/link-account/unlink/route.ts"),
+    kept: "Account not linked to this provider",
+    retired: ["Cannot unlink the only authentication method"],
+  },
+  {
+    holder: "texts read by the auth error page (string literals of page.tsx)",
+    members: () => stringLiteralsIn("src/app/[locale]/auth/error/page.tsx"),
+    kept: "error.goBack",
+    retired: ["error.needHelp", "error.contactSupport"],
   },
   {
     holder: "security alert types (string literals of email.ts)",
