@@ -19,6 +19,7 @@ import {
   emailMatchRefinement,
 } from "@/lib/validation";
 import { resolveFormLocale } from "@/lib/utils/form-locale-server";
+import { emailRateLimitKey } from "./rate-limit-key";
 import { getBcryptRounds } from "@/lib/utils/bcrypt.config";
 import {
   createValidationErrorResponse,
@@ -64,42 +65,52 @@ async function getSessionUserId(): Promise<string | null> {
 }
 
 export async function registerUser(formData: FormData): Promise<ActionResult> {
-  const locale = (formData.get("locale") as string) || "en";
+  const locale = await resolveFormLocale(formData);
   const requestHeaders = await headers();
 
   // Anti-abuse: throttle registrations per IP + email. IP is derived
   // server-side (never the client-supplied FormData value, which is spoofable).
-  const registerEmail = ((formData.get("email") as string) || "").toLowerCase();
+  // The address is not validated yet: its key is bounded where it is built.
   if (
     recordAttempt(
       "register",
-      [getClientIP(requestHeaders), registerEmail],
+      [getClientIP(requestHeaders), emailRateLimitKey(formData.get("email"))],
       RATE_LIMITS.register,
     ).blocked
   ) {
-    return {
-      success: false,
-      message: "Too many sign-up attempts. Please try again later.",
-    };
+    return await createErrorResponseI18n(
+      "errors.tooManySignUpAttempts",
+      locale,
+      "Too many sign-up attempts. Please try again later.",
+    );
   }
 
-  // Use command pattern for registration
-  const result = await commandBus.execute(
-    RegisterUserCommand,
-    {
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      password: formData.get("password") as string,
-      confirmPassword: formData.get("confirmPassword") as string,
+  // Use command pattern for registration. As in changeUserPassword below, the
+  // command answers an invalid form with an error response, and the guard is
+  // for anything unexpected in the bus.
+  try {
+    return await commandBus.execute(
+      RegisterUserCommand,
+      {
+        name: formData.get("name") as string,
+        email: formData.get("email") as string,
+        password: formData.get("password") as string,
+        confirmPassword: formData.get("confirmPassword") as string,
+        locale,
+      },
+      {
+        locale,
+        ...requestMetadata(requestHeaders),
+      },
+    );
+  } catch (error) {
+    logActionError("registerUser", error);
+    return await createErrorResponseI18n(
+      "errors.failedToCreateAccount",
       locale,
-    },
-    {
-      locale,
-      ...requestMetadata(requestHeaders),
-    },
-  );
-
-  return result;
+      "Failed to create account. Please try again.",
+    );
+  }
 }
 
 export async function deleteUserAccount(
@@ -340,10 +351,11 @@ export async function changeUserPassword(
       RATE_LIMITS.passwordVerify,
     ).blocked
   ) {
-    return {
-      success: false,
-      message: "Too many attempts. Please try again in a few minutes.",
-    };
+    return await createErrorResponseI18n(
+      "errors.tooManyAttempts",
+      locale,
+      "Too many attempts. Please try again in a few minutes.",
+    );
   }
 
   // Use command pattern for password change. The command answers an invalid

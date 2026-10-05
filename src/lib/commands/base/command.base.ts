@@ -3,8 +3,10 @@ import { ICommand, CommandMetadata } from "./command.interface";
 import { ActionResponse } from "@/lib/utils/form-responses";
 
 /**
- * What a command answers when something unexpected fails inside it. The
- * exception itself is logged on the server and never sent to the client.
+ * What a command answers when something unexpected fails inside it: the
+ * message `Errors.somethingWentWrong` in the locale of its input, and this
+ * text without a locale or a translation. The exception itself is logged on
+ * the server and never sent to the client.
  */
 export const COMMAND_FAILED_MESSAGE = "Something went wrong. Please try again.";
 

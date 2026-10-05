@@ -213,7 +213,18 @@
     "invalidSecret": "Ungültiges verschlüsseltes Geheimnis-Format. Bitte versuchen Sie, 2FA erneut einzurichten.",
     "emptySecret": "Entschlüsseltes Geheimnis ist leer. Bitte versuchen Sie, 2FA erneut einzurichten.",
     "secretDecryptionFailed": "2FA-Geheimnis konnte nicht entschlüsselt werden. Bitte versuchen Sie, 2FA erneut einzurichten.",
-    "invalidSecretFormat": "Ungültiges 2FA-Geheimnis-Format. Bitte richten Sie 2FA erneut ein."
+    "invalidSecretFormat": "Ungültiges 2FA-Geheimnis-Format. Bitte richten Sie 2FA erneut ein.",
+    "tooManySignUpAttempts": "Zu viele Registrierungsversuche. Bitte versuchen Sie es später erneut.",
+    "tooManyAttempts": "Zu viele Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
+    "tooManyVerificationEmails": "Zu viele Verifizierungs-E-Mails angefordert. Bitte versuchen Sie es in einigen Minuten erneut.",
+    "invalidVerificationCode": "Ungültiger Verifizierungscode. Geben Sie den aktuellen 6-stelligen Code aus Ihrer Authenticator-App ein.",
+    "failedToCreateAccount": "Konto konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+    "validationFailed": "Validierung fehlgeschlagen",
+    "userAlreadyExists": "Benutzer existiert bereits",
+    "currentPasswordIncorrect": "Das aktuelle Passwort ist falsch",
+    "noPasswordSet": "Für dieses Konto ist kein Passwort festgelegt",
+    "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "accountInfoUnavailable": "Kontoinformationen sind vorübergehend nicht verfügbar"
   },
   "Success": {
     "accountDeleted": "Konto erfolgreich gelöscht",
@@ -223,7 +234,9 @@
     "emailVerified": "E-Mail erfolgreich verifiziert",
     "twoFactorSetupInitiated": "2FA-Einrichtung eingeleitet",
     "twoFactorEnabled": "2FA erfolgreich aktiviert",
-    "twoFactorDisabled": "2FA erfolgreich deaktiviert"
+    "twoFactorDisabled": "2FA erfolgreich deaktiviert",
+    "accountCreated": "Konto erfolgreich erstellt! Bitte melden Sie sich an.",
+    "passwordChanged": "Passwort erfolgreich geändert! Bitte melden Sie sich erneut an."
   },
   "ComponentErrors": {
     "failedToSendVerificationEmail": "Verifizierungs-E-Mail konnte nicht gesendet werden. Bitte versuchen Sie es erneut.",
@@ -312,6 +325,8 @@
     "backToHome": "Zurück zur Startseite",
     "needHelp": "Benötigen Sie Hilfe? Kontaktieren Sie unser Support-Team.",
     "metaTitle": "E-Mail-Verifizierung - Auth App",
-    "metaDescription": "Verifizieren Sie Ihre E-Mail-Adresse, um die Einrichtung Ihres Kontos abzuschließen."
+    "metaDescription": "Verifizieren Sie Ihre E-Mail-Adresse, um die Einrichtung Ihres Kontos abzuschließen.",
+    "alreadyVerifiedTitle": "E-Mail Bereits Verifiziert ✅",
+    "alreadyVerifiedMessage": "Ihre E-Mail-Adresse wurde bereits verifiziert. Sie müssen nichts weiter tun."
   }
 }

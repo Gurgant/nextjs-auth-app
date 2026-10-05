@@ -89,9 +89,10 @@ const throwing = (thrown: unknown) =>
 
 // What can be thrown that is not an Error, each with the kind the bus names.
 // The texts are not in the input of the command: none of them may be found in
-// the failed event the bus publishes, nor in the line the logging middleware
-// logs. The line the bus itself prints with `enableLogging` on shows what was
-// caught as it is: the bus of this file has it off.
+// the failed event the bus publishes, in the line the logging middleware logs,
+// in the entry of the audit middleware, or in the line the bus itself prints
+// with `enableLogging` on (the bus of this file has it off; the one of "the
+// console line of the bus" has it on).
 const THROWN_TEXT = "Refused bob@example.com";
 const NOT_ERRORS: [string, unknown, string][] = [
   ["null", null, "null"],
@@ -452,13 +453,103 @@ describe("CommandBus", () => {
             },
           ],
         ]);
+        // The audit entry names what was thrown as the failed event does.
         expect(
           audit
             .getAuditLogs()
-            .map(({ commandId, success }) => [commandId, success]),
-        ).toEqual([[payload.commandId, false]]);
+            .map(({ commandId, success, errorType }) => [
+              commandId,
+              success,
+              errorType,
+            ]),
+        ).toEqual([[payload.commandId, false, payload.error]]);
       },
     );
+  });
+
+  // In development the bus prints a line of its own for a failed command,
+  // directly after the line of the logging middleware.
+  describe("the console line of the bus (enableLogging)", () => {
+    const INPUT = { email: "alice@example.com", password: "Plain123!" };
+    const LINE = "[CommandBus] Error executing ThrowingAnything:";
+    let errorSpy: jest.SpyInstance;
+    let logSpy: jest.SpyInstance;
+    let loggingBus: CommandBus;
+
+    beforeEach(() => {
+      errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      // The bus also prints each command it registers.
+      logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+      loggingBus = new CommandBus({ enableLogging: true });
+    });
+
+    afterEach(() => {
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it("an Error: printed as it is", async () => {
+      const error = new Error("boom");
+      const Command = throwing(error);
+      loggingBus.register(Command);
+
+      expect(await thrownBy(loggingBus.execute(Command, INPUT))).toBe(error);
+
+      expect(errorSpy.mock.calls).toEqual([[LINE, error]]);
+      expect(errorSpy.mock.calls[0][1]).toBe(error);
+    });
+
+    it.each(OTHER_REALM_ERRORS)(
+      "an Error %s: printed as it is",
+      async (_case, error) => {
+        const Command = throwing(error);
+        loggingBus.register(Command);
+
+        expect(await thrownBy(loggingBus.execute(Command, INPUT))).toBe(error);
+
+        expect(errorSpy.mock.calls).toHaveLength(1);
+        expect(errorSpy.mock.calls[0][0]).toBe(LINE);
+        expect(errorSpy.mock.calls[0][1]).toBe(error);
+      },
+    );
+
+    it.each(NOT_ERRORS)(
+      "%s: printed by its kind, never as the value itself",
+      async (_case, thrown, kind) => {
+        const Command = throwing(thrown);
+        loggingBus.register(Command);
+
+        expect(await thrownBy(loggingBus.execute(Command, INPUT))).toBe(thrown);
+
+        expect(errorSpy.mock.calls).toStrictEqual([
+          [LINE, `Non-Error value thrown: ${kind}`],
+        ]);
+      },
+    );
+
+    // The two lines of a failed command in development, in their order.
+    it("a string: the line of the logging middleware and the line of the bus say the same", async () => {
+      loggingBus.use(new LoggingMiddleware());
+      const Command = throwing(THROWN_TEXT);
+      loggingBus.register(Command);
+
+      expect(await thrownBy(loggingBus.execute(Command, INPUT))).toBe(
+        THROWN_TEXT,
+      );
+
+      expect(errorSpy.mock.calls).toStrictEqual([
+        [
+          "[Command:ThrowingAnything] Failed with error",
+          {
+            commandId: expect.any(String),
+            userId: undefined,
+            error: "Non-Error value thrown: string",
+            stack: undefined,
+          },
+        ],
+        [LINE, "Non-Error value thrown: string"],
+      ]);
+    });
   });
 
   describe("logging middleware (CB-2)", () => {

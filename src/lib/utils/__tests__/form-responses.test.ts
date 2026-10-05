@@ -1,9 +1,7 @@
 import { z } from "zod";
 import {
   createErrorResponse,
-  createSuccessResponse,
   createValidationErrorResponse,
-  createFieldErrorResponse,
   isErrorResponse,
   getFieldError,
   getAllFieldErrors,
@@ -104,45 +102,6 @@ describe("form-responses", () => {
     });
   });
 
-  describe("createSuccessResponse", () => {
-    it("creates basic success response", () => {
-      const result = createSuccessResponse("Operation successful");
-
-      expect(result).toEqual({
-        success: true,
-        message: "Operation successful",
-      });
-    });
-
-    it("creates success response with data", () => {
-      const data = { userId: "123", name: "John" };
-      const result = createSuccessResponse("User created", data);
-
-      expect(result).toEqual({
-        success: true,
-        message: "User created",
-        data,
-      });
-    });
-
-    it("handles undefined data correctly", () => {
-      const result = createSuccessResponse("Success", undefined);
-
-      expect(result).toEqual({
-        success: true,
-        message: "Success",
-      });
-    });
-
-    it("preserves data type", () => {
-      const data = { count: 42 };
-      const result = createSuccessResponse<{ count: number }>("Counted", data);
-
-      expect(result.data?.count).toBe(42);
-      expect(typeof result.data?.count).toBe("number");
-    });
-  });
-
   describe("createValidationErrorResponse", () => {
     it("creates validation error with translated messages", async () => {
       // Create a ZodError using a failed parse
@@ -199,24 +158,6 @@ describe("form-responses", () => {
 
       expect(mockGetTranslations).not.toHaveBeenCalled();
       expect(result.message).toBe("Custom error message");
-    });
-  });
-
-  describe("createFieldErrorResponse", () => {
-    it("creates error for single field", () => {
-      const result = createFieldErrorResponse(
-        "Invalid credentials",
-        "password",
-        "Incorrect password",
-      );
-
-      expect(result).toEqual({
-        success: false,
-        message: "Invalid credentials",
-        errors: {
-          password: "Incorrect password",
-        },
-      });
     });
   });
 
@@ -405,9 +346,9 @@ describe("form-responses", () => {
 
     it("type narrowing works correctly", () => {
       const responses: ActionResponse[] = [
-        createSuccessResponse("Success"),
+        { success: true, message: "Success" },
         createErrorResponse("Error"),
-        createFieldErrorResponse("Field error", "email", "Invalid"),
+        createErrorResponse("Field error", { email: "Invalid" }),
       ];
 
       responses.forEach((response) => {

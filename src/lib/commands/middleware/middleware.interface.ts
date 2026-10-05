@@ -25,12 +25,13 @@ export interface ICommandMiddleware {
   ): Promise<void>;
 
   /**
-   * Executed on command error
+   * Executed on command error. `error` is whatever was thrown, which need
+   * not be an Error (see base/thrown.ts).
    */
   onError?(
     commandName: string,
     input: unknown,
-    error: Error,
+    error: unknown,
     metadata: CommandMetadata,
   ): Promise<void>;
 }

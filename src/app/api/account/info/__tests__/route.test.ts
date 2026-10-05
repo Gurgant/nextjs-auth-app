@@ -103,3 +103,60 @@ it("reports a database failure instead of inventing account data", async () => {
   expect(body.success).toBe(false);
   expect(body.data).toBeUndefined();
 });
+
+// The route does not know the language of the page that asks. Each failure
+// carries a `code`, and the page says it in its own language
+// (src/hooks/use-account-data.ts); the English `message` is for other clients.
+describe("each failure names itself with a code", () => {
+  it("no session: unauthorized", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const res = await GET(request());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({
+      success: false,
+      code: "unauthorized",
+      message: "Unauthorized",
+    });
+  });
+
+  it("no user row for the session: userNotFound", async () => {
+    mockGetUser.mockResolvedValue(null);
+
+    const res = await GET(request());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({
+      success: false,
+      code: "userNotFound",
+      message: "User not found",
+    });
+  });
+
+  it("a database failure: accountInfoUnavailable", async () => {
+    mockGetUser.mockRejectedValue(new Error("connection refused"));
+
+    const res = await GET(request());
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({
+      success: false,
+      code: "accountInfoUnavailable",
+      message: "Account information is temporarily unavailable",
+    });
+  });
+
+  it("any other failure: failedToLoadAccountInfo", async () => {
+    mockAuth.mockRejectedValue(new Error("session check failed"));
+
+    const res = await GET(request());
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
+      success: false,
+      code: "failedToLoadAccountInfo",
+      message: "Failed to load account information",
+    });
+  });
+});

@@ -213,7 +213,18 @@
     "invalidSecret": "Invalid encrypted secret format. Please try setting up 2FA again.",
     "emptySecret": "Decrypted secret is empty. Please try setting up 2FA again.",
     "secretDecryptionFailed": "Failed to decrypt 2FA secret. Please try setting up 2FA again.",
-    "invalidSecretFormat": "Invalid 2FA secret format. Please set up 2FA again."
+    "invalidSecretFormat": "Invalid 2FA secret format. Please set up 2FA again.",
+    "tooManySignUpAttempts": "Too many sign-up attempts. Please try again later.",
+    "tooManyAttempts": "Too many attempts. Please try again in a few minutes.",
+    "tooManyVerificationEmails": "Too many verification emails requested. Please try again in a few minutes.",
+    "invalidVerificationCode": "Invalid verification code. Enter the current 6-digit code from your authenticator app.",
+    "failedToCreateAccount": "Failed to create account. Please try again.",
+    "validationFailed": "Validation failed",
+    "userAlreadyExists": "User already exists",
+    "currentPasswordIncorrect": "The current password is incorrect",
+    "noPasswordSet": "No password is set for this account",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "accountInfoUnavailable": "Account information is temporarily unavailable"
   },
   "Success": {
     "accountDeleted": "Account deleted successfully",
@@ -223,7 +234,9 @@
     "emailVerified": "Email verified successfully",
     "twoFactorSetupInitiated": "2FA setup initiated",
     "twoFactorEnabled": "2FA enabled successfully",
-    "twoFactorDisabled": "2FA disabled successfully"
+    "twoFactorDisabled": "2FA disabled successfully",
+    "accountCreated": "Account created successfully! Please sign in.",
+    "passwordChanged": "Password changed successfully! Please sign in again."
   },
   "ComponentErrors": {
     "failedToSendVerificationEmail": "Failed to send verification email. Please try again.",
@@ -312,6 +325,8 @@
     "backToHome": "Back to Home",
     "needHelp": "Need help? Contact our support team.",
     "metaTitle": "Email Verification - Auth App",
-    "metaDescription": "Verify your email address to complete your account setup."
+    "metaDescription": "Verify your email address to complete your account setup.",
+    "alreadyVerifiedTitle": "Email Already Verified ✅",
+    "alreadyVerifiedMessage": "Your email address has already been verified. There is nothing more to do."
   }
 }

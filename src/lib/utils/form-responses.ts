@@ -70,30 +70,6 @@ export function createErrorResponse(
 }
 
 /**
- * Creates a standardized success response
- *
- * @param message - The success message to display
- * @param data - Optional data to include in response
- * @returns Standardized success response
- *
- * @example
- * // Simple success
- * return createSuccessResponse("Profile updated successfully");
- *
- * @example
- * // With data
- * return createSuccessResponse("User created", { userId: user.id });
- */
-export function createSuccessResponse<T = unknown>(
-  message: string,
-  data?: T,
-): SuccessResponse & { data?: T } {
-  return data !== undefined
-    ? { success: true, message, data }
-    : { success: true, message };
-}
-
-/**
  * Creates a validation error response with translated messages
  *
  * @param error - The ZodError to process
@@ -119,31 +95,6 @@ export async function createValidationErrorResponse(
   }
 
   return createErrorResponse(defaultMessage, errors);
-}
-
-/**
- * Creates an error response for a single field
- *
- * @param message - The main error message
- * @param field - The field name that has the error
- * @param fieldError - The error message for the field
- * @returns Error response with field error
- *
- * @example
- * return createFieldErrorResponse(
- *   "Invalid credentials",
- *   "password",
- *   "Incorrect password"
- * );
- */
-export function createFieldErrorResponse(
-  message: string,
-  field: string,
-  fieldError: string,
-): ErrorResponse {
-  return createErrorResponse(message, {
-    [field]: fieldError,
-  });
 }
 
 /**

@@ -29,6 +29,26 @@ export function useAccountData(userId?: string): UseAccountDataReturn {
   const [error, setError] = useState<string | null>(null);
 
   const tErrors = useTranslations("ComponentErrors");
+  const tServerErrors = useTranslations("Errors");
+
+  // The text for a failure of the endpoint, which names it with a `code`:
+  // the endpoint does not know the language of this page, and its own
+  // `message` is English. Any other answer gets the general text.
+  const failureText = useCallback(
+    (code: unknown): string => {
+      switch (code) {
+        case "unauthorized":
+          return tServerErrors("unauthorized");
+        case "userNotFound":
+          return tServerErrors("userNotFound");
+        case "accountInfoUnavailable":
+          return tServerErrors("accountInfoUnavailable");
+        default:
+          return tErrors("failedToLoadAccountInfo");
+      }
+    },
+    [tErrors, tServerErrors],
+  );
 
   const fetchAccountInfo = useCallback(async () => {
     if (!userId) {
@@ -55,8 +75,7 @@ export function useAccountData(userId?: string): UseAccountDataReturn {
       if (result.success && result.data) {
         setAccountInfo(result.data);
       } else {
-        const errorMessage =
-          result.message || tErrors("failedToLoadAccountInfo");
+        const errorMessage = failureText(result.code);
         setError(errorMessage);
         console.error(`❌ Error loading account info:`, errorMessage);
 
@@ -72,7 +91,7 @@ export function useAccountData(userId?: string): UseAccountDataReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, tErrors]);
+  }, [userId, tErrors, failureText]);
 
   useEffect(() => {
     fetchAccountInfo();

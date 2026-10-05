@@ -6,11 +6,11 @@ import { CommandMetadata } from "../base/command.interface";
 import { repositories } from "@/lib/repositories";
 import { eventBus } from "@/lib/events";
 import { PasswordChangedEvent } from "@/lib/events/domain/auth.events";
+import { ActionResponse } from "@/lib/utils/form-responses";
 import {
-  createSuccessResponse,
-  createErrorResponse,
-  ActionResponse,
-} from "@/lib/utils/form-responses";
+  createSuccessResponseI18n,
+  createErrorResponseI18n,
+} from "@/lib/utils/form-responses-i18n";
 import { passwordSchema } from "@/lib/validation";
 import { ErrorFactory } from "@/lib/errors/error-factory";
 import { createError } from "@/lib/errors/error-builder";
@@ -48,6 +48,10 @@ export class ChangePasswordCommand extends BaseCommand<
 
   // Validation is handled in execute() method for better error messaging
 
+  // As in RegisterUserCommand: the answer is a message in `input.locale`, the
+  // English message of an error is the answer only without a locale or a
+  // translation, and the texts of the schema above stay on the server.
+
   async execute(
     input: ChangePasswordInput,
     metadata?: CommandMetadata,
@@ -63,7 +67,11 @@ export class ChangePasswordCommand extends BaseCommand<
           correlationId: metadata?.commandId,
         });
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.validationFailed",
+          input.locale,
+          error.getUserMessage(),
+        );
       }
 
       const userRepo = repositories.getUserRepository();
@@ -77,7 +85,11 @@ export class ChangePasswordCommand extends BaseCommand<
           correlationId: metadata?.commandId,
         });
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.userNotFound",
+          input.locale,
+          error.getUserMessage(),
+        );
       }
 
       if (!user.password) {
@@ -89,7 +101,11 @@ export class ChangePasswordCommand extends BaseCommand<
           "No password set for this account",
         );
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.noPasswordSet",
+          input.locale,
+          error.getUserMessage(),
+        );
       }
 
       // Verify current password
@@ -108,7 +124,11 @@ export class ChangePasswordCommand extends BaseCommand<
           "password",
         );
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.currentPasswordIncorrect",
+          input.locale,
+          error.getUserMessage(),
+        );
       }
 
       // Hash new password
@@ -144,7 +164,9 @@ export class ChangePasswordCommand extends BaseCommand<
         ),
       );
 
-      const response = createSuccessResponse(
+      const response = await createSuccessResponseI18n(
+        "success.passwordChanged",
+        input.locale,
         "Password changed successfully! Please sign in again.",
         {
           userId: user.id,
@@ -161,7 +183,11 @@ export class ChangePasswordCommand extends BaseCommand<
       });
       baseError.log();
       this.logError(run, baseError);
-      return createErrorResponse(COMMAND_FAILED_MESSAGE);
+      return await createErrorResponseI18n(
+        "errors.somethingWentWrong",
+        input.locale,
+        COMMAND_FAILED_MESSAGE,
+      );
     }
   }
 }

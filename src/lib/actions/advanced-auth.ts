@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { getSafeLocale } from "@/config/i18n";
+import { getSafeLocale, type Locale } from "@/config/i18n";
 import { recordAttempt, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   generateSecureToken,
@@ -25,9 +25,10 @@ import { headers } from "next/headers";
 
 import {
   createValidationErrorResponse,
-  createFieldErrorResponse,
   logActionError,
   type ActionResponse,
+  type ErrorResponse,
+  type SuccessResponse,
 } from "@/lib/utils/form-responses";
 import { resolveFormLocale } from "@/lib/utils/form-locale-server";
 import {
@@ -35,9 +36,20 @@ import {
   createSuccessResponseI18n,
   createFieldErrorResponseI18n,
 } from "@/lib/utils/form-responses-i18n";
+import {
+  translateError,
+  translateSuccess,
+} from "@/lib/utils/server-translations";
+import { emailRateLimitKey } from "./rate-limit-key";
 
 // Using ActionResponse from form-responses instead of ActionResult
 export type ActionResult = ActionResponse;
+
+// What verifyEmailToken answers. A success says whether this request verified
+// the address or found it verified: the page has a screen for each.
+type VerifyEmailResult =
+  | ErrorResponse
+  | (SuccessResponse & { data: { alreadyVerified: boolean } });
 
 // All account-scoped actions below derive the acting user from the session —
 // never from a client-supplied id — so a caller can only ever act on their own
@@ -46,6 +58,33 @@ export type ActionResult = ActionResponse;
 async function getSessionUserId(): Promise<string | null> {
   const session = await auth();
   return session?.user?.id ?? null;
+}
+
+// What verifyEmailToken answers for a token that is used up. When the address
+// is verified, that is the answer, in the words sendEmailVerification has for
+// it. It tells whoever holds the token no more than that: no address, no
+// name, and it opens no session.
+async function answerUsedToken(
+  addressVerified: boolean,
+  locale: Locale,
+): Promise<VerifyEmailResult> {
+  if (addressVerified) {
+    return {
+      success: true,
+      message: await translateError(
+        locale,
+        "errors.emailAlreadyVerified",
+        "Email is already verified",
+      ),
+      data: { alreadyVerified: true },
+    };
+  }
+
+  return await createErrorResponseI18n(
+    "errors.verificationTokenUsed",
+    locale,
+    "Verification token has already been used",
+  );
 }
 
 // Email Verification Actions
@@ -60,26 +99,31 @@ export async function sendEmailVerification(
   try {
     // Anti mail-bombing: throttle verification sends per email + IP. Counted
     // before any user lookup so it stays uniform whether or not the email exists.
+    // Nothing validates the address: its key is bounded where it is built.
     const rlHeaders = await headers();
     if (
       recordAttempt(
         "email-verify",
-        [userEmail.toLowerCase(), getClientIP(rlHeaders)],
+        [emailRateLimitKey(userEmail), getClientIP(rlHeaders)],
         RATE_LIMITS.emailVerify,
       ).blocked
     ) {
-      return {
-        success: false,
-        message:
-          "Too many verification emails requested. Please try again in a few minutes.",
-      };
+      return await createErrorResponseI18n(
+        "errors.tooManyVerificationEmails",
+        locale,
+        "Too many verification emails requested. Please try again in a few minutes.",
+      );
     }
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-      select: { id: true, name: true, email: true, emailVerified: true },
-    });
+    // Find user. The argument is whatever the client sent: a value that is no
+    // text is the address of no user.
+    const user =
+      typeof userEmail === "string"
+        ? await prisma.user.findUnique({
+            where: { email: userEmail },
+            select: { id: true, name: true, email: true, emailVerified: true },
+          })
+        : null;
 
     if (!user) {
       return await createErrorResponseI18n(
@@ -154,16 +198,16 @@ export async function sendEmailVerification(
 export async function verifyEmailToken(
   token: string,
   requestedLocale: string = "en",
-): Promise<ActionResult> {
+): Promise<VerifyEmailResult> {
   // As in sendEmailVerification: no session is needed, and only a supported
   // locale is accepted.
   const locale = getSafeLocale(requestedLocale);
 
   try {
-    // Find verification token
+    // Find verification token. Of its user only the verification date is read.
     const verificationToken = await prisma.emailVerificationToken.findUnique({
       where: { token },
-      include: { user: true },
+      include: { user: { select: { emailVerified: true } } },
     });
 
     if (!verificationToken) {
@@ -175,10 +219,13 @@ export async function verifyEmailToken(
     }
 
     if (verificationToken.used) {
-      return await createErrorResponseI18n(
-        "errors.verificationTokenUsed",
+      // The token works once, and the page that verifies it does so while it
+      // renders: the same address is requested again on a reload, on a change
+      // of language, and by the user after a mail scanner opened the link.
+      // Nothing is written and no second event is recorded.
+      return await answerUsedToken(
+        verificationToken.user.emailVerified !== null,
         locale,
-        "Verification token has already been used",
       );
     }
 
@@ -190,19 +237,37 @@ export async function verifyEmailToken(
       );
     }
 
-    // Mark email as verified and token as used
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: verificationToken.userId },
-        data: {
-          emailVerified: new Date(),
-        },
-      }),
-      prisma.emailVerificationToken.update({
-        where: { id: verificationToken.id },
+    // Mark the token as used and the email as verified. Both writes carry
+    // their condition into the database: the token is claimed only while it
+    // is unused, and the address is verified only while it is not. So of the
+    // requests that arrive together (one link twice, or two links of one
+    // user) one verifies, and the others answer as a used token does. A link
+    // of an address that is already verified (a second e-mail, a Google
+    // sign-in) is used up without a write to the user row.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.emailVerificationToken.updateMany({
+        where: { id: verificationToken.id, used: false },
         data: { used: true },
-      }),
-    ]);
+      });
+      if (claimed.count === 0) {
+        // Another request used the token after the lookup above.
+        const owner = await tx.user.findUnique({
+          where: { id: verificationToken.userId },
+          select: { emailVerified: true },
+        });
+        return owner?.emailVerified ? "alreadyVerified" : "tokenUsed";
+      }
+
+      const verified = await tx.user.updateMany({
+        where: { id: verificationToken.userId, emailVerified: null },
+        data: { emailVerified: new Date() },
+      });
+      return verified.count === 0 ? "alreadyVerified" : "verified";
+    });
+
+    if (outcome !== "verified") {
+      return await answerUsedToken(outcome === "alreadyVerified", locale);
+    }
 
     // Log security event
     const headersList = await headers();
@@ -213,11 +278,15 @@ export async function verifyEmailToken(
       ...requestMetadata(headersList),
     });
 
-    return await createSuccessResponseI18n(
-      "success.emailVerified",
-      locale,
-      "Email verified successfully",
-    );
+    return {
+      success: true,
+      message: await translateSuccess(
+        locale,
+        "success.emailVerified",
+        "Email verified successfully",
+      ),
+      data: { alreadyVerified: false },
+    };
   } catch (error) {
     logActionError("verifyEmailToken", error);
     return await createErrorResponseI18n(
@@ -405,10 +474,11 @@ export async function enableTwoFactorAuth(
     if (!isValidCode) {
       // Generic error only — never disclose the expected code, server time, or
       // rotation timing (that would hand an attacker the valid 2FA code).
-      return createFieldErrorResponse(
-        "Invalid verification code. Enter the current 6-digit code from your authenticator app.",
+      return await createFieldErrorResponseI18n(
+        "errors.invalidVerificationCode",
         "verificationCode",
-        "Invalid verification code",
+        locale,
+        "Invalid verification code. Enter the current 6-digit code from your authenticator app.",
       );
     }
 

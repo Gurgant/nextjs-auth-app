@@ -213,7 +213,18 @@
     "invalidSecret": "Format de secret chiffré invalide. Veuillez réessayer de configurer 2FA.",
     "emptySecret": "Le secret déchiffré est vide. Veuillez réessayer de configurer 2FA.",
     "secretDecryptionFailed": "Échec du déchiffrement du secret 2FA. Veuillez réessayer de configurer 2FA.",
-    "invalidSecretFormat": "Format de secret 2FA invalide. Veuillez reconfigurer 2FA."
+    "invalidSecretFormat": "Format de secret 2FA invalide. Veuillez reconfigurer 2FA.",
+    "tooManySignUpAttempts": "Trop de tentatives d'inscription. Veuillez réessayer plus tard.",
+    "tooManyAttempts": "Trop de tentatives. Veuillez réessayer dans quelques minutes.",
+    "tooManyVerificationEmails": "Trop d'emails de vérification demandés. Veuillez réessayer dans quelques minutes.",
+    "invalidVerificationCode": "Code de vérification invalide. Entrez le code actuel à 6 chiffres de votre application d'authentification.",
+    "failedToCreateAccount": "Échec de la création du compte. Veuillez réessayer.",
+    "validationFailed": "Échec de la validation",
+    "userAlreadyExists": "L'utilisateur existe déjà",
+    "currentPasswordIncorrect": "Le mot de passe actuel est incorrect",
+    "noPasswordSet": "Aucun mot de passe n'est défini pour ce compte",
+    "somethingWentWrong": "Une erreur s'est produite. Veuillez réessayer.",
+    "accountInfoUnavailable": "Les informations du compte sont temporairement indisponibles"
   },
   "Success": {
     "accountDeleted": "Compte supprimé avec succès",
@@ -223,7 +234,9 @@
     "emailVerified": "Email vérifié avec succès",
     "twoFactorSetupInitiated": "Configuration 2FA initiée",
     "twoFactorEnabled": "2FA activé avec succès",
-    "twoFactorDisabled": "2FA désactivé avec succès"
+    "twoFactorDisabled": "2FA désactivé avec succès",
+    "accountCreated": "Compte créé avec succès! Veuillez vous connecter.",
+    "passwordChanged": "Mot de passe changé avec succès! Veuillez vous reconnecter."
   },
   "ComponentErrors": {
     "failedToSendVerificationEmail": "Échec de l'envoi de l'email de vérification. Veuillez réessayer.",
@@ -312,6 +325,8 @@
     "backToHome": "Retour à l'Accueil",
     "needHelp": "Besoin d'aide? Contactez notre équipe de support.",
     "metaTitle": "Vérification d'Email - App d'Authentification",
-    "metaDescription": "Vérifiez votre adresse email pour compléter la configuration de votre compte."
+    "metaDescription": "Vérifiez votre adresse email pour compléter la configuration de votre compte.",
+    "alreadyVerifiedTitle": "Email Déjà Vérifié ✅",
+    "alreadyVerifiedMessage": "Votre adresse email a déjà été vérifiée. Vous n'avez rien d'autre à faire."
   }
 }
