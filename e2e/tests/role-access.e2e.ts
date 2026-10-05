@@ -15,7 +15,7 @@ import {
  * dashboard/user/page.tsx, dashboard/pro/page.tsx, admin/page.tsx). Next
  * answers it with an HTTP 307 before any page content is sent, so the tests
  * assert that hop and where it lands, then the page's own test id. The role
- * hierarchy is USER < PRO_USER < ADMIN (src/lib/auth/rbac.ts, hasRole).
+ * hierarchy is USER < PRO_USER < ADMIN (src/lib/auth/roles.ts, hasRole).
  *
  * Sign-in goes through the credentials callback (signInViaApi): the subject
  * here is authorization, not the form. Every sign-in succeeds, so no failed
@@ -190,7 +190,7 @@ test.describe("Role-based access control", () => {
       await expect(
         panel.getByRole("heading", { level: 1, name: "Admin Dashboard" }),
       ).toBeVisible();
-      // Role badge: getRoleDisplayName("ADMIN") in src/lib/auth/rbac.ts.
+      // Role badge: getRoleDisplayName("ADMIN") in src/lib/auth/roles.ts.
       await expect(
         panel.getByText("Administrator", { exact: true }),
       ).toBeVisible();

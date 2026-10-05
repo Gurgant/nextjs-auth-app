@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import type { Route } from "next";
 import { isValidLocale, type Locale } from "@/config/i18n";
-import { SafeNavigation, RouteValidator } from "@/types/routes";
+import { switchLocale } from "@/lib/utils/navigation";
 
 export function LanguageSelector({ locale }: { locale: Locale }) {
   const pathname = usePathname();
@@ -56,26 +57,15 @@ export function LanguageSelector({ locale }: { locale: Locale }) {
       return;
     }
 
-    // Extract the path after the locale
-    const segments = pathname.split("/");
-    const pathAfterLocale = segments.slice(2).join("/");
-
-    // Construct the new path with validated locale
-    const basePath = pathAfterLocale ? `/${pathAfterLocale}` : "";
-    const newPath = `/${newLocale}${basePath}`;
-
-    // Validate the constructed route before navigation
-    if (RouteValidator.isValidRoute(newPath)) {
-      SafeNavigation.push(router, newPath, "/");
-    } else {
-      // Fallback to safe route construction for locale
-      const fallbackPath = `/${newLocale}`;
-      SafeNavigation.push(router, fallbackPath, "/");
-      console.warn(
-        "[Navigation] Invalid route constructed, using fallback:",
-        fallbackPath,
-      );
-    }
+    // The same page in the new language: only the locale segment of the path
+    // changes, and the query string and the fragment stay. The path is not
+    // checked against a list of routes: the visitor is on that page already,
+    // and whatever the path is, switchLocale() returns one that resolves on
+    // this origin and under "/<newLocale>" (dot segments that would lead out
+    // of the locale give its home page).
+    const newPath = switchLocale(pathname, newLocale);
+    const { search, hash } = window.location;
+    router.push(`${newPath}${search}${hash}` as Route);
 
     setIsOpen(false);
   };

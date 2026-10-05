@@ -29,8 +29,9 @@ const WAIT = ` ${ESC}[37m${ESC}[1m○${ESC}[22m${ESC}[39m `;
 const COMPILED_LOCALE = `${PREFIX}${DONE}Compiled /[locale] in 13.9s (867 modules)\n`;
 // A route of WARM_UP_ROUTES.
 const COMPILED_REGISTER = `${PREFIX}${DONE}Compiled /[locale]/register in 7.6s (1847 modules)\n`;
-// A route that is not in WARM_UP_ROUTES.
-const COMPILED_AUTH_ERROR = `${PREFIX}${DONE}Compiled /[locale]/auth/error in 2.3s (1983 modules)\n`;
+// A route that is not in WARM_UP_ROUTES: no spec requests it. The line is as
+// `next dev` printed it for a request sent by hand.
+const COMPILED_HEALTH = `${PREFIX}${DONE}Compiled /api/health in 3.3s (383 modules)\n`;
 const COMPILING_REGISTER = `${PREFIX}${WAIT}Compiling /[locale]/register ...\n`;
 const COMPILED_NO_ROUTE = `${PREFIX}${DONE}Compiled in 1497ms (1984 modules)\n`;
 const REQUEST = `${PREFIX} GET /en ${ESC}[32m200${ESC}[39m in 248ms\n`;
@@ -146,7 +147,7 @@ describe("E2E compile guard: the reporter", () => {
     const listed = WARM_UP_ROUTES.map((route) => route.entry);
 
     expect(listed).toContain("/[locale]/register");
-    expect(listed).not.toContain("/[locale]/auth/error");
+    expect(listed).not.toContain("/api/health");
   });
 
   it("does not print to the terminal on its own behalf (the list reporter stays)", () => {
@@ -179,12 +180,12 @@ describe("E2E compile guard: the reporter", () => {
 
   it("fails the run and says 'not in WARM_UP_ROUTES' for a route outside the list compiled after the tests began", async () => {
     const guard = guardWithTestsRunning();
-    guard.onStdOut(COMPILED_AUTH_ERROR);
+    guard.onStdOut(COMPILED_HEALTH);
 
     expect(await guard.onEnd(result("passed"))).toEqual({ status: "failed" });
     expect(printed(stderr)).toBe(
       `\n${HEADLINE}\n` +
-        "  - route not in WARM_UP_ROUTES: /[locale]/auth/error (1x)\n" +
+        "  - route not in WARM_UP_ROUTES: /api/health (1x)\n" +
         "Not in WARM_UP_ROUTES (e2e/support/warm-up.ts): a spec visits a " +
         "route that the warm-up does not request. Add the request that " +
         "compiles it.\n",
@@ -233,14 +234,14 @@ describe("E2E compile guard: the reporter", () => {
   it("separates the routes that are not in the list from the listed routes compiled again, and counts each compile", async () => {
     const guard = guardWithTestsRunning();
     guard.onStdOut(
-      COMPILED_REGISTER + REQUEST + COMPILED_AUTH_ERROR + COMPILED_REGISTER,
+      COMPILED_REGISTER + REQUEST + COMPILED_HEALTH + COMPILED_REGISTER,
     );
 
     expect(await guard.onEnd(result("passed"))).toEqual({ status: "failed" });
     const lines = printed(stderr).split("\n");
     expect(lines.slice(1, 5)).toEqual([
       HEADLINE,
-      "  - route not in WARM_UP_ROUTES: /[locale]/auth/error (1x)",
+      "  - route not in WARM_UP_ROUTES: /api/health (1x)",
       "  - listed route compiled again: /[locale]/register (2x)",
       expect.stringMatching(/^Not in WARM_UP_ROUTES /),
     ]);
@@ -267,12 +268,12 @@ describe("E2E compile guard: the reporter", () => {
 
   it("says that a line that names no route can belong to a route compile of the same run, not that a file changed", async () => {
     const guard = guardWithTestsRunning();
-    guard.onStdOut(COMPILED_AUTH_ERROR + COMPILED_NO_ROUTE);
+    guard.onStdOut(COMPILED_HEALTH + COMPILED_NO_ROUTE);
 
     expect(await guard.onEnd(result("passed"))).toEqual({ status: "failed" });
     const message = printed(stderr);
     expect(message).toContain(
-      "  - route not in WARM_UP_ROUTES: /[locale]/auth/error (1x)\n" +
+      "  - route not in WARM_UP_ROUTES: /api/health (1x)\n" +
         '  - "Compiled" line that names no route (1x)\n',
     );
     expect(message).toContain(
@@ -475,7 +476,7 @@ describe("E2E compile guard: the reporter", () => {
 
   it("adds one GitHub error annotation in GitHub Actions that names every compile, and none elsewhere", async () => {
     const compiles =
-      COMPILED_AUTH_ERROR +
+      COMPILED_HEALTH +
       COMPILED_NO_ROUTE +
       COMPILED_REGISTER +
       COMPILED_NO_ROUTE;
@@ -491,7 +492,7 @@ describe("E2E compile guard: the reporter", () => {
     await inActions.onEnd(result("passed"));
     expect(printed(stdout)).toBe(
       `::error title=E2E compile guard::${HEADLINE} Compiled: ` +
-        "route not in WARM_UP_ROUTES: /[locale]/auth/error (1x); " +
+        "route not in WARM_UP_ROUTES: /api/health (1x); " +
         "listed route compiled again: /[locale]/register (1x); " +
         '"Compiled" line that names no route (2x)\n',
     );

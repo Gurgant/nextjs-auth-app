@@ -3,8 +3,6 @@
  * Provides type-safe functions for building localized paths
  */
 
-import { redirect } from "next/navigation";
-import type { Route } from "next";
 import type { Locale } from "@/config/i18n";
 
 /**
@@ -19,7 +17,7 @@ import type { Locale } from "@/config/i18n";
  * localizedPath('/dashboard', 'en') // '/en/dashboard'
  * localizedPath('', 'en') // '/en'
  * localizedPath(['dashboard'], 'en') // '/en/dashboard'
- * localizedPath(['account', 'settings'], 'en') // '/en/account/settings'
+ * localizedPath(['dashboard', 'user'], 'en') // '/en/dashboard/user'
  */
 export function localizedPath(
   pathOrSegments: string | string[],
@@ -44,20 +42,6 @@ export function localizedPath(
   }
 
   return `/${locale}/${cleanPath}`;
-}
-
-/**
- * Redirect to a localized path (server-side only)
- *
- * @param path - The path to redirect to
- * @param locale - The validated locale
- *
- * @example
- * localizedRedirect('dashboard', locale) // Redirects to /[locale]/dashboard
- */
-export function localizedRedirect(path: string, locale: Locale): never {
-  const fullPath = localizedPath(path, locale);
-  redirect(fullPath as Route);
 }
 
 /**
@@ -87,16 +71,29 @@ export function getPathWithoutLocale(fullPath: string): string {
 /**
  * Switch to a different locale while preserving the current path
  *
+ * Whatever `currentPath` is, the result starts with `/<newLocale>` and a URL
+ * parser resolves it on the same origin, to `/<newLocale>` or to a path below
+ * it. The language selector navigates to it without consulting a list of
+ * routes. A path that would resolve outside the new locale has dot segments
+ * (`..`, also written `%2e%2e`); the pathname of a parsed URL has none, and
+ * for such a path the result is `/<newLocale>`.
+ *
  * @param currentPath - The current full path
  * @param newLocale - The locale to switch to
  * @returns The new path with the switched locale
  *
  * @example
  * switchLocale('/en/dashboard', 'fr') // '/fr/dashboard'
+ * switchLocale('/en/../admin', 'fr') // '/fr'
  */
 export function switchLocale(currentPath: string, newLocale: Locale): string {
-  const pathWithoutLocale = getPathWithoutLocale(currentPath);
-  return localizedPath(pathWithoutLocale, newLocale);
+  const home = localizedPath("", newLocale);
+  const switched = localizedPath(getPathWithoutLocale(currentPath), newLocale);
+
+  // What a URL parser makes of the path. The base only stands in for an
+  // origin: `switched` starts with "/<newLocale>", so it is parsed as a path.
+  const { pathname } = new URL(switched, "http://localhost");
+  return `${pathname}/`.startsWith(`${home}/`) ? switched : home;
 }
 
 /**
@@ -104,53 +101,5 @@ export function switchLocale(currentPath: string, newLocale: Locale): string {
  * Extend this object with your app's routes
  */
 export const routes = {
-  home: (locale: Locale) => localizedPath("", locale),
   dashboard: (locale: Locale) => localizedPath("dashboard", locale),
-  account: (locale: Locale) => localizedPath("account", locale),
-  signin: (locale: Locale) => localizedPath("auth/signin", locale),
-  register: (locale: Locale) => localizedPath("register", locale),
-  error: (locale: Locale, error?: string) => {
-    const path = localizedPath("auth/error", locale);
-    return error ? `${path}?error=${encodeURIComponent(error)}` : path;
-  },
-  verifyEmail: (locale: Locale, token: string) =>
-    localizedPath(`verify-email/${token}`, locale),
 } as const;
-
-/**
- * Check if a path requires authentication
- * Useful for middleware and guards
- */
-export function isProtectedRoute(path: string): boolean {
-  const protectedPaths = ["/dashboard", "/account", "/settings", "/profile"];
-
-  const pathWithoutLocale = getPathWithoutLocale(path);
-
-  return protectedPaths.some(
-    (protectedPath) =>
-      pathWithoutLocale === protectedPath ||
-      pathWithoutLocale.startsWith(`${protectedPath}/`),
-  );
-}
-
-/**
- * Check if a path is public (doesn't require auth)
- */
-export function isPublicRoute(path: string): boolean {
-  const publicPaths = [
-    "/",
-    "/register",
-    "/auth/signin",
-    "/auth/error",
-    "/verify-email",
-    "/reset-password",
-  ];
-
-  const pathWithoutLocale = getPathWithoutLocale(path);
-
-  return publicPaths.some(
-    (publicPath) =>
-      pathWithoutLocale === publicPath ||
-      pathWithoutLocale.startsWith(`${publicPath}/`),
-  );
-}

@@ -1,37 +1,20 @@
 import {
   localizedPath,
-  localizedRedirect,
   getPathWithoutLocale,
   switchLocale,
   routes,
-  isProtectedRoute,
-  isPublicRoute,
 } from "../navigation";
-import { redirect } from "next/navigation";
-
-// Mock Next.js navigation
-jest.mock("next/navigation", () => ({
-  redirect: jest.fn(),
-}));
 
 describe("Navigation Utilities", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe("localizedPath", () => {
     it("should prepend locale to paths", () => {
       expect(localizedPath("dashboard", "en")).toBe("/en/dashboard");
-      expect(localizedPath("account/settings", "fr")).toBe(
-        "/fr/account/settings",
-      );
+      expect(localizedPath("dashboard/user", "fr")).toBe("/fr/dashboard/user");
     });
 
     it("should handle paths with leading slash", () => {
       expect(localizedPath("/dashboard", "en")).toBe("/en/dashboard");
-      expect(localizedPath("/account/settings", "fr")).toBe(
-        "/fr/account/settings",
-      );
+      expect(localizedPath("/dashboard/user", "fr")).toBe("/fr/dashboard/user");
     });
 
     it("should handle empty path (home)", () => {
@@ -41,8 +24,8 @@ describe("Navigation Utilities", () => {
 
     it("should work with array overload", () => {
       expect(localizedPath(["dashboard"], "en")).toBe("/en/dashboard");
-      expect(localizedPath(["account", "settings"], "en")).toBe(
-        "/en/account/settings",
+      expect(localizedPath(["dashboard", "user"], "en")).toBe(
+        "/en/dashboard/user",
       );
       expect(localizedPath(["", "dashboard", ""], "en")).toBe("/en/dashboard");
     });
@@ -55,23 +38,11 @@ describe("Navigation Utilities", () => {
     });
   });
 
-  describe("localizedRedirect", () => {
-    it("should call redirect with localized path", () => {
-      localizedRedirect("dashboard", "en");
-      expect(redirect).toHaveBeenCalledWith("/en/dashboard");
-    });
-
-    it("should handle home redirect", () => {
-      localizedRedirect("", "fr");
-      expect(redirect).toHaveBeenCalledWith("/fr");
-    });
-  });
-
   describe("getPathWithoutLocale", () => {
     it("should extract path without locale", () => {
       expect(getPathWithoutLocale("/en/dashboard")).toBe("/dashboard");
-      expect(getPathWithoutLocale("/fr/account/settings")).toBe(
-        "/account/settings",
+      expect(getPathWithoutLocale("/fr/dashboard/user")).toBe(
+        "/dashboard/user",
       );
       expect(getPathWithoutLocale("/es/")).toBe("/");
       expect(getPathWithoutLocale("/it")).toBe("/");
@@ -79,7 +50,7 @@ describe("Navigation Utilities", () => {
 
     it("should handle locale with region", () => {
       expect(getPathWithoutLocale("/en-US/dashboard")).toBe("/dashboard");
-      expect(getPathWithoutLocale("/fr-CA/settings")).toBe("/settings");
+      expect(getPathWithoutLocale("/fr-CA/account")).toBe("/account");
     });
 
     it("should return original path if no locale pattern", () => {
@@ -101,8 +72,8 @@ describe("Navigation Utilities", () => {
   describe("switchLocale", () => {
     it("should switch locale while preserving path", () => {
       expect(switchLocale("/en/dashboard", "fr")).toBe("/fr/dashboard");
-      expect(switchLocale("/es/account/settings", "de")).toBe(
-        "/de/account/settings",
+      expect(switchLocale("/es/dashboard/user", "de")).toBe(
+        "/de/dashboard/user",
       );
       expect(switchLocale("/it/", "en")).toBe("/en");
     });
@@ -111,89 +82,60 @@ describe("Navigation Utilities", () => {
       expect(switchLocale("/dashboard", "en")).toBe("/en/dashboard");
       expect(switchLocale("/", "fr")).toBe("/fr");
     });
+
+    it("should keep a dynamic segment as it is", () => {
+      expect(switchLocale("/en/verify-email/a1B2c3D4", "it")).toBe(
+        "/it/verify-email/a1B2c3D4",
+      );
+    });
+
+    // The language selector navigates to the result without asking a list of
+    // routes, so the result itself has to be safe: whatever the path is, a
+    // URL parser resolves it on this origin and under the new locale.
+    it.each([
+      ["//evil.example", "/es//evil.example"],
+      ["//evil.example/en", "/es//evil.example/en"],
+      ["/en//evil.example", "/es//evil.example"],
+      ["/\\evil.example", "/es/\\evil.example"],
+      ["/en/\\evil.example", "/es/\\evil.example"],
+      ["https://evil.example/en", "/es/https://evil.example/en"],
+      ["javascript:alert(1)", "/es/javascript:alert(1)"],
+      ["en", "/es/en"],
+      ["", "/es"],
+      // No valid path of a URL: a space, a broken escape, half a surrogate pair.
+      ["/en/a b/%zz/\ud83d", "/es/a b/%zz/\ud83d"],
+      // Dot segments that a browser resolves inside the new locale.
+      ["/en/./admin", "/es/./admin"],
+      ["/en/a/../b", "/es/a/../b"],
+      ["/en/../es/admin", "/es/../es/admin"],
+      // Dot segments that would lead out of it: the home page instead.
+      ["/en/..", "/es"],
+      ["/en/../admin", "/es"],
+      ["/en/../esx", "/es"],
+      ["/en/a/../../admin", "/es"],
+      ["/en/..//evil.example", "/es"],
+      ["/en/%2e%2e/admin", "/es"],
+      ["/en/.%2E/admin", "/es"],
+      ["/en/..\\admin", "/es"],
+      ["/en/.\t./admin", "/es"],
+      ["/../admin", "/es"],
+    ])(
+      "should stay on this origin and under the new locale for %j",
+      (currentPath, expected) => {
+        const switched = switchLocale(currentPath, "es");
+
+        expect(switched).toBe(expected);
+        const target = new URL(switched, "https://app.example");
+        expect(target.origin).toBe("https://app.example");
+        expect(`${target.pathname}/`.startsWith("/es/")).toBe(true);
+      },
+    );
   });
 
   describe("routes helper", () => {
-    it("should generate home routes", () => {
-      expect(routes.home("en")).toBe("/en");
-      expect(routes.home("fr")).toBe("/fr");
-    });
-
     it("should generate dashboard routes", () => {
       expect(routes.dashboard("en")).toBe("/en/dashboard");
       expect(routes.dashboard("es")).toBe("/es/dashboard");
-    });
-
-    it("should generate auth routes", () => {
-      expect(routes.signin("en")).toBe("/en/auth/signin");
-      expect(routes.register("fr")).toBe("/fr/register");
-    });
-
-    it("should generate error routes with optional query", () => {
-      expect(routes.error("en")).toBe("/en/auth/error");
-      expect(routes.error("en", "OAuthAccountNotLinked")).toBe(
-        "/en/auth/error?error=OAuthAccountNotLinked",
-      );
-      expect(routes.error("fr", "Access Denied")).toBe(
-        "/fr/auth/error?error=Access%20Denied",
-      );
-    });
-
-    it("should generate dynamic routes", () => {
-      expect(routes.verifyEmail("en", "abc123")).toBe(
-        "/en/verify-email/abc123",
-      );
-    });
-  });
-
-  describe("isProtectedRoute", () => {
-    it("should identify protected routes", () => {
-      expect(isProtectedRoute("/en/dashboard")).toBe(true);
-      expect(isProtectedRoute("/fr/account")).toBe(true);
-      expect(isProtectedRoute("/es/settings")).toBe(true);
-      expect(isProtectedRoute("/de/profile")).toBe(true);
-    });
-
-    it("should identify protected subroutes", () => {
-      expect(isProtectedRoute("/en/dashboard/analytics")).toBe(true);
-      expect(isProtectedRoute("/fr/account/security")).toBe(true);
-      expect(isProtectedRoute("/settings/notifications")).toBe(true);
-    });
-
-    it("should return false for public routes", () => {
-      expect(isProtectedRoute("/en/")).toBe(false);
-      expect(isProtectedRoute("/fr/register")).toBe(false);
-      expect(isProtectedRoute("/auth/signin")).toBe(false);
-    });
-
-    it("should handle edge cases", () => {
-      expect(isProtectedRoute("/dashboard-public")).toBe(false); // Not exact match
-      expect(isProtectedRoute("/my-dashboard")).toBe(false); // Not exact match
-    });
-  });
-
-  describe("isPublicRoute", () => {
-    it("should identify public routes", () => {
-      expect(isPublicRoute("/en/")).toBe(true);
-      expect(isPublicRoute("/fr/register")).toBe(true);
-      expect(isPublicRoute("/es/auth/signin")).toBe(true);
-      expect(isPublicRoute("/de/auth/error")).toBe(true);
-    });
-
-    it("should identify public subroutes", () => {
-      expect(isPublicRoute("/en/verify-email/token123")).toBe(true);
-      expect(isPublicRoute("/reset-password/step2")).toBe(true);
-    });
-
-    it("should return false for protected routes", () => {
-      expect(isPublicRoute("/en/dashboard")).toBe(false);
-      expect(isPublicRoute("/account")).toBe(false);
-      expect(isPublicRoute("/settings")).toBe(false);
-    });
-
-    it("should handle root path", () => {
-      expect(isPublicRoute("/")).toBe(true);
-      expect(isPublicRoute("/en")).toBe(true);
     });
   });
 });

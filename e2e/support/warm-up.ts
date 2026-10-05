@@ -30,9 +30,10 @@ export interface WarmUpRoute {
  * `/middleware` and `/[locale]` are already compiled when the global setup
  * starts (Playwright's availability check requests `/`); `/en` is listed so
  * that the list is complete on its own. The link route exports POST only and
- * answers the GET with 405. The last entry is the page `next dev` serves for
- * a path that has no page: the suite opens one, the URL of a page that was
- * removed.
+ * answers the GET with 405. The verification page is requested with a token
+ * that no row can have (a real one has no hyphen) and answers 200 with its
+ * failure text. The last entry is the page `next dev` serves for a path that
+ * has no page: the suite opens one, the URL of a page that was removed.
  */
 export const WARM_UP_ROUTES: readonly WarmUpRoute[] = [
   { path: "/en", entry: "/[locale]" },
@@ -48,6 +49,11 @@ export const WARM_UP_ROUTES: readonly WarmUpRoute[] = [
   {
     path: "/api/auth/link-account/initiate",
     entry: "/api/auth/link-account/initiate",
+  },
+  { path: "/en/auth/error", entry: "/[locale]/auth/error" },
+  {
+    path: "/en/verify-email/no-such-token",
+    entry: "/[locale]/verify-email/[token]",
   },
   { path: "/en/no-such-page", entry: "/_not-found", notFound: true },
 ];
