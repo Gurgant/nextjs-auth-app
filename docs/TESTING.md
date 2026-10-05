@@ -113,12 +113,39 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   user create their own with `createTestUser` (`e2e/support/db.ts`, straight
   into the test database), so the seeded users stay as the other specs
   expect them.
+- `language-selector.e2e.ts` changes the language through the selector of
+  the navigation bar, page by page, and expects the same address under the
+  other locale, query string and fragment included. Its first test compares
+  the pages that the file names with the page files under
+  `src/app/[locale]`, so a page that is added later fails the suite until it
+  is named there. Two pages have no ordinary case. `/dashboard` is never
+  shown: the server answers it with a redirect. The sign-in page replaces
+  itself with the home page once it is hydrated, so a click on its selector
+  races that; its test holds back the requests that the router sends in
+  order to leave, as a slow connection would, and checks that the page asked
+  to leave under both locales before it lets the requests go. The e-mail
+  verification page has two cases: a token that no row has, and the token of
+  a user that the test creates for itself (`createEmailVerificationToken` in
+  `e2e/support/db.ts`). The page uses a token up while it renders, and the
+  selector requests the same address again, so the second case records what
+  that visitor reads: the success text in the first language, then, in the
+  chosen one, that the verification failed because the token has already
+  been used, while the address stays verified in the database. Before a test
+  clicks the selector it waits for the session request of the layout's
+  session provider: the selector's button is server-rendered, and a click
+  before hydration does nothing. That the request is sent from an effect was
+  read in the source of next-auth 5.0.0-beta.32 (`react.js`: `SessionProvider`
+  asks for the session in an effect when it gets no `session` prop) and not
+  measured. Measured with that wait removed and `page.goto` returning at the
+  committed response: 8 of the 9 browser tests that the file had then failed
+  at the closed selector.
 - What remains are bounded waits for a state, not second attempts at an
-  assertion: `expect.poll` on the session endpoint, on a request counter and on
-  the `NEXT_LOCALE` cookie, and one `toPass` loop that re-ticks the terms
-  checkbox until the form is
-  hydrated (`terms-validation.e2e.ts`); the behaviour under test is asserted
-  after it, once. Before the first test there is one more bounded wait, the
+  assertion: `expect.poll` on the session endpoint, on a request counter, on
+  the `NEXT_LOCALE` cookie and on the requests that the sign-in test of
+  `language-selector.e2e.ts` holds back, and one `toPass` loop that re-ticks
+  the terms checkbox until the form is hydrated
+  (`terms-validation.e2e.ts`); the behaviour under test is asserted after
+  it, once. Before the first test there is one more bounded wait, the
   warm-up of the global setup (see below).
 - Assertions are web-first (`toBeVisible`, `toHaveText`, `toHaveURL`) and the
   session endpoint is the source of truth for signed-in / signed-out.
@@ -157,7 +184,7 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   first pass is requested again. Neither pass checks whether a route was
   compiled; a compile in the second pass still comes before the first test.
   The routes are listed in one place only, `WARM_UP_ROUTES` in
-  `e2e/support/warm-up.ts`: twelve requests, one per dev-server entry (the
+  `e2e/support/warm-up.ts`: fourteen requests, one per dev-server entry (the
   locale is a parameter of the same entry, so `/en/...` is enough). The last
   one is for the page `next dev` serves when no page matches (the entry
   `/_not-found`): one spec opens the URL of a page that was removed. It is
@@ -171,7 +198,9 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   sign-in answer 307 and `/api/account/info` answers 401, and it is the
   route's own code that gives that answer; the link route
   (`/api/auth/link-account/initiate`) exports only POST and answers the GET
-  with 405, after `next dev` compiled it. For the not-found entry the rule
+  with 405, after `next dev` compiled it; the e-mail verification page is
+  requested with a token that no row can have and answers 200 with its
+  failure text. For the not-found entry the rule
   is the other way round: 404 is its answer, and any other status fails the
   setup, because then a page serves that path and the not-found page was not
   compiled. The warm-up asserts nothing about the app, and every test still
@@ -249,8 +278,8 @@ test passed and the run ended with exit code 1:
   `route not in WARM_UP_ROUTES: /[locale]/dashboard/pro (1x)` and nothing
   else.
 - The whole suite plus a temporary spec that sent no request for 70 s and
-  then opened `/en/auth/error` (a page that is not in the list): 83 passed,
-  six "Compiled" lines after the first test. The guard listed
+  then opened `/en/auth/error` (a page that was not in the list then): 83
+  passed, six "Compiled" lines after the first test. The guard listed
   `/[locale]/auth/error` as not in the list, four listed routes compiled
   again (`/api/auth/[...nextauth]`, `/[locale]`, `/[locale]/account` and
   `/api/account/info`, once each) and one "Compiled" line that names no
@@ -276,6 +305,21 @@ list (`CI=1 pnpm test:e2e`, one full run on the same machine): every test
 passed, all 14 "Compiled" lines of the dev server came before the first test,
 and the warm-up took 36.0 s. The two new requests were answered with 405 and
 404, the ten before them as on 2026-10-02.
+
+Measured again on 2026-10-05, after the requests for `/en/auth/error` and for
+the e-mail verification page were added to the list (`CI=1 pnpm test:e2e`,
+two full runs on the same machine, which was busy with other work at the
+time): every test passed both times, and every "Compiled" line of the dev
+server came before the first test (28 and 26 lines). The first pass took
+152.8 s and 104.1 s, more than the 60 s after which `next dev` drops an
+entry, and the second pass compiled entries again (twelve and nine); nothing
+was compiled while tests were running. The warm-up took 213.8 s and 141.2 s
+of its 300 s. Playwright reported 18.3 and 13.9 minutes for the two runs;
+with `CI` set, `globalTimeout` ends a run after 20. The two new requests were
+answered with 200 and 200, the other twelve as on 2026-10-03. In the
+second run `next dev` printed one "Compiled" line without a route during the
+warm-up, directly after it compiled `/api/auth/[...nextauth]`; no file had
+changed.
 
 ### In CI
 

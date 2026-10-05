@@ -321,19 +321,70 @@ describe("E2E warm-up: WARM_UP_ROUTES", () => {
     },
   );
 
+  /**
+   * Whether `requestPath` is a request for `entry`, segment by segment. A
+   * dynamic segment of the entry ([token]) stands for any one segment of the
+   * path, and a catch-all at its end ([...nextauth]) for the rest of the
+   * path. [locale] is no such segment here: asEntry() has put it in for "en".
+   */
+  const isRequestFor = (requestPath: string, entry: string) => {
+    const asked = asEntry(requestPath).split("/");
+    const segments = entry.split("/");
+    const catchAll = /^\[\.\.\.\w+\]$/.test(segments.at(-1) ?? "");
+    const fixed = catchAll ? segments.slice(0, -1) : segments;
+
+    return (
+      (catchAll
+        ? asked.length > fixed.length
+        : asked.length === fixed.length) &&
+      fixed.every(
+        (segment, index) =>
+          segment === asked[index] ||
+          (segment !== "[locale]" &&
+            /^\[\w+\]$/.test(segment) &&
+            asked[index] !== ""),
+      )
+    );
+  };
+
   it.each(served.map((route) => [route.path, route.entry]))(
     "path %s is a request for entry %s",
     (requestPath, entry) => {
-      // An API path is its own entry, or lies under a catch-all entry.
-      const catchAll = /^(.*\/)\[\.\.\.\w+\]$/.exec(entry);
-
-      expect(
-        catchAll
-          ? asEntry(requestPath).startsWith(catchAll[1])
-          : asEntry(requestPath) === entry,
-      ).toBe(true);
+      expect(isRequestFor(requestPath, entry)).toBe(true);
     },
   );
+
+  it("tells a request for an entry from a request for another one", () => {
+    const requestsFor = (entry: string, paths: string[]) =>
+      paths.filter((requestPath) => isRequestFor(requestPath, entry));
+
+    expect(
+      requestsFor("/[locale]/register", [
+        "/en/register",
+        "/en/account",
+        "/en/register/more",
+        "/en",
+        "/fr/register",
+      ]),
+    ).toEqual(["/en/register"]);
+    expect(
+      requestsFor("/[locale]/verify-email/[token]", [
+        "/en/verify-email/no-such-token",
+        "/en/verify-email",
+        "/en/verify-email/",
+        "/en/verify-email/a/b",
+        "/en/auth/no-such-token",
+      ]),
+    ).toEqual(["/en/verify-email/no-such-token"]);
+    expect(
+      requestsFor("/api/auth/[...nextauth]", [
+        "/api/auth/providers",
+        "/api/auth/callback/credentials",
+        "/api/auth",
+        "/api/account/info",
+      ]),
+    ).toEqual(["/api/auth/providers", "/api/auth/callback/credentials"]);
+  });
 
   it("lists the not-found page once, as /_not-found, behind a path that no page or route serves", () => {
     expect(notFound.map((route) => route.entry)).toEqual(["/_not-found"]);

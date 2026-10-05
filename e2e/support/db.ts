@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient, type Role } from "../../src/generated/prisma/index";
 import { uniqueEmail } from "./app";
@@ -29,11 +30,12 @@ export interface OwnUser {
 
 /**
  * A verified user without 2FA and its credentials account, like the ones
- * e2e/global-setup.ts seeds, under an address no other test uses.
+ * e2e/global-setup.ts seeds, under an address no other test uses. With
+ * `verified: false` the address is not verified.
  */
 export async function createTestUser(
   prisma: PrismaClient,
-  options: { role?: Role } = {},
+  options: { role?: Role; verified?: boolean } = {},
 ): Promise<OwnUser> {
   const email = uniqueEmail("own");
   const password = "OwnUser123!";
@@ -45,7 +47,7 @@ export async function createTestUser(
       email,
       name,
       password: await bcrypt.hash(password, 12),
-      emailVerified: new Date(),
+      emailVerified: options.verified === false ? null : new Date(),
       role,
       twoFactorEnabled: false,
     },
@@ -60,4 +62,30 @@ export async function createTestUser(
   });
 
   return { id: user.id, email, password, name, role };
+}
+
+/**
+ * The token of a verification link for `user`, stored as the app stores it
+ * when it sends the e-mail (sendEmailVerification in
+ * src/lib/actions/advanced-auth.ts): one unused row, valid for 30 minutes.
+ * No e-mail is sent, and nothing is spent from the limit on sending them.
+ */
+export async function createEmailVerificationToken(
+  prisma: PrismaClient,
+  user: OwnUser,
+): Promise<string> {
+  // 32 characters from the alphabet of the app's own tokens
+  // (generateSecureToken in src/lib/security.ts).
+  const token = randomBytes(16).toString("hex");
+
+  await prisma.emailVerificationToken.create({
+    data: {
+      token,
+      userId: user.id,
+      email: user.email,
+      expires: new Date(Date.now() + 30 * 60 * 1000),
+    },
+  });
+
+  return token;
 }

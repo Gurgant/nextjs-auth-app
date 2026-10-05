@@ -179,6 +179,23 @@ header lists the forms of a read that it knows. Every page lives under
 `src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt still
 contain English-only strings.
 
+The language selector of the navigation bar
+(`src/components/language-selector.tsx`) leads to the page the visitor is on,
+under the chosen locale: it replaces the locale segment of the current path
+(`switchLocale()` in `src/lib/utils/navigation.ts`) and keeps the query string
+and the fragment. It asks no list of routes: whatever the path is, a URL
+parser resolves the result on the same origin and under the chosen locale. A
+path whose dot segments (`..`) would lead out of the locale gives the home
+page of that locale instead. That case is unit-tested; in Chromium the three
+addresses with dot segments that were tried were resolved before the page
+was requested, so no such path reached the selector.
+`e2e/tests/language-selector.e2e.ts` checks the selector in a browser, page by
+page. The page is requested again under the new locale, and the e-mail
+verification page uses its token up on the first request: after a successful
+verification, a change of language shows the failure text for a token that
+has already been used, while the address stays verified. The same spec
+records this.
+
 ## Security posture
 
 Headers (CSP, HSTS, frame denial, …) are set centrally in `next.config.ts`; the

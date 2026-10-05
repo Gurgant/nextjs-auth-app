@@ -19,7 +19,6 @@ import { ErrorFactory } from "@/lib/errors/error-factory";
 import { BaseEvent } from "@/lib/events/base/event.base";
 import { RATE_LIMITS } from "@/lib/rate-limit";
 import { routes } from "@/lib/utils/navigation";
-import { RouteValidator, SafeNavigation } from "@/types/routes";
 
 // The error classes publish through the event bus. Check C only reads their
 // shape and needs no bus.
@@ -93,7 +92,10 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // The rows for package.json, for the enums and the context of the error layer
 // and for the props of GradientPageLayout are of the same kind: a script, a
 // dependency and a member of an enum or of an interface are no exports
-// either.
+// either. The module of the route list that the language selector asked
+// (src/types/routes.ts) is listed for the reason the event classes are: it
+// would come back together with the import that reaches it, and A would
+// then take it as used.
 // `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
@@ -416,16 +418,10 @@ const RETIRED: {
     retired: ["isValidTOTPFormat", "isValidBackupCodeFormat"],
   },
   {
-    holder: "RouteValidator",
-    members: () => Object.getOwnPropertyNames(RouteValidator),
-    kept: "isValidRoute",
-    retired: ["getRouteType", "extractLocale", "buildLocaleRoute"],
-  },
-  {
-    holder: "SafeNavigation",
-    members: () => Object.getOwnPropertyNames(SafeNavigation),
-    kept: "push",
-    retired: ["replace", "getAuthRedirect", "getDashboardRedirect"],
+    holder: "modules under src/types",
+    members: () => sourceFiles("src/types"),
+    kept: "src/types/next-auth.d.ts",
+    retired: ["src/types/routes.ts"],
   },
   {
     holder: "names exported by test/builders/base.builder.ts",
@@ -573,8 +569,22 @@ const RETIRED: {
   {
     holder: "routes of utils/navigation",
     members: () => Object.keys(routes),
-    kept: "verifyEmail",
-    retired: ["linkAccount"],
+    kept: "dashboard",
+    retired: [
+      "linkAccount",
+      "home",
+      "account",
+      "signin",
+      "register",
+      "error",
+      "verifyEmail",
+    ],
+  },
+  {
+    holder: "names exported by utils/navigation.ts",
+    members: () => namesExportedBy("src/lib/utils/navigation.ts"),
+    kept: "switchLocale",
+    retired: ["localizedRedirect", "isProtectedRoute", "isPublicRoute"],
   },
   {
     holder: "models of prisma/schema.prisma",
