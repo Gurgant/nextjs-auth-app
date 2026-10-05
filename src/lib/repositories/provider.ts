@@ -18,24 +18,11 @@ export class RepositoryProvider {
     return RepositoryProvider.instance;
   }
 
-  static reset(): void {
-    RepositoryProvider.instance = null;
-  }
-
   getUserRepository(): IUserRepository {
     if (!this.userRepository) {
       this.userRepository = new UserRepository(this.prisma);
     }
     return this.userRepository;
-  }
-
-  async transaction<T>(
-    fn: (repositories: RepositoryProvider) => Promise<T>,
-  ): Promise<T> {
-    return await this.prisma.$transaction(async (tx) => {
-      const transactionalProvider = new RepositoryProvider(tx as PrismaClient);
-      return await fn(transactionalProvider);
-    });
   }
 }
 

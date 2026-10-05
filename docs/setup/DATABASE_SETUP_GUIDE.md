@@ -43,7 +43,8 @@ is ignored. If you move the test database, run the underlying commands with
 your URL instead, e.g. `DATABASE_URL=... pnpm prisma:push` (schema) or
 `DATABASE_URL=... pnpm test` (Jest). Keep `5433` inside that URL (as in
 `15433`): the Jest integration client only honours a `DATABASE_URL` that
-contains it (`src/lib/prisma-test.ts`). For E2E, pass it the same way:
+contains it, and prints a notice when it sets another one aside
+(`src/lib/prisma-test.ts`). For E2E, pass it the same way:
 `DATABASE_URL=... pnpm test:e2e`.
 
 > **Why `127.0.0.1` and not `localhost`?** On some systems (notably Windows)

@@ -170,7 +170,9 @@ export class EventBus implements IEventBus {
   }
 
   /**
-   * Get all subscriptions
+   * Get all subscriptions. Called by a test only, which checks that the bus
+   * of the application has its two listeners and no other
+   * (src/lib/events/__tests__/event-provider.test.ts).
    */
   getSubscriptions(): EventSubscription[] {
     return Array.from(this.subscriptionMap.values());

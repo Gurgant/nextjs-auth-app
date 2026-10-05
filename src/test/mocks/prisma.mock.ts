@@ -71,29 +71,6 @@ export const mockPrismaClient: MockPrismaClient = {
 };
 
 /**
- * Mock Prisma module
- */
-export const mockPrisma = () => {
-  jest.mock("@prisma/client", () => ({
-    PrismaClient: jest.fn(() => mockPrismaClient),
-    Prisma: {
-      PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {
-        code: string;
-        meta?: any;
-        constructor(
-          message: string,
-          { code, meta }: { code: string; meta?: any },
-        ) {
-          super(message);
-          this.code = code;
-          this.meta = meta;
-        }
-      },
-    },
-  }));
-};
-
-/**
  * Reset all Prisma mocks
  */
 export const resetPrismaMocks = () => {

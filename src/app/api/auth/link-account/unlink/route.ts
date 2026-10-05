@@ -92,57 +92,77 @@ export async function DELETE(request: NextRequest) {
     // Correct password — reset the throttle counter.
     clearAttempts("link-pw", rlKeys);
 
-    // Find the account to unlink
-    const accountToUnlink = user.accounts.find(
+    // The accounts to unlink: a user can hold more than one of the provider
+    // (SECURITY.md, "Not one transaction").
+    const linkedAccounts = user.accounts.filter(
       (acc) => acc.provider === provider,
     );
-    if (!accountToUnlink) {
-      return linkAccountRefusal(
+    const notLinked = () =>
+      linkAccountRefusal(
         404,
         "not_linked",
         "Account not linked to this provider",
       );
+    if (linkedAccounts.length === 0) {
+      return notLinked();
     }
 
     // The user keeps a sign-in method: the password that was just checked
     // (an account without one was answered above).
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Delete the account
-      await tx.account.delete({
-        where: { id: accountToUnlink.id },
-      });
+    const accountsRemoved = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        // Every account of the provider goes, with one statement: a row
+        // that stayed would still sign in while the flag below says that
+        // there is none. A link completed before this statement goes too;
+        // one that writes its row after it stays (SECURITY.md, "Not one
+        // transaction").
+        const { count } = await tx.account.deleteMany({
+          where: { userId: user.id, provider },
+        });
+        // Another request has unlinked them in the meantime: nothing was
+        // removed here, so nothing is recorded.
+        if (count === 0) return count;
 
-      // Update user flags
-      const updateData: Prisma.UserUpdateInput = { hasGoogleAccount: false };
-      // "Last used" must not point at a method that is no longer linked.
-      if (user.lastLoginMethod === provider) {
-        updateData.lastLoginMethod = null;
-      }
+        // Update user flags
+        const updateData: Prisma.UserUpdateInput = { hasGoogleAccount: false };
+        // "Last used" must not point at a method that is no longer linked.
+        if (user.lastLoginMethod === provider) {
+          updateData.lastLoginMethod = null;
+        }
 
-      const updatedUser = await tx.user.update({
-        where: { id: user.id },
-        data: updateData,
-      });
+        await tx.user.update({
+          where: { id: user.id },
+          data: updateData,
+        });
 
-      // Log security event
-      await tx.securityEvent.create({
-        data: {
-          userId: user.id,
-          eventType: "account_unlinked",
-          details: `Successfully unlinked ${provider} account`,
-          success: true,
-          ipAddress: client.ipAddress,
-          userAgent: client.userAgent,
-          metadata: {
-            provider,
-            providerAccountId: accountToUnlink.providerAccountId,
-            accountId: accountToUnlink.id,
+        // Log security event: how many rows the database removed, and the
+        // accounts as they were read before (a link completed in between
+        // is counted, not listed).
+        await tx.securityEvent.create({
+          data: {
+            userId: user.id,
+            eventType: "account_unlinked",
+            details: `Successfully unlinked ${provider} account`,
+            success: true,
+            ipAddress: client.ipAddress,
+            userAgent: client.userAgent,
+            metadata: {
+              provider,
+              accountsRemoved: count,
+              providerAccountIds: linkedAccounts.map(
+                (acc) => acc.providerAccountId,
+              ),
+              accountIds: linkedAccounts.map((acc) => acc.id),
+            },
           },
-        },
-      });
+        });
 
-      return updatedUser;
-    });
+        return count;
+      },
+    );
+    if (accountsRemoved === 0) {
+      return notLinked();
+    }
 
     return NextResponse.json({
       success: true,

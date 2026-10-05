@@ -66,7 +66,6 @@ export interface FailedLoginResult {
 export interface IUserRepository extends IRepository<User> {
   findByEmail(email: string): Promise<User | null>;
   findByEmailWithAccounts(email: string): Promise<UserWithAccounts | null>;
-  findByCredentials(email: string, password: string): Promise<User | null>;
   verifyCredentials(
     email: string,
     password: string,
@@ -79,7 +78,6 @@ export interface IUserRepository extends IRepository<User> {
   ): Promise<FailedLoginResult>;
   recordSuccessfulLogin(userId: string): Promise<void>;
   createWithAccount(data: CreateUserWithAccountDTO): Promise<User>;
-  updateLastLogin(userId: string): Promise<void>;
   /**
    * Stores an already hashed password. With `revokeSessions: true` the same
    * write increments the user's sessionVersion, which ends every session of
@@ -91,13 +89,6 @@ export interface IUserRepository extends IRepository<User> {
     hashedPassword: string,
     options: { revokeSessions: boolean },
   ): Promise<void>;
-  verifyEmail(userId: string): Promise<void>;
-  enableTwoFactor(userId: string, secret: string): Promise<void>;
-  disableTwoFactor(userId: string): Promise<void>;
-  findByProvider(
-    provider: string,
-    providerAccountId: string,
-  ): Promise<User | null>;
   findByIdWithAccountDetails(
     userId: string,
   ): Promise<UserWithAccountDetails | null>;

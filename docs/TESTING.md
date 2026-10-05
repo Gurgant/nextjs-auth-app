@@ -26,13 +26,36 @@ pnpm test:coverage    # with a coverage report
 ```
 
 The integration file connects through `src/lib/prisma-test.ts`, which uses
-`DATABASE_URL` **only if it contains `5433`** and otherwise falls back to
-`127.0.0.1:5433`. If your test DB runs on another port, keep `5433` in the
-URL (e.g. `15433`) or adjust that file:
+`DATABASE_URL` **only if it contains `5433`**. Any other `DATABASE_URL` is
+set aside for the docker test database on `127.0.0.1:5433`, and the module
+prints which database it does not use and which one it uses instead (host,
+port and database name, without the credentials). The substitution is the
+safety device: the integration file deletes every row of the tables it uses,
+and under Jest the variable is the one of `.env` when the shell names none
+(measured: a Jest test started without `DATABASE_URL` in the shell sees
+one). With the `.env` of the Quick Start (port 5432) that is the development
+database, which the rule sets aside. The rule looks at nothing but the text
+`5433`: a development database whose URL contains it is taken for a test
+database, so keep yours off such a port. The rule is unit-tested
+(`src/lib/__tests__/prisma-test.test.ts`), also for the second client that
+three tests of the integration file open (`openSecondPrismaTestClient`): it
+connects to the database the rule chose, with a connection pool of its own.
+If your test DB runs on another port, keep `5433` in the URL (e.g. `15433`)
+or adjust that file:
 
 ```bash
 DATABASE_URL="postgresql://postgres:postgres123@127.0.0.1:15433/nextjs_auth_db" pnpm test
 ```
+
+`src/test/hybrid/__tests__/auth.hybrid.test.ts` runs the registration
+command on a repository that the test file writes itself, over a mocked
+Prisma client or over the test database. `pnpm test` and `pnpm test:unit` run
+it in mock mode. `pnpm test:hybrid:real` (and `pnpm test:all:real`) run it
+against the docker test database on port 5433, through the same
+`src/lib/prisma-test.ts`, and add the one test that a mock cannot give: the
+unique index on `User.email`. No job of the CI workflow runs the real mode.
+Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
+15433: every test of the file passed.
 
 Coverage (measured): **56 % of statements** of the files matched by
 `collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
@@ -80,7 +103,20 @@ where Google would be.
     with a table lock; a link is started and seen waiting to write its row,
     a second grant is written and a second link started, and both Google
     accounts end up linked. The wait for each of these states is bounded
-    (5 s); it is not a second attempt.
+    (5 s); it is not a second attempt. Each of the three tests has a limit
+    of 30 s in Jest, above its waits added up and above the 15 s that the
+    transaction holding the lock is given: a wait that fails is reported
+    with its own message, and the test gives its lock up and lets the calls
+    it started end before the next test begins. Measured on 2026-10-05 by
+    making the three tests wait for a state that cannot come. With Jest's
+    default of 5 s, in the file as it was before the limit, all three were
+    reported as "Exceeded timeout of 5000 ms for a test", never with the
+    message of the wait, and links that the second and the third had started
+    went on into the next test, where their events could not be written for
+    a user that it had deleted (three runs, with 4, 3 and 4 such failures in
+    the log). With the limit, all three were reported as "2 of 3 calls were
+    waiting for the lock after 5 s", the test after them passed, and the log
+    showed no such failure (two runs).
   - _Auth.js handleLoginOrRegister with the gated adapter - Real DB_ runs
     the function of `@auth/core` 0.41.3 that decides what a returning Google
     sign-in becomes, as it is installed, with that adapter, and with the
@@ -272,13 +308,12 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   warm-up of the global setup (see below).
 - Assertions are web-first (`toBeVisible`, `toHaveText`, `toHaveURL`) and the
   session endpoint is the source of truth for signed-in / signed-out.
-- UI text that comes from `messages/*.json` is read from there. Strings that
-  are hardcoded English in `src/` (the 2FA prompt, the dashboards and admin
-  page, the language-selector label) are asserted as literals. So are, still,
-  four answers of the registration and password-change actions
-  (`auth-registration`, `terms-validation` and `session-revocation`): they
-  were hardcoded when those specs were written and are now the English texts
-  of `Errors` and `Success` in `messages/en.json`, word for word.
+- UI text that comes from `messages/*.json` is read from there, and so is
+  what the registration and password-change actions answer (the `Errors` and
+  `Success` namespaces; `auth-registration`, `terms-validation` and
+  `session-revocation`). Strings that are hardcoded English in `src/` (the
+  2FA prompt, the dashboards and admin page, the language-selector label) are
+  asserted as literals.
 - The suite works with and without Google configured (it asks
   `/api/auth/providers`) and never clicks the Google button.
 - 2FA tests generate real TOTP codes with `otplib`; nothing is mocked at the

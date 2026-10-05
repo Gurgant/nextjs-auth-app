@@ -19,15 +19,22 @@
  *   wrong password                          -> 401 invalid_password, counted,
  *                                              and an "account_unlink_failed"
  *                                              event
- *   Google not linked                       -> 404 not_linked
+ *   Google not linked, or no longer linked
+ *   when the rows are deleted               -> 404 not_linked
  *   a failing database                      -> 500 internal_error
  *   correct password                        -> 200 { success, message,
  *                                              provider, unlinkedAt }
  * A refusal answers { error, code }: the English text, and the code that the
  * account page translates (src/lib/auth/link-account-errors.ts). With the
- * 200, in one transaction: the Account row is deleted, the user row loses
- * `hasGoogleAccount` (and `lastLoginMethod` when Google was the last method
- * used) and an "account_unlinked" event is written.
+ * 200, in one transaction: every Google Account row of the user is deleted,
+ * with one statement, the user row loses `hasGoogleAccount` (and
+ * `lastLoginMethod` when Google was the last method used) and an
+ * "account_unlinked" event is written that says how many rows went.
+ *
+ * A user can hold more than one Google Account row (SECURITY.md, "Not one
+ * transaction"). The route used to delete one row per call and to clear the
+ * flag at the first: a Google account was left that still signed in, while
+ * the user row said there was none.
  *
  * Google is the only provider the route unlinks, and it says so before it
  * reads the user: the credentials Account row cannot be removed through it.
@@ -57,7 +64,9 @@ jest.mock("@/lib/auth", () => ({ auth: jest.fn() }));
 // so a read or a write that the route is not expected to make shows up in
 // `mockPrismaCalls` instead of going unnoticed. A transaction is recorded as
 // "$transaction" and hands its callback a client of its own, whose calls are
-// recorded as "tx.<model>.<method>".
+// recorded as "tx.<model>.<method>". One write is modelled: account.deleteMany
+// removes the rows of `mockAccountTable` that its `where` names and answers
+// how many they were, as the database does.
 jest.mock("@/lib/prisma", () => {
   const delegate = (model: string) =>
     new Proxy(
@@ -100,11 +109,21 @@ const mockPrismaCalls: { name: string; args: unknown }[] = [];
 let mockUserRow: unknown = null;
 /** The one call that fails, when a test names one. */
 let mockFailingCall: string | null = null;
+/** The Account table, as far as the route can delete from it. */
+let mockAccountTable: Record<string, unknown>[] = [];
 
 function mockPrismaCall(name: string, args: unknown): Promise<unknown> {
   mockPrismaCalls.push({ name, args });
   if (name === mockFailingCall) {
     return Promise.reject(new Error("write refused"));
+  }
+  if (name.endsWith("account.deleteMany")) {
+    const { where } = args as { where: Record<string, unknown> };
+    const named = (row: Record<string, unknown>) =>
+      Object.entries(where).every(([column, value]) => row[column] === value);
+    const count = mockAccountTable.filter(named).length;
+    mockAccountTable = mockAccountTable.filter((row) => !named(row));
+    return Promise.resolve({ count });
   }
   if (name !== "user.findUnique") return Promise.resolve({ id: "a-row" });
   return mockUserRow instanceof Error
@@ -136,6 +155,20 @@ const GOOGLE_ACCOUNT = {
   id: "account-google-1",
   provider: "google",
   providerAccountId: "google-subject-1",
+};
+// A second Google account of the same user: two password steps whose Google
+// steps returned together leave one (SECURITY.md, "Not one transaction").
+const SECOND_GOOGLE_ACCOUNT = {
+  id: "account-google-2",
+  provider: "google",
+  providerAccountId: "google-subject-2",
+};
+// Another user's Google account: no request of USER_ID may remove it.
+const GOOGLE_ACCOUNT_OF_ANOTHER_USER = {
+  id: "account-google-9",
+  provider: "google",
+  providerAccountId: "google-subject-9",
+  userId: OTHER_USER_ID,
 };
 
 type RequestHeaders = Record<string, string>;
@@ -208,6 +241,21 @@ const initiateWith = (password: string) =>
 
 const prismaCallNames = () => mockPrismaCalls.map((call) => call.name);
 
+/**
+ * Gives the user these Account rows: in the row that the route reads, and in
+ * the table it deletes from, which also holds another user's Google account.
+ */
+function giveTheUser(accounts: Record<string, unknown>[], id = USER_ID) {
+  mockUserRow = userRow({ id, accounts });
+  mockAccountTable = [
+    ...accounts.map((account) => ({ ...account, userId: id })),
+    GOOGLE_ACCOUNT_OF_ANOTHER_USER,
+  ];
+}
+
+/** The ids of the Account rows that are left in the table. */
+const accountsLeft = () => mockAccountTable.map((row) => row.id);
+
 /** The argument of the one security event written, in a transaction or not. */
 function securityEventWritten(): unknown {
   const writes = mockPrismaCalls.filter((call) =>
@@ -221,7 +269,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   __resetRateLimitStore();
   mockPrismaCalls.length = 0;
-  mockUserRow = userRow();
+  giveTheUser([CREDENTIALS_ACCOUNT, GOOGLE_ACCOUNT]);
   mockFailingCall = null;
   mockAuth.mockResolvedValue(session());
 });
@@ -243,7 +291,7 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
     expect(new Date(body.unlinkedAt).toISOString()).toBe(body.unlinkedAt);
   });
 
-  it("reads the user of the session, then deletes the account, updates the user and writes the event in one transaction", async () => {
+  it("reads the user of the session, then deletes the Google accounts of that user, updates the user and writes the event in one transaction", async () => {
     // A user id in the body is not an identity: the session is.
     await del({
       password: PASSWORD,
@@ -258,8 +306,8 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
       },
       { name: "$transaction", args: undefined },
       {
-        name: "tx.account.delete",
-        args: { where: { id: GOOGLE_ACCOUNT.id } },
+        name: "tx.account.deleteMany",
+        args: { where: { userId: USER_ID, provider: "google" } },
       },
       {
         name: "tx.user.update",
@@ -267,6 +315,70 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
       },
       { name: "tx.securityEvent.create", args: expect.anything() },
     ]);
+    // The credentials row stays, and so does another user's Google account.
+    expect(accountsLeft()).toEqual([
+      CREDENTIALS_ACCOUNT.id,
+      GOOGLE_ACCOUNT_OF_ANOTHER_USER.id,
+    ]);
+  });
+
+  // One unlink used to remove one row and to clear the flag: the second
+  // Google account still signed in, and the user row said there was none.
+  it("removes every Google account of the user in one call, and the event says how many", async () => {
+    giveTheUser([CREDENTIALS_ACCOUNT, GOOGLE_ACCOUNT, SECOND_GOOGLE_ACCOUNT]);
+
+    const res = await unlinkWith(PASSWORD);
+
+    expect(res.status).toBe(200);
+    expect(accountsLeft()).toEqual([
+      CREDENTIALS_ACCOUNT.id,
+      GOOGLE_ACCOUNT_OF_ANOTHER_USER.id,
+    ]);
+    // One statement for both rows, in the transaction that clears the flag.
+    expect(prismaCallNames()).toEqual([
+      "user.findUnique",
+      "$transaction",
+      "tx.account.deleteMany",
+      "tx.user.update",
+      "tx.securityEvent.create",
+    ]);
+    expect(securityEventWritten()).toMatchObject({
+      data: {
+        eventType: "account_unlinked",
+        metadata: {
+          provider: "google",
+          accountsRemoved: 2,
+          providerAccountIds: [
+            GOOGLE_ACCOUNT.providerAccountId,
+            SECOND_GOOGLE_ACCOUNT.providerAccountId,
+          ],
+          accountIds: [GOOGLE_ACCOUNT.id, SECOND_GOOGLE_ACCOUNT.id],
+        },
+      },
+    });
+  });
+
+  // A link that is completed between the read and the delete: its row goes
+  // too, and the number in the event is the database's, not that of the read.
+  it("counts the rows the database removed, also one that the route had not read", async () => {
+    mockAccountTable.push({ ...SECOND_GOOGLE_ACCOUNT, userId: USER_ID });
+
+    const res = await unlinkWith(PASSWORD);
+
+    expect(res.status).toBe(200);
+    expect(accountsLeft()).toEqual([
+      CREDENTIALS_ACCOUNT.id,
+      GOOGLE_ACCOUNT_OF_ANOTHER_USER.id,
+    ]);
+    expect(securityEventWritten()).toMatchObject({
+      data: {
+        metadata: {
+          accountsRemoved: 2,
+          providerAccountIds: [GOOGLE_ACCOUNT.providerAccountId],
+          accountIds: [GOOGLE_ACCOUNT.id],
+        },
+      },
+    });
   });
 
   it("forgets Google as the last method used", async () => {
@@ -283,7 +395,7 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
     });
   });
 
-  it("records account_unlinked with the provider and the account that was removed", async () => {
+  it("records account_unlinked with the provider, the number of rows removed and the accounts that were read", async () => {
     await unlinkWith(PASSWORD);
 
     expect(securityEventWritten()).toStrictEqual({
@@ -296,8 +408,9 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
         userAgent: USER_AGENT,
         metadata: {
           provider: "google",
-          providerAccountId: GOOGLE_ACCOUNT.providerAccountId,
-          accountId: GOOGLE_ACCOUNT.id,
+          accountsRemoved: 1,
+          providerAccountIds: [GOOGLE_ACCOUNT.providerAccountId],
+          accountIds: [GOOGLE_ACCOUNT.id],
         },
       },
     });
@@ -306,12 +419,12 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
   // The password that was just checked is the other sign-in method, with
   // or without a credentials Account row.
   it("unlinks Google also when it is the only account row of the user", async () => {
-    mockUserRow = userRow({ accounts: [GOOGLE_ACCOUNT] });
+    giveTheUser([GOOGLE_ACCOUNT]);
 
     const res = await unlinkWith(PASSWORD);
 
     expect(res.status).toBe(200);
-    expect(prismaCallNames()).toContain("tx.account.delete");
+    expect(accountsLeft()).toEqual([GOOGLE_ACCOUNT_OF_ANOTHER_USER.id]);
   });
 
   it("forgets the wrong passwords counted before it", async () => {
@@ -321,6 +434,8 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
     }
     expect((await unlinkWith(PASSWORD)).status).toBe(200);
 
+    // Google is linked again, to be unlinked a second time.
+    giveTheUser([CREDENTIALS_ACCOUNT, GOOGLE_ACCOUNT]);
     // Without the reset, the second of these would be answered with 429.
     for (let attempt = 0; attempt < wrongOnes; attempt++) {
       expect((await unlinkWith("wrong")).status).toBe(401);
@@ -504,7 +619,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
   });
 
   it("answers 404 when Google is not linked, and writes nothing", async () => {
-    mockUserRow = userRow({ accounts: [CREDENTIALS_ACCOUNT] });
+    giveTheUser([CREDENTIALS_ACCOUNT]);
 
     const res = await unlinkWith(PASSWORD);
 
@@ -514,6 +629,27 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
       code: "not_linked",
     });
     expect(prismaCallNames()).toEqual(["user.findUnique"]);
+  });
+
+  // Another request unlinked Google between the read and the delete. This
+  // one removed nothing: it clears no flag and records no unlinking.
+  it("answers 404 when the Google account it read is gone when it deletes, and writes nothing else", async () => {
+    mockAccountTable = mockAccountTable.filter(
+      (row) => row.id !== GOOGLE_ACCOUNT.id,
+    );
+
+    const res = await unlinkWith(PASSWORD);
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({
+      error: "Account not linked to this provider",
+      code: "not_linked",
+    });
+    expect(prismaCallNames()).toEqual([
+      "user.findUnique",
+      "$transaction",
+      "tx.account.deleteMany",
+    ]);
   });
 
   it("answers 500 without details when the database fails", async () => {
@@ -545,7 +681,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(prismaCallNames()).toEqual([
       "user.findUnique",
       "$transaction",
-      "tx.account.delete",
+      "tx.account.deleteMany",
       "tx.user.update",
     ]);
     expect(logged).toHaveBeenCalledTimes(1);
@@ -563,7 +699,7 @@ describe("DELETE /api/auth/link-account/unlink, what the five wrong passwords ar
 
   function signInAs(id: string) {
     mockAuth.mockResolvedValue(session({ id }));
-    mockUserRow = userRow({ id });
+    giveTheUser([CREDENTIALS_ACCOUNT, GOOGLE_ACCOUNT], id);
   }
 
   it("the account: the same user is refused from another address", async () => {

@@ -264,78 +264,12 @@ export default async function AdminDashboardPage({
         {/* Admin Actions */}
         <div className="bg-white rounded-lg shadow-md p-6 mt-6">
           <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <a
-              href={`/${locale}/admin/users`}
-              className="p-4 border-2 border-red-500 text-red-500 rounded-lg hover:bg-red-50 transition-colors text-center"
-            >
-              <svg
-                className="w-8 h-8 mx-auto mb-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-              <span className="block font-medium">Manage Users</span>
-            </a>
-
-            <a
-              href={`/${locale}/admin/security`}
-              className="p-4 border-2 border-yellow-500 text-yellow-500 rounded-lg hover:bg-yellow-50 transition-colors text-center"
-            >
-              <svg
-                className="w-8 h-8 mx-auto mb-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
-              <span className="block font-medium">Security Logs</span>
-            </a>
-
-            <a
-              href={`/${locale}/admin/settings`}
-              className="p-4 border-2 border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors text-center"
-            >
-              <svg
-                className="w-8 h-8 mx-auto mb-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              <span className="block font-medium">System Settings</span>
-            </a>
-
+          <div className="flex flex-wrap gap-4">
             <a
               href="/api/admin/metrics"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-4 border-2 border-purple-500 text-purple-500 rounded-lg hover:bg-purple-50 transition-colors text-center"
+              className="px-8 py-4 border-2 border-purple-500 text-purple-500 rounded-lg hover:bg-purple-50 transition-colors text-center"
             >
               <svg
                 className="w-8 h-8 mx-auto mb-2"

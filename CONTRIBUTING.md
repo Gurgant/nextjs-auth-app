@@ -26,10 +26,10 @@ breaks for you, that itself is a bug worth reporting.
 
 4. The pre-commit hook runs Prettier, the translation validator, typecheck and
    lint — don't bypass it.
-5. CI runs typecheck, lint, Jest, the build and the Playwright suite on every
-   pull request. Playwright retries are off and the E2E helpers retry no
-   request: if a test fails only sometimes, fix the test or the code instead
-   of re-running until it passes.
+5. CI runs typecheck, lint, the translation validator, Jest, the build and
+   the Playwright suite on every pull request. Playwright retries are off and
+   the E2E helpers retry no request: if a test fails only sometimes, fix the
+   test or the code instead of re-running until it passes.
 
 ## Conventions
 
@@ -48,6 +48,13 @@ breaks for you, that itself is a bug worth reporting.
   mentioned nowhere but in its definition. Delete it, or add it to the
   allow-list in `src/test/unit/__tests__/dead-code.test.ts` with the reason.
   The header of that file lists what the check does not see.
+- No link without a page: `pnpm test:unit` fails when an internal link
+  target that a file under `src/app` or `src/components` writes as a literal
+  (an `href`, a `callbackUrl`, the argument of `router.push()` or
+  `redirect()`) is served by no page and no route handler under `src/app`.
+  Remove the link or add the page; the header of
+  `src/test/unit/__tests__/link-targets.test.ts` lists what the check does
+  not see, such as a target built at run time.
 - If you touch UI strings, update **all five** locale files in `messages/`
   (`pnpm validate-translations` enforces key parity). `pnpm test:unit` fails
   when a key of `messages/en.json` is read by no application file under

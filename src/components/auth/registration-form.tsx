@@ -30,9 +30,9 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
     locale,
     {
       onSuccess: () => {
-        // Redirect to sign-in page after successful registration
+        // Go to the home page two seconds after a successful registration
         setTimeout(() => {
-          router.push(`/${locale}?registered=true`);
+          router.push(`/${locale}`);
         }, 2000);
       },
       resetDelay: 5000, // Auto-clear messages after 5 seconds

@@ -18,8 +18,11 @@ import {
  * `terms`, so these two client-side guards are the whole feature.
  */
 
-// Hardcoded English in src/lib/commands/auth/register-user.command.ts, not in messages/*.json.
-const REGISTERED = "Account created successfully! Please sign in.";
+// What RegisterUserCommand answers to a successful registration: a text of the
+// message files, in the locale of the form.
+const REGISTERED = en.Success.accountCreated;
+// The home page of the locale and nothing after it: no path, no query.
+const HOME_URL = /^https?:\/\/[^/]+\/en$/;
 // Meets passwordSchema (src/lib/validation/schemas.ts): upper, lower, digit, special, >= 8.
 const PASSWORD = "Terms123!";
 
@@ -131,9 +134,9 @@ test.describe("Registration terms checkbox", () => {
     await expect(form.getByRole("alert")).toHaveText(REGISTERED);
     expect(actionPosts).toHaveLength(1);
 
-    // registration-form.tsx pushes /{locale}?registered=true 2 s after
-    // success; registering does not sign the user in.
-    await expect(page).toHaveURL(/\/en\?registered=true$/);
+    // registration-form.tsx pushes /{locale} 2 s after success, without a
+    // query; registering does not sign the user in.
+    await expect(page).toHaveURL(HOME_URL);
     await expectSignedOut(page);
 
     // The account exists with the password typed into the form.

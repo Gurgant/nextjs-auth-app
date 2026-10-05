@@ -118,20 +118,13 @@ export class AnalyticsHandler implements IEventHandler {
   }
 
   /**
-   * Get metrics for a specific time range
+   * Get metrics for a specific time range. Called by a test only: the
+   * summary hands out the newest 100 metrics, so the limit of the store is
+   * read here (src/lib/events/__tests__/event-provider.test.ts).
    */
   getMetrics(startDate: Date, endDate: Date): AnalyticsMetric[] {
     return this.metrics.filter(
       (m) => m.timestamp >= startDate && m.timestamp <= endDate,
     );
-  }
-
-  /**
-   * Reset all metrics
-   */
-  reset(): void {
-    this.metrics = [];
-    this.counters.clear();
-    this.gauges.clear();
   }
 }
