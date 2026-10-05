@@ -44,7 +44,6 @@ export interface SecurityEventData {
     | "failed_login"
     | "logout"
     | "password_changed"
-    | "password_reset"
     | "2fa_enabled"
     | "2fa_disabled"
     | "2fa_verified"

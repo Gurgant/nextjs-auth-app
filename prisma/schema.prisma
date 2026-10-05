@@ -52,54 +52,35 @@ model RevokedSession {
 }
 
 model User {
-  id                        String                   @id @default(cuid())
-  name                      String?
-  email                     String                   @unique
-  emailVerified             DateTime?
-  image                     String?
-  createdAt                 DateTime                 @default(now())
-  updatedAt                 DateTime                 @updatedAt
-  password                  String?
-  role                      Role                     @default(USER)
-  hasEmailAccount           Boolean                  @default(false)
-  hasGoogleAccount          Boolean                  @default(false)
-  lastLoginAt               DateTime?
-  lastLoginIp               String?
-  lastPasswordChange        DateTime?
-  lockedUntil               DateTime?
-  loginAttempts             Int                      @default(0)
-  passwordSetAt             DateTime?
-  lastLoginMethod           String?
-  requiresPasswordChange    Boolean                  @default(false)
-  sessionVersion            Int                      @default(0)
-  backupCodes               String[]
-  emailVerificationRequired Boolean                  @default(true)
-  twoFactorEnabled          Boolean                  @default(false)
-  twoFactorEnabledAt        DateTime?
-  twoFactorSecret           String?
-  accounts                  Account[]
-  emailVerificationTokens   EmailVerificationToken[]
-  passwordResetTokens       PasswordResetToken[]
-  securityEvents            SecurityEvent[]
-  sessions                  Session[]
+  id                      String                   @id @default(cuid())
+  name                    String?
+  email                   String                   @unique
+  emailVerified           DateTime?
+  image                   String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  password                String?
+  role                    Role                     @default(USER)
+  hasEmailAccount         Boolean                  @default(false)
+  hasGoogleAccount        Boolean                  @default(false)
+  lastLoginAt             DateTime?
+  lastPasswordChange      DateTime?
+  lockedUntil             DateTime?
+  loginAttempts           Int                      @default(0)
+  passwordSetAt           DateTime?
+  lastLoginMethod         String?
+  sessionVersion          Int                      @default(0)
+  backupCodes             String[]
+  twoFactorEnabled        Boolean                  @default(false)
+  twoFactorSecret         String?
+  accounts                Account[]
+  emailVerificationTokens EmailVerificationToken[]
+  securityEvents          SecurityEvent[]
+  sessions                Session[]
 
   @@index([email])
   @@index([lastLoginAt])
   @@index([role])
-}
-
-model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
-  userId    String
-  expires   DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([expires])
-  @@index([userId])
 }
 
 model EmailVerificationToken {

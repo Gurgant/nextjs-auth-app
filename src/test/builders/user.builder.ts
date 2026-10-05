@@ -21,21 +21,17 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
       createdAt: new Date(),
       updatedAt: new Date(),
       lastLoginAt: new Date(),
-      lastLoginIp: null,
       hasEmailAccount: false,
       hasGoogleAccount: false,
       lastLoginMethod: null,
       passwordSetAt: null,
       lastPasswordChange: null,
-      requiresPasswordChange: false,
       sessionVersion: 0,
       twoFactorEnabled: false,
       twoFactorSecret: null,
-      twoFactorEnabledAt: null,
       backupCodes: [],
       loginAttempts: 0,
       lockedUntil: null,
-      emailVerificationRequired: true,
       role: "USER" as const,
     };
   }
@@ -152,8 +148,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
         "BACKUP8",
         "BACKUP9",
         "BACKUP10",
-      ])
-      .with("twoFactorEnabledAt", new Date());
+      ]);
   }
 
   /**
@@ -162,8 +157,7 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
   without2FA(): this {
     return this.with("twoFactorEnabled", false)
       .with("twoFactorSecret", null)
-      .with("backupCodes", [])
-      .with("twoFactorEnabledAt", null);
+      .with("backupCodes", []);
   }
 
   /**
@@ -184,20 +178,10 @@ export class UserBuilder extends ChainableBuilder<User, UserBuilder> {
   }
 
   /**
-   * Require password change
-   */
-  requiresPasswordChange(): this {
-    return this.with("requiresPasswordChange", true);
-  }
-
-  /**
    * Set last login
    */
-  withLastLogin(date?: Date, ip?: string): this {
-    return this.with("lastLoginAt", date || new Date()).with(
-      "lastLoginIp",
-      ip || "127.0.0.1",
-    );
+  withLastLogin(date?: Date): this {
+    return this.with("lastLoginAt", date || new Date());
   }
 
   /**

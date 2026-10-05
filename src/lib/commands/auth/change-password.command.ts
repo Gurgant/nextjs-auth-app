@@ -126,7 +126,6 @@ export class ChangePasswordCommand extends BaseCommand<
       // Update password metadata
       await userRepo.update(user.id, {
         lastPasswordChange: new Date(),
-        requiresPasswordChange: false,
       });
 
       // Emit password changed event

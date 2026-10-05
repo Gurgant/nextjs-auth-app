@@ -5,7 +5,6 @@ export type {
   Session,
   Role,
   SecurityEvent,
-  PasswordResetToken,
   EmailVerificationToken,
 } from "@/generated/prisma";
 export { PrismaClient } from "@/generated/prisma";

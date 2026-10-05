@@ -44,7 +44,6 @@ async function cleanTestDatabase(prisma: PrismaClient) {
   console.log("🗑️ Cleaning test database tables...");
 
   await prisma.$transaction([
-    prisma.passwordResetToken.deleteMany(),
     prisma.emailVerificationToken.deleteMany(),
     prisma.securityEvent.deleteMany(),
     prisma.account.deleteMany(),

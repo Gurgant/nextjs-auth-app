@@ -91,6 +91,52 @@ the provider, and the raw `X-Forwarded-For` header of the request. Code up
 to 2.3.0 still writes to the table, so its link initiation fails once the
 table is gone and until the new code runs (read in the source, not measured).
 
+The table `PasswordResetToken` and four columns of `User` are no longer in
+the schema either: `emailVerificationRequired`, `twoFactorEnabledAt`,
+`requiresPasswordChange` and `lastLoginIp`. Since 2.3.0 nothing in the
+application has read any of them. No version from 2.0.0 to 2.4.0 wrote a row
+to the table or a value to `lastLoginIp`; `requiresPasswordChange` was only
+ever written as `false`, `emailVerificationRequired` became `false` when a
+user followed the verification link, and `twoFactorEnabledAt` held the date
+on which 2FA was enabled (read in the source of each tag). Measured on a test
+database on 2026-10-05, with Prisma 6.19.3 and no terminal attached:
+
+- With **no user row**, `pnpm prisma:push` drops the table and the four
+  columns without a warning and without a question (exit code 0).
+- With **one user row** that holds the column defaults, `pnpm prisma:push`
+  prints "You are about to drop the column `emailVerificationRequired` on the
+  `User` table, which still contains 1 non-null values.", the same line for
+  `requiresPasswordChange`, and stops with "Use the --accept-data-loss flag
+  to ignore the data loss warnings" (exit code 1). Nothing is changed. Both
+  columns are `NOT NULL`, and both lines were printed in every measured state
+  that had a user. A row whose `twoFactorEnabledAt` is set adds the same line
+  for that column. A row in `PasswordResetToken`, which only code of your own
+  can have written, adds "You are about to drop the `PasswordResetToken`
+  table, which is not empty (1 rows)."
+- `pnpm prisma:push --accept-data-loss` then completes the push (exit code
+  0). The user row kept every other column, and its `Account` and
+  `SecurityEvent` rows stayed as they were (compared before and after). The
+  flag accepts every data-loss warning of that push, so check first that the
+  warnings name nothing but this table and these columns.
+
+Start the new code **before** this push: the opposite of the order that
+`RevokedSession` needs. Measured with the Prisma client of 2.4.0 against the
+pushed schema: a query that names its columns still works, but reading a
+whole user row fails ("The column `User.lastLoginIp` does not exist in the
+current database", P2022), and so does creating a user. Sign-in reads the
+whole row (read in the source), so the old code signs nobody in once the
+columns are gone. The new code does not need them: its integration suite
+passes against a database that still has the old schema (the E2E suite was
+not run that way). Coming from 2.0.0 or 2.1.0, which have no `RevokedSession`
+table, the two orders contradict each other; stop the application for the
+push (not measured).
+
+Two of the dropped values were more than a default, and both have a
+counterpart that stays (read in the source): the write that cleared
+`emailVerificationRequired` also set `User.emailVerified`, and the action
+that set `twoFactorEnabledAt` also wrote the `2fa_enabled` row in
+`SecurityEvent`.
+
 ## Before you go live
 
 Work through the **Production Hardening Checklist in `SECURITY.md`** and read
