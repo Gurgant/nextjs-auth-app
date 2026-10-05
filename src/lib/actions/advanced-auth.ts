@@ -196,7 +196,6 @@ export async function verifyEmailToken(
         where: { id: verificationToken.userId },
         data: {
           emailVerified: new Date(),
-          emailVerificationRequired: false,
         },
       }),
       prisma.emailVerificationToken.update({
@@ -423,7 +422,6 @@ export async function enableTwoFactorAuth(
         twoFactorEnabled: true,
         twoFactorSecret: validatedData.encryptedSecret, // Already encrypted
         backupCodes: encryptedBackupCodes,
-        twoFactorEnabledAt: new Date(),
       },
     });
 
@@ -510,7 +508,6 @@ export async function disableTwoFactorAuth(
         twoFactorEnabled: false,
         twoFactorSecret: null,
         backupCodes: [],
-        twoFactorEnabledAt: null,
       },
     });
 

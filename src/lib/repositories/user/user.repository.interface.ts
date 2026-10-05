@@ -28,7 +28,6 @@ export interface UpdateUserDTO {
   passwordSetAt?: Date | null;
   lastPasswordChange?: Date | null;
   lastLoginAt?: Date | null;
-  requiresPasswordChange?: boolean;
 }
 
 export interface UserWithAccounts extends User {

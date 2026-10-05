@@ -195,7 +195,6 @@ describe("Advanced Authentication Actions", () => {
           twoFactorEnabled: false,
           twoFactorSecret: null,
           backupCodes: [],
-          twoFactorEnabledAt: null,
         },
       });
     });

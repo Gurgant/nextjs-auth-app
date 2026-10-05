@@ -73,10 +73,10 @@ Playwright tests.
   the account page's profile card (name, e-mail) show the copy taken into the
   session at sign-in: a name change is saved, but appears there only after the
   next sign-in.
-- **Not implemented**: password reset (the schema has a `PasswordResetToken`
-  table that the application never reads or writes); entering a backup code
-  in the sign-in form (codes are generated, stored and verified on the
-  server, but the form only accepts a 6-digit TOTP code).
+- **Not implemented**: password reset (there is no page, no server action and
+  no table for it); entering a backup code in the sign-in form (codes are
+  generated, stored and verified on the server, but the form only accepts a
+  6-digit TOTP code).
 - **Translations** cover the page text of sign-in, registration and account.
   Many server messages (sign-up and password-change results, rate-limit and
   2FA / linking errors), the dashboards, the admin page and the 2FA sign-in prompt are

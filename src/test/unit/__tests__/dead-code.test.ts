@@ -78,7 +78,11 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // that only the page passed, and the page's texts in the message files (a
 // namespace and five keys: `pnpm validate-translations` compares the files
 // with each other, not with the code, so a text that nothing reads passes
-// it).
+// it). The parts of the Prisma schema that nothing read are listed too (the
+// schema is no source file for A and B, and the client generated from it is
+// skipped): a model, fields of the User model, the member of the event type
+// that went with the model, and the member of the repository's update type
+// that went with one of the fields.
 // `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
@@ -296,13 +300,35 @@ const RETIRED: {
     holder: "models of prisma/schema.prisma",
     members: prismaModels,
     kept: "EmailVerificationToken",
-    retired: ["AccountLinkRequest"],
+    retired: ["AccountLinkRequest", "PasswordResetToken"],
+  },
+  {
+    holder: "fields of User in prisma/schema.prisma",
+    members: () => prismaFields("User"),
+    kept: "twoFactorEnabled",
+    retired: [
+      "passwordResetTokens",
+      "lastLoginIp",
+      "requiresPasswordChange",
+      "emailVerificationRequired",
+      "twoFactorEnabledAt",
+    ],
+  },
+  {
+    holder: "members of UpdateUserDTO",
+    members: () =>
+      interfaceMembers(
+        "src/lib/repositories/user/user.repository.interface.ts",
+        "UpdateUserDTO",
+      ),
+    kept: "lastPasswordChange",
+    retired: ["requiresPasswordChange"],
   },
   {
     holder: "security event types (string literals of security.ts)",
     members: () => stringLiteralsIn("src/lib/security.ts"),
     kept: "account_unlinked",
-    retired: ["account_linked"],
+    retired: ["account_linked", "password_reset"],
   },
   {
     holder: "security alert types (string literals of email.ts)",
@@ -458,8 +484,33 @@ function prismaModels(): string[] {
 }
 
 /**
+ * The fields that a model declares in the text of a Prisma schema: its
+ * columns and its relations. An attribute of the model (`@@index`) is no
+ * field, and neither is a comment. The body of the model ends at the line
+ * that starts with its closing brace: a brace inside a field
+ * (`@default("{}")`) or inside a comment does not end it. Prisma does not ask
+ * for indentation, so a field counts with or without it.
+ */
+function fieldsOfModel(schema: string, model: string): string[] {
+  const body = new RegExp(`^model ${model} \\{$([\\s\\S]*?)^\\}`, "m").exec(
+    schema,
+  );
+  return [...(body?.[1] ?? "").matchAll(/^[ \t]*(\w+)[ \t]/gm)].map(
+    (match) => match[1],
+  );
+}
+
+/** The fields that a model of prisma/schema.prisma declares. */
+function prismaFields(model: string): string[] {
+  return fieldsOfModel(
+    fs.readFileSync(path.join(REPO_ROOT, "prisma/schema.prisma"), "utf8"),
+    model,
+  );
+}
+
+/**
  * The names of the members of an interface that a file of the repository
- * declares: the props of a component.
+ * declares: the props of a component, the fields of a DTO.
  */
 function interfaceMembers(file: string, name: string): string[] {
   const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
@@ -885,6 +936,35 @@ describe("the checks, on a tree with a known answer", () => {
       ["e", 1],
       ["f", 1],
     ]);
+  });
+
+  it("reads the fields of a Prisma model past a brace inside its body, indented or not", () => {
+    const schema = [
+      "model Before {",
+      "  id String @id",
+      "}",
+      "",
+      "model User {",
+      "  id       String @id @default(cuid())",
+      '  settings Json   @default("{}")',
+      "  // a comment with a brace }",
+      "  email    String @unique",
+      "name String?",
+      "",
+      "  @@index([email])",
+      "}",
+      "",
+      "model After {",
+      "  userId String @id",
+      "}",
+    ].join("\n");
+    const fields = ["id", "settings", "email", "name"];
+
+    expect(fieldsOfModel(schema, "User")).toEqual(fields);
+    expect(fieldsOfModel(schema.replace(/\n/g, "\r\n"), "User")).toEqual(
+      fields,
+    );
+    expect(fieldsOfModel(schema, "Nobody")).toEqual([]);
   });
 });
 
