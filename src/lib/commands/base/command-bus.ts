@@ -1,7 +1,7 @@
 import { ICommand, CommandMetadata } from "./command.interface";
 import { sanitizeCommandInput, sanitizeCommandOutput } from "./sanitize";
 import { answerSaysSuccess } from "./outcome";
-import { describeThrown } from "./thrown";
+import { describeThrown, isThrownError } from "./thrown";
 import { ICommandMiddleware } from "../middleware/middleware.interface";
 import { randomUUID } from "crypto";
 import { eventBus } from "@/lib/events";
@@ -149,7 +149,7 @@ export class CommandBus {
       // Execute error middleware
       for (const mw of this.middleware) {
         if (mw.onError) {
-          await mw.onError(commandName, input, error as Error, fullMetadata);
+          await mw.onError(commandName, input, error, fullMetadata);
         }
       }
 
@@ -169,8 +169,13 @@ export class CommandBus {
         ),
       );
 
+      // An Error is printed as it is. Any other value is printed as the
+      // failed event describes it, never by its content.
       if (this.options.enableLogging) {
-        console.error(`[CommandBus] Error executing ${commandName}:`, error);
+        console.error(
+          `[CommandBus] Error executing ${commandName}:`,
+          isThrownError(error) ? error : thrown.message,
+        );
       }
 
       throw error;

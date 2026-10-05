@@ -16,6 +16,14 @@
  * handlers map is keyed by, their statics and their prototype objects. It does
  * not follow prototype chains or variables captured by a closure.
  */
+// Translations answer with the English fallback the command passes in.
+jest.mock("@/lib/utils/server-translations", () => ({
+  translateError: async (_locale: string, key: string, fallback?: string) =>
+    fallback ?? key,
+  translateSuccess: async (_locale: string, key: string, fallback?: string) =>
+    fallback ?? key,
+}));
+
 const mockRepo = {
   findByEmail: jest.fn(),
   findById: jest.fn(),
@@ -169,7 +177,8 @@ const THE_NAME_IN_AN_AUDIT_ENTRY = expect.arrayContaining([
 const CLIENT_IP = "203.0.113.9";
 const USER_AGENT = "Client-Chosen-Agent/1.0";
 // Not a locale of the app: a value the walk can look for, which "de" is not.
-// The commands do not check the locale, they hand it on to the events.
+// The commands do not check the locale: they answer in it and hand it on to
+// the events.
 const LOCALE = "de-x-retained";
 const REQUEST_METADATA = {
   locale: LOCALE,

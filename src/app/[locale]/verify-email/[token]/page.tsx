@@ -17,6 +17,10 @@ export default async function VerifyEmailPage({ params }: Props) {
 
   // Verify the email token with locale
   const result = await verifyEmailToken(token, locale);
+  // The token works once, and this page is requested again on a reload, on a
+  // change of language and after a mail scanner: then the address is already
+  // verified, which is neither a failure nor a second verification.
+  const alreadyVerified = result.success && result.data.alreadyVerified;
 
   return (
     <FormPageLayout>
@@ -41,10 +45,14 @@ export default async function VerifyEmailPage({ params }: Props) {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              {t("successTitle")}
+              {alreadyVerified ? t("alreadyVerifiedTitle") : t("successTitle")}
             </h1>
 
-            <p className="text-gray-600 mb-8">{t("successMessage")}</p>
+            <p className="text-gray-600 mb-8">
+              {alreadyVerified
+                ? t("alreadyVerifiedMessage")
+                : t("successMessage")}
+            </p>
 
             <div className="space-y-4">
               <Link

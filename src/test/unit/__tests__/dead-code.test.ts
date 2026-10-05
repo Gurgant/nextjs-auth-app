@@ -489,6 +489,8 @@ const RETIRED: {
       "isSuccessResponse",
       "hasFieldErrors",
       "withErrorHandling",
+      "createSuccessResponse",
+      "createFieldErrorResponse",
     ],
   },
   {

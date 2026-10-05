@@ -4,6 +4,9 @@
  * An unexpected internal failure inside a command is answered with a generic
  * message: the text of the exception stays in the server log and never
  * reaches the client. Validation and business errors keep their own message.
+ * The commands are run without a locale here, so each answer is the English
+ * text the command falls back to; what they answer in each of the five
+ * languages is in src/lib/actions/__tests__/translated-answers.test.ts.
  */
 const mockRepo = {
   findByEmail: jest.fn(),
@@ -21,12 +24,23 @@ jest.mock("@/lib/events", () => ({
 }));
 
 import bcrypt from "bcryptjs";
-import { RegisterUserCommand } from "../register-user.command";
+import { getTranslations } from "next-intl/server";
+import {
+  RegisterUserCommand,
+  type RegisterUserInput,
+} from "../register-user.command";
 import { ChangePasswordCommand } from "../change-password.command";
 import { COMMAND_FAILED_MESSAGE } from "../../base/command.base";
 
 const INTERNAL_ERROR = "connect ECONNREFUSED db.internal:5432";
 const GENERIC = "Something went wrong. Please try again.";
+
+/** Everything a console spy was handed, objects in their JSON form. */
+const printed = (spy: jest.SpyInstance) =>
+  spy.mock.calls
+    .flat()
+    .map((part) => (typeof part === "string" ? part : JSON.stringify(part)))
+    .join("\n");
 
 const registration = {
   name: "Alice Example",
@@ -60,6 +74,59 @@ describe("commands do not return raw exception messages (CMD-9)", () => {
 
   it("uses the app's generic error text", () => {
     expect(COMMAND_FAILED_MESSAGE).toBe(GENERIC);
+  });
+
+  // With a locale the answer is the message of that locale
+  // (translated-answers.test.ts). When its messages cannot be read, the
+  // command still answers, with the same English text as without a locale.
+  describe("a locale whose messages cannot be read", () => {
+    beforeEach(() => {
+      (getTranslations as unknown as jest.Mock).mockRejectedValue(
+        new Error("no messages for this locale"),
+      );
+    });
+
+    it("RegisterUserCommand answers a refusal with its English text", async () => {
+      mockRepo.findByEmail.mockResolvedValue({ id: "u1" });
+
+      const result = await new RegisterUserCommand().execute({
+        ...registration,
+        locale: "de",
+      });
+
+      expect(result).toEqual({
+        success: false,
+        message: "User already exists",
+      });
+      expect(getTranslations).toHaveBeenCalledWith({
+        locale: "de",
+        namespace: "Errors",
+      });
+    });
+
+    it("RegisterUserCommand answers a new account with its English text", async () => {
+      mockRepo.findByEmail.mockResolvedValue(null);
+      mockRepo.createWithAccount.mockResolvedValue({
+        id: "u1",
+        email: registration.email,
+        name: registration.name,
+      });
+
+      const result = await new RegisterUserCommand().execute({
+        ...registration,
+        locale: "de",
+      });
+
+      expect(result).toEqual({
+        success: true,
+        message: "Account created successfully! Please sign in.",
+        data: { userId: "u1" },
+      });
+      expect(getTranslations).toHaveBeenCalledWith({
+        locale: "de",
+        namespace: "Success",
+      });
+    });
   });
 
   describe("RegisterUserCommand", () => {
@@ -98,6 +165,41 @@ describe("commands do not return raw exception messages (CMD-9)", () => {
       expect(mockRepo.findByEmail).not.toHaveBeenCalled();
     });
 
+    // The schema's own text for the refusal ("Passwords don't match") stays
+    // on the server: log() prints it with the error, and the answer is the
+    // one message above, without a field and without that text.
+    it("answers a confirmation that does not match without the text of the schema", async () => {
+      const logSpy = console.log as unknown as jest.SpyInstance;
+
+      const result = await new RegisterUserCommand().execute({
+        ...registration,
+        confirmPassword: "Different123!",
+      });
+
+      expect(result).toEqual({ success: false, message: "Validation failed" });
+      expect(JSON.stringify(result)).not.toMatch(/match/i);
+      expect(printed(logSpy)).toContain("Passwords don't match");
+    });
+
+    // registerUser always hands an object. A project built on the starter can
+    // call the command or the bus with anything: an input that is no object
+    // fails the schema like any other, and is answered.
+    it.each([[null], [undefined]])(
+      "answers the input %p as invalid instead of rejecting",
+      async (input) => {
+        const result = await new RegisterUserCommand().execute(
+          input as unknown as RegisterUserInput,
+          { commandId: "command-1", timestamp: new Date() },
+        );
+
+        expect(result).toEqual({
+          success: false,
+          message: "Validation failed",
+        });
+        expect(mockRepo.findByEmail).not.toHaveBeenCalled();
+      },
+    );
+
     it("keeps the business message for an e-mail that is already registered", async () => {
       mockRepo.findByEmail.mockResolvedValue({ id: "u1" });
 
@@ -110,13 +212,6 @@ describe("commands do not return raw exception messages (CMD-9)", () => {
 
     it("logs that refusal without the e-mail address or the name", async () => {
       mockRepo.findByEmail.mockResolvedValue({ id: "u1" });
-      const printed = (spy: jest.SpyInstance) =>
-        spy.mock.calls
-          .flat()
-          .map((part) =>
-            typeof part === "string" ? part : JSON.stringify(part),
-          )
-          .join("\n");
       const logSpy = console.log as unknown as jest.SpyInstance;
       const warnSpy = console.warn as unknown as jest.SpyInstance;
 
@@ -176,6 +271,38 @@ describe("commands do not return raw exception messages (CMD-9)", () => {
         expect.objectContaining({ error: INTERNAL_ERROR }),
       );
     });
+
+    // As for the registration: the texts of the schema stay on the server.
+    it.each([
+      [
+        "a confirmation that does not match",
+        { confirmPassword: "Other789!x" },
+        "New passwords don't match",
+      ],
+      [
+        "a new password equal to the current one",
+        { newPassword: "OldPass123!", confirmPassword: "OldPass123!" },
+        "New password must be different from current password",
+      ],
+    ])(
+      "answers %s without the text of the schema",
+      async (_case, fields, schemaText) => {
+        const logSpy = console.log as unknown as jest.SpyInstance;
+
+        const result = await new ChangePasswordCommand().execute({
+          ...input,
+          ...fields,
+        });
+
+        expect(result).toEqual({
+          success: false,
+          message: "Validation failed",
+        });
+        expect(JSON.stringify(result)).not.toMatch(/match|different/i);
+        expect(printed(logSpy)).toContain(schemaText);
+        expect(mockRepo.findById).not.toHaveBeenCalled();
+      },
+    );
 
     it("keeps the message for a wrong current password", async () => {
       mockRepo.findById.mockResolvedValue(await existingUser());

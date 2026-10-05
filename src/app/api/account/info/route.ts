@@ -22,13 +22,17 @@ interface OptimizedAccountInfo {
   backupCodesCount?: number;
 }
 
+// The route does not know the language of the page that asks. Each failure
+// names itself with a `code`, and the account page says it in its own
+// language (src/hooks/use-account-data.ts); `message` is English, for other
+// clients, and is not shown there.
 export async function GET(_request: NextRequest) {
   try {
     // Check authentication
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized" },
+        { success: false, code: "unauthorized", message: "Unauthorized" },
         { status: 401 },
       );
     }
@@ -47,6 +51,7 @@ export async function GET(_request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
+            code: "userNotFound",
             message: "User not found",
           },
           { status: 404, headers: responseHeaders },
@@ -82,6 +87,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
+          code: "accountInfoUnavailable",
           message: "Account information is temporarily unavailable",
         },
         { status: 503, headers: responseHeaders },
@@ -93,6 +99,7 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
+        code: "failedToLoadAccountInfo",
         message: "Failed to load account information",
       },
       { status: 500, headers: { "Cache-Control": "private, no-store" } },

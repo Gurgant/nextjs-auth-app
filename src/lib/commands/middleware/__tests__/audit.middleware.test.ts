@@ -6,8 +6,10 @@
  * outcome: no input, no output, no error message and nothing else of the
  * command metadata.
  */
+import { runInNewContext } from "vm";
 import { AuditMiddleware, DEFAULT_MAX_AUDIT_LOGS } from "../audit.middleware";
 import type { CommandMetadata } from "../../base/command.interface";
+import { describeThrown } from "../../base/thrown";
 
 const metadataFor = (commandId: string): CommandMetadata => ({
   commandId,
@@ -200,21 +202,44 @@ describe("AuditMiddleware", () => {
       ]);
     });
 
-    // The bus hands over whatever was thrown, which need not be an Error.
+    // An Error made in another realm is an Error, and is not `instanceof Error`
+    // here (see OTHER_REALM_ERRORS in base/__tests__/command-bus.test.ts).
+    it("an error of another realm: the name of its class", async () => {
+      const mw = new AuditMiddleware();
+      const thrown: unknown = runInNewContext(
+        "new RangeError('Refused alice@example.com')",
+      );
+      expect(thrown instanceof Error).toBe(false);
+
+      await mw.onError("Cmd", REGISTRATION_INPUT, thrown, REQUEST_METADATA);
+
+      expect(mw.getAuditLogs()).toStrictEqual([
+        {
+          commandName: "Cmd",
+          commandId: "c1",
+          userId: "u1",
+          timestamp: expect.any(Date),
+          success: false,
+          errorType: "RangeError",
+        },
+      ]);
+    });
+
+    // The bus hands over whatever was thrown, which need not be an Error. The
+    // entry then says what the failed event of the bus says (describeThrown).
     it.each([
       ["a string", "Refused alice@example.com", "string"],
-      ["null", null, "object"],
+      ["null", null, "null"],
+      ["undefined", undefined, "undefined"],
+      ["an object with a message", { message: "Refused" }, "object"],
     ])(
-      "what was thrown is %s: its type, never its text",
-      async (_case, thrown, errorType) => {
+      "what was thrown is %s: its kind, never its text",
+      async (_case, thrown, kind) => {
         const mw = new AuditMiddleware();
+        const errorType = `Non-Error value thrown: ${kind}`;
+        expect(describeThrown(thrown).message).toBe(errorType);
 
-        await mw.onError(
-          "Cmd",
-          REGISTRATION_INPUT,
-          thrown as unknown as Error,
-          REQUEST_METADATA,
-        );
+        await mw.onError("Cmd", REGISTRATION_INPUT, thrown, REQUEST_METADATA);
 
         expect(mw.getAuditLogs()).toStrictEqual([
           {

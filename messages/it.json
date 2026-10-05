@@ -213,7 +213,18 @@
     "invalidSecret": "Formato segreto crittografato non valido. Per favore riprova a configurare 2FA.",
     "emptySecret": "Il segreto decrittografato è vuoto. Per favore riprova a configurare 2FA.",
     "secretDecryptionFailed": "Decrittografia segreto 2FA fallita. Per favore riprova a configurare 2FA.",
-    "invalidSecretFormat": "Formato segreto 2FA non valido. Per favore configura 2FA di nuovo."
+    "invalidSecretFormat": "Formato segreto 2FA non valido. Per favore configura 2FA di nuovo.",
+    "tooManySignUpAttempts": "Troppi tentativi di registrazione. Per favore riprova più tardi.",
+    "tooManyAttempts": "Troppi tentativi. Per favore riprova tra qualche minuto.",
+    "tooManyVerificationEmails": "Troppe email di verifica richieste. Per favore riprova tra qualche minuto.",
+    "invalidVerificationCode": "Codice di verifica non valido. Inserisci il codice attuale a 6 cifre dalla tua app di autenticazione.",
+    "failedToCreateAccount": "Creazione account fallita. Per favore riprova.",
+    "validationFailed": "Validazione fallita",
+    "userAlreadyExists": "L'utente esiste già",
+    "currentPasswordIncorrect": "La password attuale non è corretta",
+    "noPasswordSet": "Nessuna password è impostata per questo account",
+    "somethingWentWrong": "Qualcosa è andato storto. Per favore riprova.",
+    "accountInfoUnavailable": "Le informazioni dell'account sono temporaneamente non disponibili"
   },
   "Success": {
     "accountDeleted": "Account eliminato con successo",
@@ -223,7 +234,9 @@
     "emailVerified": "Email verificata con successo",
     "twoFactorSetupInitiated": "Configurazione 2FA avviata",
     "twoFactorEnabled": "2FA abilitato con successo",
-    "twoFactorDisabled": "2FA disabilitato con successo"
+    "twoFactorDisabled": "2FA disabilitato con successo",
+    "accountCreated": "Account creato con successo! Per favore accedi.",
+    "passwordChanged": "Password cambiata con successo! Per favore accedi di nuovo."
   },
   "ComponentErrors": {
     "failedToSendVerificationEmail": "Invio email di verifica fallito. Per favore riprova.",
@@ -312,6 +325,8 @@
     "backToHome": "Torna alla Home",
     "needHelp": "Hai bisogno di aiuto? Contatta il nostro team di supporto.",
     "metaTitle": "Verifica Email - App di Autenticazione",
-    "metaDescription": "Verifica il tuo indirizzo email per completare la configurazione del tuo account."
+    "metaDescription": "Verifica il tuo indirizzo email per completare la configurazione del tuo account.",
+    "alreadyVerifiedTitle": "Email Già Verificata ✅",
+    "alreadyVerifiedMessage": "Il tuo indirizzo email è già stato verificato. Non devi fare altro."
   }
 }

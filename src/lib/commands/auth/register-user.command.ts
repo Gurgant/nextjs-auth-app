@@ -6,11 +6,11 @@ import { CommandMetadata } from "../base/command.interface";
 import { repositories } from "@/lib/repositories";
 import { eventBus } from "@/lib/events";
 import { UserRegisteredEvent } from "@/lib/events/domain/auth.events";
+import { ActionResponse } from "@/lib/utils/form-responses";
 import {
-  createSuccessResponse,
-  createErrorResponse,
-  ActionResponse,
-} from "@/lib/utils/form-responses";
+  createSuccessResponseI18n,
+  createErrorResponseI18n,
+} from "@/lib/utils/form-responses-i18n";
 import { emailSchema, passwordSchema, nameSchema } from "@/lib/validation";
 import { ErrorFactory } from "@/lib/errors/error-factory";
 import { createError } from "@/lib/errors/error-builder";
@@ -44,11 +44,22 @@ export class RegisterUserCommand extends BaseCommand<
 
   // Validation is handled in execute() method for better error messaging
 
+  // What the command answers is a message of the Errors or Success namespace
+  // in `input.locale`, which the action has checked. The English message of
+  // an error is for the server log and the error event: it is the answer only
+  // when there is no locale, or no translation for it. The texts of the schema
+  // above stay on the server as well: a form that fails it is answered with
+  // one message, without them.
+
   async execute(
     input: RegisterUserInput,
     metadata?: CommandMetadata,
   ): Promise<ActionResponse> {
     const run = this.logExecution(metadata);
+    // Read once, and so that it cannot throw: the type is not checked at run
+    // time, and a caller can hand over null or undefined. Such an input fails
+    // the schema below and is answered like any other invalid one.
+    const locale = input?.locale;
 
     try {
       // Validate input
@@ -59,7 +70,11 @@ export class RegisterUserCommand extends BaseCommand<
           correlationId: metadata?.commandId,
         });
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.validationFailed",
+          locale,
+          error.getUserMessage(),
+        );
       }
 
       const userRepo = repositories.getUserRepository();
@@ -77,7 +92,11 @@ export class RegisterUserCommand extends BaseCommand<
           field: "email",
         });
         error.log();
-        return createErrorResponse(error.getUserMessage());
+        return await createErrorResponseI18n(
+          "errors.userAlreadyExists",
+          locale,
+          error.getUserMessage(),
+        );
       }
 
       // Hash password
@@ -117,12 +136,14 @@ export class RegisterUserCommand extends BaseCommand<
           {
             userId: user.id,
             correlationId: metadata?.commandId,
-            locale: input.locale,
+            locale,
           },
         ),
       );
 
-      const response = createSuccessResponse(
+      const response = await createSuccessResponseI18n(
+        "success.accountCreated",
+        locale,
         "Account created successfully! Please sign in.",
         { userId: user.id },
       );
@@ -136,7 +157,11 @@ export class RegisterUserCommand extends BaseCommand<
       });
       baseError.log();
       this.logError(run, baseError);
-      return createErrorResponse(COMMAND_FAILED_MESSAGE);
+      return await createErrorResponseI18n(
+        "errors.somethingWentWrong",
+        locale,
+        COMMAND_FAILED_MESSAGE,
+      );
     }
   }
 }

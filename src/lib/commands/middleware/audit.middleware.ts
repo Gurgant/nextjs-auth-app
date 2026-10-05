@@ -1,6 +1,7 @@
 import { ICommandMiddleware } from "./middleware.interface";
 import { CommandMetadata } from "../base/command.interface";
 import { answerSaysSuccess } from "../base/outcome";
+import { describeThrown, isThrownError } from "../base/thrown";
 
 /** Entries kept in memory; older ones are dropped first. */
 export const DEFAULT_MAX_AUDIT_LOGS = 1000;
@@ -26,7 +27,10 @@ interface AuditLog {
    * something the bus caught while or after running the command.
    */
   success: boolean;
-  /** Only on such an entry: the class name of what the bus caught. */
+  /**
+   * Only on such an entry: the class name of the Error the bus caught, or
+   * the fixed description of a value that is not an Error.
+   */
   errorType?: string;
 }
 
@@ -35,7 +39,9 @@ const CLASS_NAME = /^[A-Za-z_$][\w$]{0,63}$/;
 
 /**
  * Class name of what the bus caught, never its message. The bus hands over
- * whatever was thrown, which need not be an Error: then it is the `typeof`.
+ * whatever was thrown, which need not be an Error: then it is the description
+ * that the failed event of the bus carries (see thrown.ts), so that the two
+ * agree.
  * The class is read from the prototype, not from the object itself (an object
  * can carry a `constructor` property of its own), and its name is kept only
  * when it is an identifier; anything else is recorded as "Error".
@@ -46,8 +52,8 @@ const CLASS_NAME = /^[A-Za-z_$][\w$]{0,63}$/;
  * "TypeError") keep their names.
  */
 function thrownClassName(thrown: unknown): string {
-  if (!(thrown instanceof Error)) {
-    return typeof thrown;
+  if (!isThrownError(thrown)) {
+    return describeThrown(thrown).message;
   }
   const prototype: { constructor?: { name?: unknown } } | null =
     Object.getPrototypeOf(thrown);
@@ -92,7 +98,7 @@ export class AuditMiddleware implements ICommandMiddleware {
   async onError(
     commandName: string,
     input: unknown,
-    error: Error,
+    error: unknown,
     metadata: CommandMetadata,
   ): Promise<void> {
     const auditLog: AuditLog = {

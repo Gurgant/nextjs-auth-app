@@ -213,7 +213,18 @@
     "invalidSecret": "Formato de secreto cifrado inválido. Por favor intenta configurar 2FA de nuevo.",
     "emptySecret": "El secreto descifrado está vacío. Por favor intenta configurar 2FA de nuevo.",
     "secretDecryptionFailed": "Falló al descifrar el secreto 2FA. Por favor intenta configurar 2FA de nuevo.",
-    "invalidSecretFormat": "Formato de secreto 2FA inválido. Por favor configura 2FA de nuevo."
+    "invalidSecretFormat": "Formato de secreto 2FA inválido. Por favor configura 2FA de nuevo.",
+    "tooManySignUpAttempts": "Demasiados intentos de registro. Por favor intenta de nuevo más tarde.",
+    "tooManyAttempts": "Demasiados intentos. Por favor intenta de nuevo en unos minutos.",
+    "tooManyVerificationEmails": "Se han solicitado demasiados correos de verificación. Por favor intenta de nuevo en unos minutos.",
+    "invalidVerificationCode": "Código de verificación inválido. Ingresa el código actual de 6 dígitos de tu aplicación autenticadora.",
+    "failedToCreateAccount": "Falló al crear la cuenta. Por favor intenta de nuevo.",
+    "validationFailed": "La validación falló",
+    "userAlreadyExists": "El usuario ya existe",
+    "currentPasswordIncorrect": "La contraseña actual es incorrecta",
+    "noPasswordSet": "Esta cuenta no tiene una contraseña establecida",
+    "somethingWentWrong": "Algo salió mal. Por favor intenta de nuevo.",
+    "accountInfoUnavailable": "La información de la cuenta no está disponible temporalmente"
   },
   "Success": {
     "accountDeleted": "Cuenta eliminada exitosamente",
@@ -223,7 +234,9 @@
     "emailVerified": "Correo verificado exitosamente",
     "twoFactorSetupInitiated": "Configuración 2FA iniciada",
     "twoFactorEnabled": "2FA habilitado exitosamente",
-    "twoFactorDisabled": "2FA deshabilitado exitosamente"
+    "twoFactorDisabled": "2FA deshabilitado exitosamente",
+    "accountCreated": "¡Cuenta creada exitosamente! Por favor inicia sesión.",
+    "passwordChanged": "¡Contraseña cambiada exitosamente! Por favor inicia sesión de nuevo."
   },
   "ComponentErrors": {
     "failedToSendVerificationEmail": "Falló al enviar correo de verificación. Por favor intenta de nuevo.",
@@ -312,6 +325,8 @@
     "backToHome": "Volver al Inicio",
     "needHelp": "¿Necesitas ayuda? Contacta a nuestro equipo de soporte.",
     "metaTitle": "Verificación de Correo - App de Autenticación",
-    "metaDescription": "Verifica tu dirección de correo para completar la configuración de tu cuenta."
+    "metaDescription": "Verifica tu dirección de correo para completar la configuración de tu cuenta.",
+    "alreadyVerifiedTitle": "Correo Ya Verificado ✅",
+    "alreadyVerifiedMessage": "Tu dirección de correo ya ha sido verificada. No tienes que hacer nada más."
   }
 }

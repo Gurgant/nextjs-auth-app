@@ -248,18 +248,20 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   verification page has two cases: a token that no row has, and the token of
   a user that the test creates for itself (`createEmailVerificationToken` in
   `e2e/support/db.ts`). The page uses a token up while it renders, and the
-  selector requests the same address again, so the second case records what
+  selector requests the same address again, so the second case expects what
   that visitor reads: the success text in the first language, then, in the
-  chosen one, that the verification failed because the token has already
-  been used, while the address stays verified in the database. Before a test
-  clicks the selector it waits for the session request of the layout's
-  session provider: the selector's button is server-rendered, and a click
-  before hydration does nothing. That the request is sent from an effect was
-  read in the source of next-auth 5.0.0-beta.32 (`react.js`: `SessionProvider`
-  asks for the session in an effect when it gets no `session` prop) and not
-  measured. Measured with that wait removed and `page.goto` returning at the
-  committed response: 8 of the 9 browser tests that the file had then failed
-  at the closed selector.
+  chosen one and once more after a reload, that the address is already
+  verified, while the verification date, the `updatedAt` of the user row and
+  the one `email_verified` event of the first request stay in the database
+  as they were. Before a test clicks the selector it waits for the session
+  request of the layout's session provider: the selector's button is
+  server-rendered, and a click before hydration does nothing. That the
+  request is sent from an effect was read in the source of next-auth
+  5.0.0-beta.32 (`react.js`: `SessionProvider` asks for the session in an
+  effect when it gets no `session` prop) and not measured. Measured with
+  that wait removed and `page.goto` returning at the committed response: 8
+  of the 9 browser tests that the file had then failed at the closed
+  selector.
 - What remains are bounded waits for a state, not second attempts at an
   assertion: `expect.poll` on the session endpoint, on a request counter, on
   the `NEXT_LOCALE` cookie and on the requests that the sign-in test of
@@ -271,9 +273,12 @@ The fixture user with 2FA has its TOTP secret encrypted with your
 - Assertions are web-first (`toBeVisible`, `toHaveText`, `toHaveURL`) and the
   session endpoint is the source of truth for signed-in / signed-out.
 - UI text that comes from `messages/*.json` is read from there. Strings that
-  are hardcoded English in `src/` (server-action messages, the 2FA prompt, the
-  dashboards and admin page, the language-selector label) are asserted as
-  literals.
+  are hardcoded English in `src/` (the 2FA prompt, the dashboards and admin
+  page, the language-selector label) are asserted as literals. So are, still,
+  four answers of the registration and password-change actions
+  (`auth-registration`, `terms-validation` and `session-revocation`): they
+  were hardcoded when those specs were written and are now the English texts
+  of `Errors` and `Success` in `messages/en.json`, word for word.
 - The suite works with and without Google configured (it asks
   `/api/auth/providers`) and never clicks the Google button.
 - 2FA tests generate real TOTP codes with `otplib`; nothing is mocked at the

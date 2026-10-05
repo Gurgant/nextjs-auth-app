@@ -185,10 +185,14 @@ In-memory, best-effort limits keyed by **account or e-mail _and_ client IP**
 
 Sign-in answers with the generic invalid-credentials error (`2fa_invalid` for a
 throttled 2FA code). The link / unlink API routes answer **HTTP 429 +
-`Retry-After`**; server actions return a "Too many …" message. The
-client IP is the first parseable entry of `X-Forwarded-For` (IPv4 or IPv6, any
-notation), then `X-Real-IP`, then `X-Client-IP`; with none of them there is no
-IP key and only the account / e-mail key applies.
+`Retry-After`**; server actions return a "Too many …" message in the locale
+they resolve (`docs/ARCHITECTURE.md`, "Server actions"). The client IP is the
+first parseable entry of `X-Forwarded-For` (IPv4 or IPv6, any notation), then
+`X-Real-IP`, then `X-Client-IP`; with none of them there is no IP key and only
+the account / e-mail key applies. Registration and the verification-e-mail
+action count an attempt before the address is validated: the key they build
+from it is the address in lower case, cut to 254 characters, and a value that
+is not text gets no e-mail key.
 
 ### Configuration & secrets
 

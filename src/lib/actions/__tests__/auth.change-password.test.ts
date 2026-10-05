@@ -6,13 +6,18 @@
  * the server action. Only the bus call is guarded: the steps before it (locale,
  * session, rate limit) are not. The real command bus and ChangePasswordCommand
  * are used; the session, the rate limiter and the repository are mocked.
+ * The translation helpers are mocked as well, and hold no text of any
+ * language: an answer of this file shows the locale and the message key the
+ * action or the command asked for. The English text handed over with a key is
+ * the answer only without a translation; what a user reads in each of the
+ * five languages is in translated-answers.test.ts.
  */
-// Translations answer with the English fallback the action passes in.
+const mockTranslate = jest.fn();
 jest.mock("@/lib/utils/server-translations", () => ({
-  translateError: async (_locale: string, key: string, fallback?: string) =>
-    fallback ?? key,
-  translateSuccess: async (_locale: string, key: string, fallback?: string) =>
-    fallback ?? key,
+  translateError: (locale: string, key: string, fallback?: string) =>
+    mockTranslate(locale, key, fallback),
+  translateSuccess: (locale: string, key: string, fallback?: string) =>
+    mockTranslate(locale, key, fallback),
 }));
 
 jest.mock("next/headers", () => ({
@@ -74,6 +79,13 @@ function form(fields: Record<string, string>): FormData {
   return formData;
 }
 
+/** What the mocked helpers answer for a key: the form's locale is "en". */
+const translated = (key: string) => `[en] ${key}`;
+
+/** The English texts that were handed over with the keys, in their order. */
+const fallbacks = () =>
+  mockTranslate.mock.calls.map(([, key, fallback]) => [key, fallback]);
+
 describe("changeUserPassword", () => {
   const previousRounds = process.env.BCRYPT_ROUNDS;
   let errorSpy: jest.SpyInstance;
@@ -83,6 +95,9 @@ describe("changeUserPassword", () => {
     // next/jest loads the developer's .env: pin the cost so the test is fast.
     process.env.BCRYPT_ROUNDS = "4";
     jest.clearAllMocks();
+    mockTranslate.mockImplementation(
+      async (locale: string, key: string) => `[${locale}] ${key}`,
+    );
     errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     jest.spyOn(console, "warn").mockImplementation(() => {});
     jest.spyOn(console, "log").mockImplementation(() => {});
@@ -134,10 +149,13 @@ describe("changeUserPassword", () => {
       ],
       ["an empty form", {}],
     ])("%s", async (_label, fields) => {
-      await expect(changeUserPassword(form(fields))).resolves.toMatchObject({
+      await expect(changeUserPassword(form(fields))).resolves.toEqual({
         success: false,
-        message: "Validation failed",
+        message: translated("errors.validationFailed"),
       });
+      expect(fallbacks()).toEqual([
+        ["errors.validationFailed", "Validation failed"],
+      ]);
       expect(mockRepo.updatePassword).not.toHaveBeenCalled();
     });
 
@@ -153,10 +171,13 @@ describe("changeUserPassword", () => {
       );
 
       // The command's own answer, not the generic one of the action's guard.
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         success: false,
-        message: "User with ID 'user-123' not found",
+        message: translated("errors.userNotFound"),
       });
+      expect(fallbacks()).toEqual([
+        ["errors.userNotFound", "User with ID 'user-123' not found"],
+      ]);
       expect(mockRepo.updatePassword).not.toHaveBeenCalled();
     });
 
@@ -171,11 +192,16 @@ describe("changeUserPassword", () => {
         }),
       );
 
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         success: false,
-        message:
-          "Operation 'change password' is not allowed: No password set for this account",
+        message: translated("errors.noPasswordSet"),
       });
+      expect(fallbacks()).toEqual([
+        [
+          "errors.noPasswordSet",
+          "Operation 'change password' is not allowed: No password set for this account",
+        ],
+      ]);
       expect(mockRepo.updatePassword).not.toHaveBeenCalled();
     });
 
@@ -192,9 +218,17 @@ describe("changeUserPassword", () => {
 
       expect(result).toEqual({
         success: false,
-        message: "Failed to change password. Please try again.",
+        message: translated("errors.failedToChangePassword"),
       });
-      expect(result.message).not.toContain("bus exploded");
+      expect(fallbacks()).toEqual([
+        [
+          "errors.failedToChangePassword",
+          "Failed to change password. Please try again.",
+        ],
+      ]);
+      expect(JSON.stringify(mockTranslate.mock.calls)).not.toContain(
+        "bus exploded",
+      );
       expect(errorSpy).toHaveBeenCalledWith(
         "[changeUserPassword] Error:",
         expect.objectContaining({ message: "bus exploded" }),
@@ -214,15 +248,21 @@ describe("changeUserPassword", () => {
 
       expect(result).toMatchObject({
         success: true,
-        message: "Password changed successfully! Please sign in again.",
+        message: translated("success.passwordChanged"),
       });
+      expect(fallbacks()).toEqual([
+        [
+          "success.passwordChanged",
+          "Password changed successfully! Please sign in again.",
+        ],
+      ]);
       expect(mockRepo.updatePassword).toHaveBeenCalledTimes(1);
       const [userId, hash] = mockRepo.updatePassword.mock.calls[0];
       expect(userId).toBe("user-123");
       expect(await bcrypt.compare(NEW, hash)).toBe(true);
     });
 
-    it("refuses a wrong current password with the field message", async () => {
+    it("refuses a wrong current password with the message for it", async () => {
       const result = await changeUserPassword(
         form({
           currentPassword: "Wrong123!x",
@@ -231,10 +271,16 @@ describe("changeUserPassword", () => {
         }),
       );
 
-      expect(result).toMatchObject({
+      expect(result).toEqual({
         success: false,
-        message: "Invalid input for field: currentPassword",
+        message: translated("errors.currentPasswordIncorrect"),
       });
+      expect(fallbacks()).toEqual([
+        [
+          "errors.currentPasswordIncorrect",
+          "Invalid input for field: currentPassword",
+        ],
+      ]);
       expect(mockRepo.updatePassword).not.toHaveBeenCalled();
     });
 
@@ -251,8 +297,11 @@ describe("changeUserPassword", () => {
 
       expect(result).toEqual({
         success: false,
-        message: "You must be signed in.",
+        message: translated("errors.unauthorized"),
       });
+      expect(fallbacks()).toEqual([
+        ["errors.unauthorized", "You must be signed in."],
+      ]);
       expect(executeSpy).not.toHaveBeenCalled();
     });
   });

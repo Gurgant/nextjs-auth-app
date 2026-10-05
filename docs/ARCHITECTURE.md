@@ -149,10 +149,40 @@ before that function and the redirect after a refusal are read, not measured
 - Registration, password change / add, account deletion and 2FA enabling
   validate input with Zod (in the action or in its command);
   `updateUserProfile` checks the name by hand, and the token / e-mail actions
-  take the token or the address as is. The "send verification e-mail" action
-  checks its locale against the five supported ones, because the locale goes
-  into the e-mailed link.
-- Rate limits come from `src/lib/rate-limit.ts`.
+  take the token or the address as is.
+- Every action answers in one of the five supported locales, and in the
+  default one for any other value. The actions that take a form use the field
+  `_locale`, which `useLocalizedAction` appends, unless it is missing,
+  unsupported or the default `en`: then the `NEXT_LOCALE` cookie decides
+  (`resolveFormLocale` cannot tell a field that says `en` from one that was
+  not sent). So the form of an English page is answered in the language of the
+  cookie when the cookie names another one. The unit tests of `registerUser`
+  show it (`auth.register.test.ts` in `src/lib/actions/__tests__/`); whether a
+  browser of this app can hold such a cookie on an English page was not
+  measured. The other actions take the locale as an argument; for the "send
+  verification e-mail" action it also goes into the e-mailed link.
+- `verifyEmailToken` runs while the verification page renders, so the same
+  link is requested again by a reload, by a change of language, and by the
+  visitor after something else opened it. It verifies an address once. Its two
+  writes are conditional (the token only while it is unused, the address only
+  while it is not verified), and only the request that verifies writes the
+  user row and records the `email_verified` event. By state of the token: a
+  used token of a verified address answers that the address is already
+  verified, also after its 30 minutes; an unused token that has not expired,
+  of an address that is already verified, answers the same and is used up,
+  and nothing else is written; an unused token that has expired keeps its
+  failure, also when the address is verified; a used token of an address that
+  is not verified and an unknown token keep their failures. Each state has a
+  unit test in `src/lib/actions/__tests__/` (`advanced-auth.test.ts`,
+  `verify-email-once.test.ts`). Requests that arrive together were measured
+  against PostgreSQL, outside the suite: one link requested twice (25 rounds)
+  and five times (10 rounds), and two links of one user (25 rounds). In every
+  round one request verified, the others answered "already verified", and one
+  event was recorded.
+- Rate limits come from `src/lib/rate-limit.ts`. Registration and the "send
+  verification e-mail" action count an attempt before anything validates the
+  address, so the key they build from it is the address in lower case, cut
+  to 254 characters (`src/lib/actions/rate-limit-key.ts`).
 - Security events are persisted by the actions, the link / unlink routes,
   the link gate and `authorize()` (2FA enable/disable, e-mail verification,
   link initiation, completed and refused links, unlinking, wrong link
@@ -195,16 +225,21 @@ The errors layer is what those two commands use: `ErrorFactory`
 `business.operationNotAllowed`, `business.alreadyExists`, `wrap`) and the
 builder behind `createError()`, which adds a user id and a correlation id.
 An error carries a code, a category, a severity and an HTTP status; `log()`
-prints it on the server, and what the command answers is the error's
-message, or a generic text for an exception it did not expect. The HTTP
-status is not used yet: no route handler creates one of these errors.
+prints it on the server. What the command answers is a text of the `Errors`
+or `Success` namespace in the locale of its input, with a generic one for an
+exception it did not expect; the error's own English message is the answer
+only when the command gets no locale, or when the messages of that locale
+cannot be read. A form that fails the command's schema is answered with one
+message: the texts of the schema stay in the server log. The HTTP status is
+not used yet: no route handler creates one of these errors.
 
 The command bus keeps a list of its own, outside the events layer
 (`AuditMiddleware`, `src/lib/commands/middleware/audit.middleware.ts`): its
 newest 1,000 entries, in the memory of one process and read only by tests. An
 entry holds the command name, the command id and the user id, the time, the
 duration, the outcome and, for a command that threw, the class name of the
-error. It holds no input, no output, no error text and nothing of the request
+error (for a value that is not an Error, its description in the failed event).
+It holds no input, no output, no error text and nothing of the request
 (`src/lib/commands/__tests__/no-retained-secrets.test.ts`).
 
 ## Internationalization
@@ -219,6 +254,14 @@ header lists the forms of a read that it knows. Every page lives under
 `src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt still
 contain English-only strings.
 
+What the server actions and the two commands answer comes from the `Errors`
+and `Success` namespaces, and the field errors of the forms that an action
+validates itself from `validation`, all in the locale of the request (see
+"Server actions"). `/api/account/info` does not know the language of the page
+that asks: it names each failure with a `code`, and the account page says it
+in its own language (`src/hooks/use-account-data.ts`). The link / unlink
+routes still answer English texts.
+
 The language selector of the navigation bar
 (`src/components/language-selector.tsx`) leads to the page the visitor is on,
 under the chosen locale: it replaces the locale segment of the current path
@@ -231,10 +274,10 @@ addresses with dot segments that were tried were resolved before the page
 was requested, so no such path reached the selector.
 `e2e/tests/language-selector.e2e.ts` checks the selector in a browser, page by
 page. The page is requested again under the new locale, and the e-mail
-verification page uses its token up on the first request: after a successful
-verification, a change of language shows the failure text for a token that
-has already been used, while the address stays verified. The same spec
-records this.
+verification page uses its token up on the first request: after the change of
+language, and after a reload, the visitor reads that the address is already
+verified (see "Server actions"). The same spec opens the page with a real
+token, changes the language and reloads.
 
 ## Security posture
 

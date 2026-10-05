@@ -45,21 +45,24 @@ jest.mock("@/lib/rate-limit", () => ({
 const mockFindUser = jest.fn();
 const mockFindToken = jest.fn();
 const mockCreateEvent = jest.fn();
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
+jest.mock("@/lib/prisma", () => {
+  const client = {
     user: {
       findUnique: () => mockFindUser(),
       update: async () => ({}),
+      updateMany: async () => ({ count: 1 }),
     },
     emailVerificationToken: {
       create: async () => ({}),
       findUnique: () => mockFindToken(),
-      update: async () => ({}),
+      updateMany: async () => ({ count: 1 }),
     },
     securityEvent: { create: (args: unknown) => mockCreateEvent(args) },
-    $transaction: async (writes: Promise<unknown>[]) => Promise.all(writes),
-  },
-}));
+    // A transaction hands its function a client: this one.
+    $transaction: async (work: (tx: unknown) => unknown) => work(client),
+  };
+  return { prisma: client };
+});
 
 const mockHandedToLogSecurityEvent = jest.fn();
 jest.mock("@/lib/security", () => {
@@ -147,11 +150,14 @@ describe.each(WRITERS)(
     beforeEach(() => {
       jest.clearAllMocks();
       mockFindUser.mockResolvedValue(user);
+      // The row as the action's query returns it: with the verification date
+      // of its user.
       mockFindToken.mockResolvedValue({
         id: "token-row-1",
         userId: USER.id,
         used: false,
         expires: new Date(Date.now() + 60_000),
+        user: { emailVerified: null },
       });
       mockCreateEvent.mockResolvedValue({ id: "event-1" });
     });
@@ -223,3 +229,49 @@ describe.each(WRITERS)(
     });
   },
 );
+
+// The verification page calls verifyEmailToken while it renders, and the same
+// address is requested again on a reload, on a change of language and by the
+// user after a mail scanner opened the link.
+describe("verifyEmailToken, asked again with a token it has used", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockHeaders.mockResolvedValue(new Headers());
+    mockCreateEvent.mockResolvedValue({ id: "event-1" });
+  });
+
+  it("writes no second event for an address that is verified", async () => {
+    mockFindToken.mockResolvedValue({
+      id: "token-row-1",
+      userId: USER.id,
+      used: true,
+      expires: new Date(Date.now() + 60_000),
+      user: { emailVerified: new Date("2026-01-01T10:00:00Z") },
+    });
+
+    await expect(verifyEmailToken("token-1", "en")).resolves.toMatchObject({
+      success: true,
+      data: { alreadyVerified: true },
+    });
+
+    expect(mockHandedToLogSecurityEvent).not.toHaveBeenCalled();
+    expect(mockCreateEvent).not.toHaveBeenCalled();
+  });
+
+  it("writes no event for an address that is not verified", async () => {
+    mockFindToken.mockResolvedValue({
+      id: "token-row-1",
+      userId: USER.id,
+      used: true,
+      expires: new Date(Date.now() + 60_000),
+      user: { emailVerified: null },
+    });
+
+    await expect(verifyEmailToken("token-1", "en")).resolves.toMatchObject({
+      success: false,
+    });
+
+    expect(mockHandedToLogSecurityEvent).not.toHaveBeenCalled();
+    expect(mockCreateEvent).not.toHaveBeenCalled();
+  });
+});

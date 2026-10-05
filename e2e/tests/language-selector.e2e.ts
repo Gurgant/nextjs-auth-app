@@ -229,12 +229,12 @@ for (const [route, opened] of Object.entries(OPENED)) {
 
 // The verification page uses the token up while it renders
 // (src/app/[locale]/verify-email/[token]/page.tsx calls verifyEmailToken), and
-// the selector asks for the same address again. So a visitor whose address
-// was verified a moment ago reads, after choosing a language, that the
-// verification failed because the token was already used, while the address
-// stays verified. This test records what happens with a real token; it does
-// not say that the page should answer a used token this way.
-test("/verify-email/[token]: a visitor whose address the page has just verified and who changes en to fr stays on the address and reads that the token was already used", async ({
+// the selector asks for the same address again, as a reload does. The second
+// request finds the token used and the address verified, and the page says
+// that: the visitor reads that the address is already verified, not that the
+// verification failed. Nothing is written a second time: the user row and
+// the one security event of the first request stay as they were.
+test("/verify-email/[token]: a visitor whose address the page has just verified and who changes en to fr stays on the address and reads that it is already verified", async ({
   page,
 }) => {
   const user = await createTestUser(db, { verified: false });
@@ -243,31 +243,65 @@ test("/verify-email/[token]: a visitor whose address the page has just verified 
   const inDatabase = async () => {
     const row = await db.emailVerificationToken.findUniqueOrThrow({
       where: { token },
-      select: { used: true, user: { select: { emailVerified: true } } },
+      select: {
+        used: true,
+        user: { select: { emailVerified: true, updatedAt: true } },
+      },
     });
-    return { tokenUsed: row.used, verified: row.user.emailVerified !== null };
+    return {
+      tokenUsed: row.used,
+      verifiedAt: row.user.emailVerified,
+      userUpdatedAt: row.user.updatedAt,
+      verifiedEvents: await db.securityEvent.count({
+        where: { userId: user.id, eventType: "email_verified" },
+      }),
+    };
   };
-  expect(await inDatabase()).toEqual({ tokenUsed: false, verified: false });
+  expect(await inDatabase()).toMatchObject({
+    tokenUsed: false,
+    verifiedAt: null,
+    verifiedEvents: 0,
+  });
 
   await openHydrated(page, `/en${rest}`);
   await expect(
     mainHeading(page, 1, en.EmailVerification.successTitle),
   ).toBeVisible();
-  expect(await inDatabase()).toEqual({ tokenUsed: true, verified: true });
+  const afterTheFirstRequest = await inDatabase();
+  expect(afterTheFirstRequest).toMatchObject({
+    tokenUsed: true,
+    verifiedAt: expect.any(Date),
+    verifiedEvents: 1,
+  });
+
+  const alreadyVerified = async (m: Messages) => {
+    await expect(
+      mainHeading(page, 1, m.EmailVerification.alreadyVerifiedTitle),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("main")
+        .getByText(m.EmailVerification.alreadyVerifiedMessage, { exact: true }),
+    ).toBeVisible();
+    // Neither the failure screen nor a second verification.
+    await expect(
+      page
+        .locator("main")
+        .getByText(m.Errors.verificationTokenUsed, { exact: true }),
+    ).toHaveCount(0);
+    expect(await inDatabase()).toEqual(afterTheFirstRequest);
+  };
 
   await chooseLanguage(page, "en", "fr");
 
   await expect(page).toHaveURL(`/fr${rest}`);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
-  await expect(
-    mainHeading(page, 1, fr.EmailVerification.failureTitle),
-  ).toBeVisible();
-  await expect(
-    page
-      .locator("main")
-      .getByText(fr.Errors.verificationTokenUsed, { exact: true }),
-  ).toBeVisible();
-  expect(await inDatabase()).toEqual({ tokenUsed: true, verified: true });
+  await alreadyVerified(fr);
+
+  await page.reload();
+
+  await expect(page).toHaveURL(`/fr${rest}`);
+  await alreadyVerified(fr);
 });
 
 test(`${SIGN_IN}: a visitor who changes en to it while the page is still open stays on it, query string and fragment included`, async ({
