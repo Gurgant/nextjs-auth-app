@@ -74,8 +74,13 @@ export async function logSecurityEvent(
         eventType: eventData.eventType,
         details: eventData.details,
         metadata: eventData.metadata,
-        ipAddress: eventData.ipAddress,
-        userAgent: eventData.userAgent,
+        // The client chooses both: bounded here as in requestMetadata, for a
+        // caller that read the request headers by itself.
+        ipAddress:
+          eventData.ipAddress && isValidIP(eventData.ipAddress)
+            ? eventData.ipAddress
+            : undefined,
+        userAgent: cutUserAgent(eventData.userAgent),
         success: eventData.success ?? true,
       },
     });
@@ -177,4 +182,32 @@ export function getClientIP(headers: Headers): string | undefined {
   if (clientIP && isValidIP(clientIP)) return normalizeIP(clientIP);
 
   return undefined;
+}
+
+const MAX_USER_AGENT_LENGTH = 512;
+
+// The User-Agent is text the client chooses: its first 512 characters are
+// kept, and an empty one counts as none.
+function cutUserAgent(
+  userAgent: string | null | undefined,
+): string | undefined {
+  return userAgent?.slice(0, MAX_USER_AGENT_LENGTH) || undefined;
+}
+
+/**
+ * Client IP and User-Agent of a request, for whatever stores them or hands
+ * them on: the security events, and the command metadata, which reaches the
+ * event listeners. Taken from the request headers, never from form fields:
+ * the IP as getClientIP reads it (a valid address, which the client controls
+ * unless a trusted proxy overwrites X-Forwarded-For, see SECURITY.md) and the
+ * User-Agent, which the client chooses, cut to 512 characters.
+ */
+export function requestMetadata(requestHeaders: Headers): {
+  ipAddress?: string;
+  userAgent?: string;
+} {
+  return {
+    ipAddress: getClientIP(requestHeaders),
+    userAgent: cutUserAgent(requestHeaders.get("user-agent")),
+  };
 }

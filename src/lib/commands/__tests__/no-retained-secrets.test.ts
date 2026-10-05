@@ -5,8 +5,9 @@
  * request (e-mail address, name, client IP, User-Agent) nor its locale can be
  * reached from the command bus: not in its audit list, not on the (shared)
  * handler instance, not anywhere else on the bus. What stays is the audit
- * entry (command name, ids, time, duration, outcome) and, on the handler, the
- * id and the start time of its last run.
+ * entry (command name, ids, time, duration, outcome). On the handler nothing
+ * of a run stays, not even its id: two executions of one handler can overlap
+ * (see base/__tests__/command.base.test.ts).
  * The production bus (`commandBus`, with its real middleware) is used, with
  * the metadata the actions hand it; the repository and the event bus are
  * mocked. The check walks what it can reach from the bus through own
@@ -127,9 +128,9 @@ function newestAuditEntry({ objects }: ReachableGraph) {
  * What the bus holds after its newest execution, which was of `CommandClass`:
  * the audit entry, the own fields of the shared handler, and for each needle
  * the paths of the strings that contain it. `commandId` and `commandName` are
- * controls, strings the walk has to find: the id of the execution on the
- * handler and in the audit entry, the name of the command in an audit entry
- * (the list also holds the entries of the executions before this one).
+ * controls, strings the walk has to find: the id of the execution in the
+ * audit entry, and nowhere else, and the name of the command in an audit
+ * entry (the list also holds the entries of the executions before this one).
  */
 function heldByBus<T extends object>(
   CommandClass: new () => T,
@@ -156,7 +157,6 @@ function heldByBus<T extends object>(
   };
 }
 
-const ON_THE_HANDLER = /^bus\.handlers<value \d+>\./;
 const IN_THE_AUDIT_ENTRY = /^bus\.middleware\.\d+\.auditLogs\.\d+\./;
 // The command name is also the `name` of the handler and of its class: what
 // counts is that the walk finds it in the audit list as well.
@@ -165,7 +165,7 @@ const THE_NAME_IN_AN_AUDIT_ENTRY = expect.arrayContaining([
 ]);
 
 // What an action takes from the request for the command metadata (see
-// requestMetadata in src/lib/actions/auth.ts).
+// requestMetadata in src/lib/security.ts).
 const CLIENT_IP = "203.0.113.9";
 const USER_AGENT = "Client-Chosen-Agent/1.0";
 // Not a locale of the app: a value the walk can look for, which "de" is not.
@@ -237,14 +237,9 @@ describe("no password and no personal data of the request is retained after exec
       handler: {
         name: "RegisterUserCommand",
         description: expect.any(String),
-        commandId: expect.any(String),
-        executedAt: expect.any(Date),
       },
       paths: {
-        commandId: [
-          expect.stringMatching(ON_THE_HANDLER),
-          expect.stringMatching(IN_THE_AUDIT_ENTRY),
-        ],
+        commandId: [expect.stringMatching(IN_THE_AUDIT_ENTRY)],
         commandName: THE_NAME_IN_AN_AUDIT_ENTRY,
         password: [],
         mismatch: [],
@@ -335,14 +330,9 @@ describe("no password and no personal data of the request is retained after exec
       handler: {
         name: "ChangePasswordCommand",
         description: expect.any(String),
-        commandId: expect.any(String),
-        executedAt: expect.any(Date),
       },
       paths: {
-        commandId: [
-          expect.stringMatching(ON_THE_HANDLER),
-          expect.stringMatching(IN_THE_AUDIT_ENTRY),
-        ],
+        commandId: [expect.stringMatching(IN_THE_AUDIT_ENTRY)],
         commandName: THE_NAME_IN_AN_AUDIT_ENTRY,
         // The walk finds the user id, in the audit entry only.
         userId: [expect.stringMatching(IN_THE_AUDIT_ENTRY)],

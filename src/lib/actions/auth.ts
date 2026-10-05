@@ -4,7 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { repositories } from "@/lib/repositories";
 import { headers } from "next/headers";
-import { getClientIP } from "@/lib/security";
+import { getClientIP, requestMetadata } from "@/lib/security";
 import { recordAttempt, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   commandBus,
@@ -61,27 +61,6 @@ export type ActionResult = ActionResponse;
 async function getSessionUserId(): Promise<string | null> {
   const session = await auth();
   return session?.user?.id ?? null;
-}
-
-const MAX_USER_AGENT_LENGTH = 512;
-
-/**
- * Client IP and User-Agent for the command metadata, which reaches the event
- * listeners. Taken from the request headers, never from form fields: the IP
- * as getClientIP reads it (a valid address, which the client controls unless
- * a trusted proxy overwrites X-Forwarded-For, see SECURITY.md) and the
- * User-Agent, which the client chooses, cut to 512 characters.
- */
-function requestMetadata(requestHeaders: Headers): {
-  ipAddress?: string;
-  userAgent?: string;
-} {
-  return {
-    ipAddress: getClientIP(requestHeaders),
-    userAgent:
-      requestHeaders.get("user-agent")?.slice(0, MAX_USER_AGENT_LENGTH) ||
-      undefined,
-  };
 }
 
 export async function registerUser(formData: FormData): Promise<ActionResult> {

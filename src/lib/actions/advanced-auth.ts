@@ -11,6 +11,7 @@ import {
   decrypt,
   logSecurityEvent,
   getClientIP,
+  requestMetadata,
 } from "@/lib/security";
 import { sendVerificationEmail, sendSecurityAlert } from "@/lib/email";
 import {
@@ -132,8 +133,7 @@ export async function sendEmailVerification(
       userId: user.id,
       eventType: "email_verified",
       details: "Email verification token sent",
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
+      ...requestMetadata(headersList),
     });
 
     return await createSuccessResponseI18n(
@@ -153,8 +153,12 @@ export async function sendEmailVerification(
 
 export async function verifyEmailToken(
   token: string,
-  locale: string = "en",
+  requestedLocale: string = "en",
 ): Promise<ActionResult> {
+  // As in sendEmailVerification: no session is needed, and only a supported
+  // locale is accepted.
+  const locale = getSafeLocale(requestedLocale);
+
   try {
     // Find verification token
     const verificationToken = await prisma.emailVerificationToken.findUnique({
@@ -207,8 +211,7 @@ export async function verifyEmailToken(
       userId: verificationToken.userId,
       eventType: "email_verified",
       details: "Email address verified successfully",
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
+      ...requestMetadata(headersList),
     });
 
     return await createSuccessResponseI18n(
@@ -438,8 +441,7 @@ export async function enableTwoFactorAuth(
       userId,
       eventType: "2fa_enabled",
       details: "Two-factor authentication enabled",
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
+      ...requestMetadata(headersList),
     });
 
     return await createSuccessResponseI18n(
@@ -526,8 +528,7 @@ export async function disableTwoFactorAuth(
       userId,
       eventType: "2fa_disabled",
       details: "Two-factor authentication disabled",
-      ipAddress: getClientIP(headersList),
-      userAgent: headersList.get("user-agent") || undefined,
+      ...requestMetadata(headersList),
     });
 
     return await createSuccessResponseI18n(

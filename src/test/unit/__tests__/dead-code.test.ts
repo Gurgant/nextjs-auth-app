@@ -240,6 +240,13 @@ const RETIRED: {
     retired: ["CompositeBuilder"],
   },
   {
+    holder: "fields and methods of BaseCommand",
+    members: () =>
+      classMembers("src/lib/commands/base/command.base.ts", "BaseCommand"),
+    kept: "logExecution",
+    retired: ["executedAt", "commandId"],
+  },
+  {
     holder: "names exported by actions/auth.ts",
     members: () => namesExportedBy("src/lib/actions/auth.ts"),
     kept: "registerUser",
@@ -460,6 +467,21 @@ function interfaceMembers(file: string, name: string): string[] {
   return parsed.statements
     .filter(ts.isInterfaceDeclaration)
     .filter((declaration) => declaration.name.text === name)
+    .flatMap((declaration) => [...declaration.members])
+    .map((member) => member.name?.getText(parsed) ?? "");
+}
+
+/**
+ * The names of the fields and methods that a class of a file of the
+ * repository declares. A field without an initial value is not on the
+ * prototype, so the source is read.
+ */
+function classMembers(file: string, name: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  return parsed.statements
+    .filter(ts.isClassDeclaration)
+    .filter((declaration) => declaration.name?.text === name)
     .flatMap((declaration) => [...declaration.members])
     .map((member) => member.name?.getText(parsed) ?? "");
 }

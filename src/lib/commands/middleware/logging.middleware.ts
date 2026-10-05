@@ -1,6 +1,7 @@
 import { ICommandMiddleware } from "./middleware.interface";
 import { CommandMetadata } from "../base/command.interface";
 import { answerSaysSuccess } from "../base/outcome";
+import { describeThrown } from "../base/thrown";
 
 /**
  * Length of the JSON form of a command input, for the log line only.
@@ -48,17 +49,19 @@ export class LoggingMiddleware implements ICommandMiddleware {
     });
   }
 
+  // The bus hands over whatever was thrown, which need not be an Error.
   async onError(
     commandName: string,
     input: unknown,
-    error: Error,
+    error: unknown,
     metadata: CommandMetadata,
   ): Promise<void> {
+    const thrown = describeThrown(error);
     console.error(`[Command:${commandName}] Failed with error`, {
       commandId: metadata.commandId,
       userId: metadata.userId,
-      error: error.message,
-      stack: error.stack,
+      error: thrown.message,
+      stack: thrown.stack,
     });
   }
 }
