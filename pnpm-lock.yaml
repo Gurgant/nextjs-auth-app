@@ -58,9 +58,6 @@ importers:
       lucide-react:
         specifier: ^0.541.0
         version: 0.541.0(react@19.1.1)
-      negotiator:
-        specifier: 1.0.0
-        version: 1.0.0
       next:
         specifier: 15.5.26
         version: 15.5.26(@babel/core@7.29.7)(@playwright/test@1.55.1)(@types/node@24.3.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -113,9 +110,6 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
-      '@types/negotiator':
-        specifier: 0.6.4
-        version: 0.6.4
       '@types/node':
         specifier: 24.3.0
         version: 24.3.0
@@ -1424,9 +1418,6 @@ packages:
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
-
-  '@types/negotiator@0.6.4':
-    resolution: {integrity: sha512-elf6BsTq+AkyNsb2h5cGNst2Mc7dPliVoAPm1fXglC/BM3f2pFA40BaSSv3E5lyHteEawVKLP+8TwiY1DMNb3A==}
 
   '@types/node@24.3.0':
     resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
@@ -5124,8 +5115,6 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
-
-  '@types/negotiator@0.6.4': {}
 
   '@types/node@24.3.0':
     dependencies:

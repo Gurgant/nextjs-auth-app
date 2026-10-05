@@ -4,10 +4,8 @@ import { FormPageLayout } from "../form-page-layout";
 
 // Mock the sub-components
 jest.mock("../gradient-page-layout", () => ({
-  GradientPageLayout: ({ children, gradient }: any) => (
-    <div data-testid="gradient-layout" data-gradient={gradient}>
-      {children}
-    </div>
+  GradientPageLayout: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="gradient-layout">{children}</div>
   ),
 }));
 
@@ -54,11 +52,8 @@ describe("FormPageLayout", () => {
       </FormPageLayout>,
     );
 
-    const gradientLayout = getByTestId("gradient-layout");
     const centeredLayout = getByTestId("centered-layout");
 
-    // No gradient is chosen here: GradientPageLayout renders its default.
-    expect(gradientLayout).not.toHaveAttribute("data-gradient");
     expect(centeredLayout).toHaveAttribute("data-maxwidth", "md");
   });
 

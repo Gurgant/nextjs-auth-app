@@ -28,17 +28,6 @@ describe("GradientPageLayout", () => {
     );
   });
 
-  it("applies purple-pink gradient", () => {
-    const { container } = render(
-      <GradientPageLayout gradient="purple-pink">
-        <div>Content</div>
-      </GradientPageLayout>,
-    );
-
-    const layoutDiv = container.firstChild;
-    expect(layoutDiv).toHaveClass("from-purple-50", "via-white", "to-pink-50");
-  });
-
   it("merges custom className", () => {
     const { container } = render(
       <GradientPageLayout className="py-12 px-4">
@@ -50,17 +39,5 @@ describe("GradientPageLayout", () => {
     expect(layoutDiv).toHaveClass("py-12", "px-4");
     // Should also have default classes
     expect(layoutDiv).toHaveClass("min-h-[calc(100vh-4rem)]");
-  });
-
-  it("combines gradient and custom className", () => {
-    const { container } = render(
-      <GradientPageLayout gradient="purple-pink" className="py-8">
-        <div>Content</div>
-      </GradientPageLayout>,
-    );
-
-    const layoutDiv = container.firstChild;
-    expect(layoutDiv).toHaveClass("from-purple-50", "via-white", "to-pink-50");
-    expect(layoutDiv).toHaveClass("py-8");
   });
 });

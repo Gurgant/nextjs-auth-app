@@ -137,18 +137,4 @@ export class AuditMiddleware implements ICommandMiddleware {
   getAuditLogs(): AuditLog[] {
     return this.auditLogs;
   }
-
-  /**
-   * Get audit logs by user
-   */
-  getAuditLogsByUser(userId: string): AuditLog[] {
-    return this.auditLogs.filter((log) => log.userId === userId);
-  }
-
-  /**
-   * Clear audit logs
-   */
-  clearAuditLogs(): void {
-    this.auditLogs = [];
-  }
 }

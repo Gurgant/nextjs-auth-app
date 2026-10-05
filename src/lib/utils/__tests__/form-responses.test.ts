@@ -4,13 +4,9 @@ import {
   createSuccessResponse,
   createValidationErrorResponse,
   createFieldErrorResponse,
-  createGenericErrorResponse,
   isErrorResponse,
-  isSuccessResponse,
-  hasFieldErrors,
   getFieldError,
   getAllFieldErrors,
-  withErrorHandling,
   logActionError,
   type ErrorResponse,
   type SuccessResponse,
@@ -224,56 +220,6 @@ describe("form-responses", () => {
     });
   });
 
-  describe("createGenericErrorResponse", () => {
-    it("creates error for notFound type", () => {
-      const result = createGenericErrorResponse("notFound");
-
-      expect(result).toEqual({
-        success: false,
-        message: "Resource not found",
-      });
-    });
-
-    it("creates error for unauthorized type", () => {
-      const result = createGenericErrorResponse("unauthorized");
-
-      expect(result).toEqual({
-        success: false,
-        message: "You are not authorized to perform this action",
-      });
-    });
-
-    it("uses custom message when provided", () => {
-      const result = createGenericErrorResponse(
-        "serverError",
-        "Database connection failed",
-      );
-
-      expect(result).toEqual({
-        success: false,
-        message: "Database connection failed",
-      });
-    });
-
-    it("handles all error types", () => {
-      const types: Array<Parameters<typeof createGenericErrorResponse>[0]> = [
-        "notFound",
-        "unauthorized",
-        "forbidden",
-        "serverError",
-        "unknown",
-        "alreadyExists",
-        "invalidInput",
-      ];
-
-      types.forEach((type) => {
-        const result = createGenericErrorResponse(type);
-        expect(result.success).toBe(false);
-        expect(result.message).toBeTruthy();
-      });
-    });
-  });
-
   describe("Type Guards", () => {
     describe("isErrorResponse", () => {
       it("returns true for error responses", () => {
@@ -284,54 +230,6 @@ describe("form-responses", () => {
       it("returns false for success responses", () => {
         const success: SuccessResponse = { success: true, message: "Success" };
         expect(isErrorResponse(success)).toBe(false);
-      });
-    });
-
-    describe("isSuccessResponse", () => {
-      it("returns true for success responses", () => {
-        const success: SuccessResponse = { success: true, message: "Success" };
-        expect(isSuccessResponse(success)).toBe(true);
-      });
-
-      it("returns false for error responses", () => {
-        const error: ErrorResponse = { success: false, message: "Error" };
-        expect(isSuccessResponse(error)).toBe(false);
-      });
-    });
-
-    describe("hasFieldErrors", () => {
-      it("returns true when error response has field errors", () => {
-        const response: ErrorResponse = {
-          success: false,
-          message: "Error",
-          errors: { email: "Invalid" },
-        };
-        expect(hasFieldErrors(response)).toBe(true);
-      });
-
-      it("returns false when error response has no field errors", () => {
-        const response: ErrorResponse = {
-          success: false,
-          message: "Error",
-        };
-        expect(hasFieldErrors(response)).toBe(false);
-      });
-
-      it("returns false when error response has empty errors object", () => {
-        const response: ErrorResponse = {
-          success: false,
-          message: "Error",
-          errors: {},
-        };
-        expect(hasFieldErrors(response)).toBe(false);
-      });
-
-      it("returns false for success responses", () => {
-        const response: SuccessResponse = {
-          success: true,
-          message: "Success",
-        };
-        expect(hasFieldErrors(response)).toBe(false);
       });
     });
   });
@@ -427,79 +325,6 @@ describe("form-responses", () => {
     });
   });
 
-  describe("withErrorHandling", () => {
-    it("returns success response when action succeeds", async () => {
-      const successResponse = createSuccessResponse("Done!", { id: 123 });
-      const action = jest.fn().mockResolvedValue(successResponse);
-
-      const result = await withErrorHandling(action, "en", "testAction");
-
-      expect(result).toEqual(successResponse);
-      expect(action).toHaveBeenCalled();
-    });
-
-    it("handles ZodError and returns validation error response", async () => {
-      const zodError = new z.ZodError([
-        {
-          code: "invalid_type",
-          expected: "string",
-          received: "number",
-          path: ["email"],
-          message: "Invalid type",
-        } as z.ZodIssue,
-      ]);
-
-      const action = jest.fn().mockRejectedValue(zodError);
-      const mockT = createMockTranslationFn();
-      mockGetTranslations.mockResolvedValue(mockT);
-      mockTranslateValidationErrors.mockResolvedValue({
-        email: "Invalid email type",
-      });
-
-      const result = await withErrorHandling(action, "en", "testAction");
-
-      expect(isErrorResponse(result)).toBe(true);
-      expect(result.success).toBe(false);
-      expect(mockTranslateValidationErrors).toHaveBeenCalledWith(
-        zodError,
-        "en",
-      );
-    });
-
-    it("handles unknown errors and returns generic error response", async () => {
-      const error = new Error("Database connection failed");
-      const action = jest.fn().mockRejectedValue(error);
-
-      const result = await withErrorHandling(action, "en", "testAction");
-
-      expect(result).toEqual({
-        success: false,
-        message: "Something went wrong. Please try again.",
-      });
-      expect(console.error).toHaveBeenCalledWith(
-        "[testAction] Error:",
-        expect.objectContaining({
-          error,
-          message: "Database connection failed",
-          stack: expect.any(String),
-          timestamp: expect.any(String),
-        }),
-      );
-    });
-
-    it("uses default action name when not provided", async () => {
-      const error = new Error("Test error");
-      const action = jest.fn().mockRejectedValue(error);
-
-      await withErrorHandling(action, "en");
-
-      expect(console.error).toHaveBeenCalledWith(
-        "[unknown] Error:",
-        expect.any(Object),
-      );
-    });
-  });
-
   describe("logActionError", () => {
     it("logs error with action name and context", () => {
       const error = new Error("Test error");
@@ -573,7 +398,6 @@ describe("form-responses", () => {
           expect(response.errors).toHaveProperty("email");
           expect(response.errors).toHaveProperty("password");
           expect(response.errors).toHaveProperty("age");
-          expect(hasFieldErrors(response)).toBe(true);
           expect(getAllFieldErrors(response).length).toBeGreaterThan(0);
         }
       }
@@ -587,14 +411,14 @@ describe("form-responses", () => {
       ];
 
       responses.forEach((response) => {
-        if (isSuccessResponse(response)) {
-          // TypeScript should know this is SuccessResponse
-          expect(response.success).toBe(true);
-          // response.errors should not exist here (type check)
-        } else if (isErrorResponse(response)) {
+        if (isErrorResponse(response)) {
           // TypeScript should know this is ErrorResponse
           expect(response.success).toBe(false);
           // response.data should not exist here (type check)
+        } else {
+          // TypeScript should know this is SuccessResponse
+          expect(response.success).toBe(true);
+          // response.errors should not exist here (type check)
         }
       });
     });

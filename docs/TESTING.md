@@ -40,7 +40,8 @@ and route handlers), `src/middleware.ts`, `index.ts` barrels and the generated
 Prisma client (`src/generated/**`, counted until v2.1.0, when it made up most
 of the statements). The tests
 concentrate on the authentication and security modules; large parts of the UI
-and of the error infrastructure have no unit tests. The events layer is tested
+have no unit tests. The error layer is tested by itself
+(`src/lib/errors/__tests__/error-layer.test.ts`). The events layer is tested
 with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).
 There is no coverage threshold.
 

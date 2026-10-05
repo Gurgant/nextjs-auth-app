@@ -126,7 +126,7 @@ password check for that — see "Known Limitations" in `SECURITY.md`.
 | Repositories | `repositories/` | User repository behind an interface (credentials check, lockout); much other code calls Prisma directly |
 | Commands     | `commands/`     | Write operations as command objects + a command bus                                                     |
 | Events       | `events/`       | Domain events on an in-process bus, with two example listeners kept in memory (below)                   |
-| Errors       | `errors/`       | Typed error taxonomy, used by the two commands (register user, change password)                         |
+| Errors       | `errors/`       | Six typed errors, created by the two commands (register user, change password) and by nothing else      |
 | Validation   | `validation/`   | Shared Zod schemas                                                                                      |
 
 The events layer carries five events: a registration and a password change
@@ -138,12 +138,26 @@ and analytics counters. Each keeps its newest 10,000 entries in the memory of
 one process: they are lost at restart, not shared between instances, and read
 only by tests (`src/lib/events/__tests__/event-provider.test.ts`). The audit
 listener also prints its entries to the server console: those of severity
-error or critical (a command that threw, a critical error) in every
-environment, the others in development only. These entries are not the
-`SecurityEvent` records above, which are written to the database without the
-bus. The bus does not wait for its listeners: a request that publishes an
-event goes on without them, and a listener that fails gets up to three
-attempts, one second apart.
+error (a command that threw) or critical in every environment, the others in
+development only. No typed error is critical: the errors layer gives the
+severity `high` to an exception that a command did not expect and `low` to
+its other errors (`src/lib/errors/__tests__/error-layer.test.ts`). These
+entries are not the `SecurityEvent` records above, which are written to the
+database without the bus. The bus does not wait for its listeners: a request
+that publishes an event goes on without them, and a listener that fails gets
+up to three attempts, one second apart. The bus also has members that
+nothing calls (`subscribe` with a callback, `publishMany`, `unsubscribe`,
+`unsubscribeAll`, `getSubscriptionsByType`): they are kept on purpose, as the
+ordinary equipment of an example bus.
+
+The errors layer is what those two commands use: `ErrorFactory`
+(`validation.fromZod`, `validation.invalidInput`, `business.notFound`,
+`business.operationNotAllowed`, `business.alreadyExists`, `wrap`) and the
+builder behind `createError()`, which adds a user id and a correlation id.
+An error carries a code, a category, a severity and an HTTP status; `log()`
+prints it on the server, and what the command answers is the error's
+message, or a generic text for an exception it did not expect. The HTTP
+status is not used yet: no route handler creates one of these errors.
 
 The command bus keeps a list of its own, outside the events layer
 (`AuditMiddleware`, `src/lib/commands/middleware/audit.middleware.ts`): its
@@ -157,9 +171,13 @@ error. It holds no input, no output, no error text and nothing of the request
 
 **next-intl** with five locales (`en`, `es`, `fr`, `it`, `de`) in `messages/`
 at the repository root. All locales carry the same keys — enforced by
-`pnpm validate-translations` in the pre-commit hook and by an E2E test. Every
-page lives under `src/app/[locale]/`. The dashboards, the admin page and the
-2FA prompt still contain English-only strings.
+`pnpm validate-translations` in the pre-commit hook and by an E2E test. A
+unit test (`src/test/unit/__tests__/message-keys.test.ts`) fails when a key
+of `messages/en.json` is read by no application file under `src/` (tests do
+not count), or when a message file writes a key twice in one object; its
+header lists the forms of a read that it knows. Every page lives under
+`src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt still
+contain English-only strings.
 
 ## Security posture
 

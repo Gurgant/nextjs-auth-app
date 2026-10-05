@@ -49,7 +49,12 @@ breaks for you, that itself is a bug worth reporting.
   allow-list in `src/test/unit/__tests__/dead-code.test.ts` with the reason.
   The header of that file lists what the check does not see.
 - If you touch UI strings, update **all five** locale files in `messages/`
-  (`pnpm validate-translations` enforces key parity).
+  (`pnpm validate-translations` enforces key parity). `pnpm test:unit` fails
+  when a key of `messages/en.json` is read by no application file under
+  `src/` (tests do not count), or when a message file writes a key twice:
+  delete the key from the five files, or add it to the allow-list in
+  `src/test/unit/__tests__/message-keys.test.ts` with the place that reads
+  it.
 - Security-sensitive changes (auth flows, headers, crypto, rate limiting)
   should explain their reasoning in the PR description and update
   `SECURITY.md` when they change the posture.
