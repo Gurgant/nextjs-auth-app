@@ -132,8 +132,9 @@ the default branch; run the latest `main`.
   is written, Google's tokens are not stored, an `account_link_refused`
   event is recorded, and the browser is sent to a page that says what
   happened and how to link. A first Google sign-in of a new visitor needs no
-  grant. Before this version Auth.js linked any Google account that a
-  signed-in user completed a Google sign-in with.
+  grant. Up to version 2.4.0 Auth.js linked any Google account that was not
+  linked to a user yet, when a signed-in user completed a Google sign-in
+  with it.
   - **Measured** on 2026-10-05 on real PostgreSQL (the integration test, see
     `docs/TESTING.md`), through the adapter object the application hands to
     Auth.js and through Auth.js's own decision function
@@ -371,13 +372,15 @@ Read these before deploying. They are real, not hypothetical.
     session.
   - **It is as strong as the password step.** That step asks for no TOTP
     code, and its throttle is the in-memory one (5 wrong passwords per 15
-    minutes, per process; see the rate-limiting limits below).
+    minutes, per process; see the rate-limiting limits below). A wrong
+    password there does not count toward the database lockout.
   - **Accounts that sign in with Google only are not protected against a
     hijacked session.** The gate refuses them a second Google account (they
-    have no password to confirm with; before this version it was linked
-    without a question). But adding a password needs only a session (next
-    point), and with that password the holder of the session can unlink
-    Google and link another Google account.
+    have no password to confirm with; up to version 2.4.0 it was linked
+    without a question). But adding a password needs only a session (see
+    "Sensitive actions do not require re-authentication" below), and with
+    that password the holder of the session can unlink Google and link
+    another Google account.
   - **"New user" is read from the row.** A user without a password, without
     an `Account` row and with an e-mail that is not verified is taken for the
     row Auth.js created a moment before, and is linked without a grant. No
@@ -393,15 +396,19 @@ Read these before deploying. They are real, not hypothetical.
     function and a `createUser` event that sets `emailVerified`; a row left
     behind with none of the three blocks its address in the same way
     (measured).
-  - **`allowDangerousEmailAccountLinking` links only what a first sign-in
-    links.** With that provider option, which the application does not set,
-    Auth.js links a Google account to the user who has the same e-mail
-    address, without a session. No password step comes before that link, so
-    the gate refuses it onto a user that has a password, an `Account` row or
-    a verified e-mail. A row with none of the three is linked without a
-    grant, as the row of a first sign-in is. Measured on 2026-10-05 with
+  - **`allowDangerousEmailAccountLinking` links what a first sign-in links,
+    and what a live grant allows.** With that provider option, which the
+    application does not set, Auth.js links a Google account to the user who
+    has the same e-mail address, without a session. The gate refuses that
+    link onto a user that has a password, an `Account` row or a verified
+    e-mail and no live grant. A row with none of the three is linked without
+    a grant, as the row of a first sign-in is. Measured on 2026-10-05 with
     Auth.js's decision function and that option (the integration test), not
-    against Google.
+    against Google. While a grant of that user is live (up to 5 minutes
+    after a correct password step, see the first point), the gate links one
+    Google account to a user that has none, and with this option Auth.js
+    asks for no session on the way there (read in the two sources, not
+    measured).
   - **Not one transaction, a fixed window, the application's clock.** The
     gate reads the user row, spends the grant and writes the `Account` row
     in three statements. Whether the user already has a Google account is
@@ -420,7 +427,7 @@ Read these before deploying. They are real, not hypothetical.
     with two Google rows on one user: one call removed both and left another
     user's Google row alone, the event said two, and a second call answered
     `not_linked` and recorded nothing; the unit test of the route shows the
-    same on a modelled client. Before this version the route removed one row
+    same on a modelled client. Up to version 2.4.0 the route removed one row
     per call and cleared the flag at the first (measured the same way with
     the route as it was: after one call a Google `Account` row was left,
     while the flag said there was none). A row that is written after that

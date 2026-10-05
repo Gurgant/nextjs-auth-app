@@ -45,11 +45,11 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Password and provider, checked before anything is read from the
-    // database: Google is the only provider this route unlinks (the
-    // credentials Account row is not one a user can remove). A request
-    // refused here is no password attempt: it is not counted toward the
-    // throttle.
+    // Password and provider, checked before the route queries the user (the
+    // session check above has read the database): Google is the only provider
+    // this route unlinks (the credentials Account row is not one a user can
+    // remove). A request refused here is no password attempt: it is not
+    // counted toward the throttle.
     const body = await readLinkAccountRequest(request);
     if (!body.ok) {
       return linkAccountRefusal(400, body.code, body.error);

@@ -28,9 +28,10 @@ const INVALID_BODY = {
 
 /**
  * The password and the provider of a link or unlink request. Decided from the
- * body alone, before anything is read from the database: the body has to be a
- * JSON object, both fields have to be there, both have to be strings, and
- * Google is the only provider that can be linked or unlinked.
+ * body alone, before the route queries the user (the session check, which
+ * reads the database, has run by then): the body has to be a JSON object,
+ * both fields have to be there, both have to be strings, and Google is the
+ * only provider that can be linked or unlinked.
  */
 export async function readLinkAccountRequest(
   request: Request,

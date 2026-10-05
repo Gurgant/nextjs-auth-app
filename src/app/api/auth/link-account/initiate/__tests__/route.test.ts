@@ -367,18 +367,21 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     ["there is no session", null],
     ["the session has no user", { expires: new Date().toISOString() }],
     ["the session's user has no id", session({ email: "someone@example.com" })],
-  ])("answers 401 when %s, before the database is asked", async (_, value) => {
-    mockAuth.mockResolvedValue(value);
+  ])(
+    "answers 401 when %s, before the route queries the user",
+    async (_, value) => {
+      mockAuth.mockResolvedValue(value);
 
-    const res = await postPassword(PASSWORD);
+      const res = await postPassword(PASSWORD);
 
-    expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toEqual({
-      error: "Authentication required",
-      code: "authentication_required",
-    });
-    expect(mockPrismaCalls).toEqual([]);
-  });
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({
+        error: "Authentication required",
+        code: "authentication_required",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
 
   it("answers 429 with Retry-After after five wrong passwords, even to the right one", async () => {
     expect(RATE_LIMITS.passwordVerify).toEqual({
@@ -427,7 +430,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     ["is a JSON string", '"google"'],
     ["is a JSON number", "5"],
   ])(
-    "answers 400 when the body %s, before the database is asked",
+    "answers 400 when the body %s, before the route queries the user",
     async (_, body) => {
       const res = await postText(body);
 
@@ -447,16 +450,19 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     ["the password is true", { password: true, provider: "google" }],
     ["the provider is a list", { password: PASSWORD, provider: ["google"] }],
     ["the provider is an object", { password: PASSWORD, provider: {} }],
-  ])("answers 400 when %s, before the database is asked", async (_, body) => {
-    const res = await post(body);
+  ])(
+    "answers 400 when %s, before the route queries the user",
+    async (_, body) => {
+      const res = await post(body);
 
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({
-      error: "Invalid request body",
-      code: "invalid_request",
-    });
-    expect(mockPrismaCalls).toEqual([]);
-  });
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: "Invalid request body",
+        code: "invalid_request",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
 
   it("does not count a request it answers with 400 as a wrong password", async () => {
     // More of them than the wrong passwords the throttle allows.
