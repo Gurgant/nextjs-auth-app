@@ -54,56 +54,188 @@ The starter uses `prisma db push`. For a real deployment, generate a migration
 baseline first (`prisma migrate dev`) and use `prisma migrate deploy` in your
 release pipeline.
 
-Session checks need the table `RevokedSession` and the column
-`User.sessionVersion`. Both are additive: an existing database gets them with
-`pnpm prisma:push` (measured on the test database: applied without a
-data-loss prompt). Push the schema **before** starting the new code: without
-the table every session check fails, and a failed check means "not signed in".
-Sessions issued before the upgrade are refused, so every user signs in once.
-If the app connects as a restricted database user, grant it `SELECT`,
-`INSERT` and `DELETE` on `"RevokedSession"` after the push: without `SELECT`
-every session check fails, without `INSERT` a sign-out revokes nothing (not
-measured: the test database is used with its owner).
+A database that an earlier version has used is upgraded as described below,
+the newest release first.
 
-Linking Google needs two columns of `User`: `linkGrantProvider` and
-`linkGrantExpiresAt` (see "Linking Google needs the password" in
-`SECURITY.md`). Both are additive and nullable. Measured on the test database
-on 2026-10-05, with Prisma 6.19.3 and no terminal attached, with two user
-rows, two `Account` rows and one `SecurityEvent` row in it: `pnpm prisma:push`
-printed "Your database is now in sync with your Prisma schema." and ended
-with exit code 0, without a warning and without a question. The rows of the
-three tables were the same before and after (every column that was there
-before, compared), and the two new columns were `NULL`.
+### From 2.4.0 to 2.5.0
 
-Push **before** starting the new code, as for `RevokedSession`. Measured with
-the new Prisma client against the test database without the two columns: a
-query that names its columns works, but reading a whole user row fails ("The
-column `User.linkGrantProvider` does not exist in the current database",
-P2022), and so does creating a user. Sign-in reads the whole row (read in the
-source), so the new code signs nobody in until the columns exist. Code from
-before the columns is not disturbed by them: measured with the Prisma client
-generated from the schema without them, against the database that has them,
-a whole user row was read and a user was created. If the app connects as a
-restricted database user, the grant needs `UPDATE` on `"User"`, which sign-in
-needs already (not measured: the test database is used with its owner).
+The schema of 2.5.0 changes in both directions, and one `pnpm prisma:push`
+applies all of it in one step:
 
-The dropped table and columns described below ask for the opposite order,
-and one `pnpm prisma:push` does both. So with "push" and "start the new code"
-alone there is a moment in which sign-in fails, whichever comes first. Either
-stop the application for the push, or add the two columns by hand first:
+- **Added:** two columns of `User`, `linkGrantProvider` and
+  `linkGrantExpiresAt`, both nullable. They hold the link grant (see "Linking
+  Google needs the password" in `SECURITY.md`).
+- **Dropped:** the table `PasswordResetToken` and four columns of `User`:
+  `emailVerificationRequired`, `twoFactorEnabledAt`, `requiresPasswordChange`
+  and `lastLoginIp`. Nothing in the application read them any more (see
+  "What is dropped" below).
 
-```sql
-ALTER TABLE "User"
-  ADD COLUMN "linkGrantProvider" TEXT,
-  ADD COLUMN "linkGrantExpiresAt" TIMESTAMP(3);
+**Neither code runs on the other one's schema.** Measured with the Prisma
+client generated from each schema, against a database in each of three
+states, with a read of a whole user row and the creation of a user:
+
+| Database                             | Client of 2.4.0 | Client of 2.5.0 |
+| ------------------------------------ | --------------- | --------------- |
+| schema of 2.4.0                      | both work       | both fail       |
+| schema of 2.4.0 plus the two columns | both work       | both work       |
+| schema of 2.5.0                      | both fail       | both work       |
+
+The failures are Prisma's P2022: for the client of 2.5.0 "The column
+`User.linkGrantProvider` does not exist in the current database", for the
+client of 2.4.0 the same sentence about `User.lastLoginIp` (the read) and
+about `requiresPasswordChange` (the creation). A query that names its columns
+worked in all six cases. Sign-in reads the whole row, with a password
+(`UserRepository.findByEmail`) and with Google (the Prisma adapter), and the
+session check names its columns (read in the source of both versions and of
+`@auth/prisma-adapter` 2.11.3). So with "push" and "start the new code" alone
+there is a time in which nobody can sign in or register, whichever comes
+first; the session check of someone who is signed in still passes. There are
+two ways to upgrade, and both were measured.
+
+**A. Without stopping the application**
+
+1. While the code of 2.4.0 runs, add the two columns by hand:
+
+   ```sql
+   ALTER TABLE "User"
+     ADD COLUMN "linkGrantProvider" TEXT,
+     ADD COLUMN "linkGrantExpiresAt" TIMESTAMP(3);
+   ```
+
+2. Build and start the code of 2.5.0 (`pnpm install`, `pnpm prisma:generate`,
+   `pnpm build`, `pnpm start`). The database is now in the state of the
+   middle row of the table, the one in which both clients work.
+3. When no instance of 2.4.0 runs any more, push the schema. It has only
+   things to drop now: run `pnpm prisma:push` and read what it lists.
+   Without a terminal it stops there, and
+   `pnpm prisma:push --accept-data-loss` then applies it. In a terminal it
+   asks instead, and a yes applies it at once (see "What the push prints").
+
+**B. With the application stopped**
+
+1. Stop the code of 2.4.0.
+2. In the tree of 2.5.0, after `pnpm install`, run `pnpm prisma:push`, read
+   what it lists and confirm as in step 3 of way A. The push applies the
+   `prisma/schema.prisma` of the tree it is run in: started in the tree of
+   2.4.0 it would compare the database with the schema of 2.4.0 (that case
+   was not measured).
+3. Build and start the code of 2.5.0 (`pnpm prisma:generate`, `pnpm build`,
+   `pnpm start`).
+
+**What the push prints.** On a database with a user row, `pnpm prisma:push`
+without the flag and with no terminal attached stops with exit code 1 and
+changes nothing: the two columns are not added either. It prints "There
+might be data loss when applying the changes:", one line for each column or
+table that holds something, and "Error: Use the --accept-data-loss flag to
+ignore the data loss warnings like prisma db push --accept-data-loss". With
+two users, one of whom had enabled 2FA, the lines were:
+
+```
+  • You are about to drop the column `emailVerificationRequired` on the `User` table, which still contains 2 non-null values.
+  • You are about to drop the column `requiresPasswordChange` on the `User` table, which still contains 2 non-null values.
+  • You are about to drop the column `twoFactorEnabledAt` on the `User` table, which still contains 1 non-null values.
 ```
 
-then start the new code, then push. Measured on the test database, with user
-rows in it: after this statement `pnpm prisma:push` found nothing to add
-("The database is already in sync with the Prisma schema.", exit code 0; that
-database had no table or column left to drop), and the new client read a
-whole user row and created a user. The sequence as a whole, on a database of
-2.4.0 with the code of 2.4.0 running, was not measured.
+The first two columns are `NOT NULL`, so every database with a user gets
+these two lines, with the number of its users. The third is there when a
+user row holds a value in `twoFactorEnabledAt`: a user who enabled 2FA in
+the application and has not disabled it since. Versions 2.0.0 to 2.4.0 set
+the column back to `NULL` when 2FA was disabled (read in the source of each
+tag). A row in `PasswordResetToken`, which only code of your own can have
+written, adds "You are about to drop the `PasswordResetToken` table, which
+is not empty (1 rows)." Nothing else is named: not the two columns that are
+added, not `lastLoginIp` (no version wrote it), not the table while it is
+empty. `pnpm prisma:push --accept-data-loss` prints the same lines, then
+"Your database is now in sync with your Prisma schema.", generates the
+Prisma client again into `src/generated/prisma` (its line reads "Generated
+Prisma Client (v6.19.3)") and ends with exit code 0. A push that stops
+generates nothing. The flag accepts every data-loss warning of that push, so
+check first that the lines name nothing but these three columns and this
+table. On a database without any row the push needs no flag: it completes
+without a warning (exit code 0).
+
+In a terminal, outside CI, Prisma asks "Do you want to ignore the
+warning(s)?" after the same lines instead of stopping: a yes applies the
+push at once, without the flag, and a no prints "Push cancelled." and ends
+with exit code 130 (read in the source of the Prisma CLI 6.19.3, not
+measured). Prisma takes it for a terminal when its input is one, `TERM` is
+not `dumb` and none of the CI variables it knows is set (`CI`,
+`GITHUB_ACTIONS` and others).
+
+**Measured** on 2026-10-05 on a scratch database, PostgreSQL 16.10, with
+Prisma 6.19.3 and no terminal attached, each way as one sequence from the
+same state: the schema of the tag `v2.4.0`, with two users (one with a
+password who had enabled 2FA, so with `twoFactorEnabledAt` set; one who
+signs in with Google), two `Account` rows (one of Google, with its tokens),
+two `SecurityEvent` rows, one `EmailVerificationToken` row and one
+`RevokedSession` row.
+
+- **Way B.** The push without the flag: the output above, exit code 1;
+  tables, columns, indexes, constraints and rows as before. With the flag:
+  exit code 0. Then the table and the four columns were gone, the two new
+  columns were there and `NULL` in both user rows, and every other column of
+  every row of the five tables was as before (compared as text, before and
+  after; the same comparison reported a value that was changed on purpose).
+  The client of 2.5.0 read a whole user row and created a user; the client
+  of 2.4.0 could do neither any more. A further `pnpm prisma:push` printed
+  "The database is already in sync with the Prisma schema." (exit code 0).
+- **Way A.** Before the statement the client of 2.5.0 failed and the client
+  of 2.4.0 worked. The statement changed nothing but the two columns (rows
+  compared). After it both clients read a whole user row and created a user.
+  The push then printed the same three lines and stopped (exit code 1,
+  nothing changed); with the flag it completed (exit code 0), and the
+  database had the same structure as at the end of way B, with the same
+  rows.
+- **The code of 2.5.0 between step 1 and step 3 of way A.** Its integration
+  file (51 tests: the user repository, registration, lockout, the session
+  check and the link gate on real PostgreSQL) was run against the schema of
+  2.4.0 plus the two columns: 51 passed. Against the schema of 2.4.0 without
+  them, 46 of the 51 failed with the P2022 above.
+
+**Not measured.** The application itself was not started during either way:
+no sign-in through `next start`, and no run of the E2E suite on the database
+of step 1. The two generated clients and the integration file stand for it.
+The question that Prisma asks in a terminal, and what a yes and a no do,
+were read in the source of the Prisma CLI (see above); no push was run in a
+terminal. That the push writes the client again while the application runs
+from the same tree, as in step 3 of way A, was not measured either; Prisma's
+own line names `--skip-generate` (not run with it). If the app connects as a
+restricted database user, the link grant needs `UPDATE` on `"User"`, which
+sign-in needs already (the scratch database is used with its owner). Coming
+from a version before 2.4.0, use way B: the statement of way A adds only
+what 2.5.0 added to 2.4.0. One push then applies every schema change since
+that version, so its lines can also name what the sections below drop
+(`AccountLinkRequest`, and from 2.0.0 `primaryAuthMethod`); that combined
+push was not measured.
+
+**The way back.** A push of the schema of 2.4.0 onto the upgraded database
+re-created the table and the four columns and dropped the two link columns,
+without a warning (exit code 0), and the client of 2.4.0 read and created
+users again (measured). What the four columns held does not come back: every
+user row had `emailVerificationRequired` `true`, `requiresPasswordChange`
+`false` and no `twoFactorEnabledAt`. While a row holds a link grant, that
+push stops like the one above and names `linkGrantExpiresAt` and
+`linkGrantProvider` (measured with one grant).
+
+**A development or test database** has no running code to keep alive: push
+as in way B. `pnpm db:push:test` is the same push with the URL of the docker
+test database (read in `package.json`, not run), and a test database that
+holds a user row needs the flag as well. Measured: after a run of the Jest
+suite the test database held one user row.
+
+**What is dropped.** Since 2.3.0 nothing in the application has read the
+table or any of the four columns. No version from 2.0.0 to 2.4.0 wrote a row
+to the table or a value to `lastLoginIp`; `requiresPasswordChange` was only
+ever written as `false`, `emailVerificationRequired` became `false` when a
+user followed the verification link, and `twoFactorEnabledAt` held the date
+on which 2FA was enabled and was set back to `NULL` when it was disabled
+(read in the source of each tag). Two of the dropped values were more than a
+default, and both have a counterpart that stays (read in the source): the
+write that cleared `emailVerificationRequired` also set
+`User.emailVerified`, and the action that set `twoFactorEnabledAt` also
+wrote the `2fa_enabled` row in `SecurityEvent`.
+
+### From 2.3.0 to 2.4.0
 
 The table `AccountLinkRequest` is no longer in the schema: the page that read
 it was removed. Versions up to 2.3.0 wrote a row to it each time a user
@@ -125,59 +257,37 @@ no terminal attached:
   so check first that this table is the only one named.
 
 In a terminal Prisma asks "Do you want to ignore the warning(s)?" instead of
-stopping (read in the source of the Prisma CLI, not measured). The rows hold
-nothing the application still reads: a token that was valid for 15 minutes,
-the provider, and the raw `X-Forwarded-For` header of the request. Code up
-to 2.3.0 still writes to the table, so its link initiation fails once the
-table is gone and until the new code runs (read in the source, not measured).
+stopping, and a yes applies the push at once (read in the source of the
+Prisma CLI, not measured). The rows hold nothing the application still
+reads: a token that was valid for 15 minutes, the provider, and the raw
+`X-Forwarded-For` header of the request. Code up to 2.3.0 still writes to
+the table, so its link initiation fails once the table is gone and until the
+new code runs (read in the source, not measured).
 
-The table `PasswordResetToken` and four columns of `User` are no longer in
-the schema either: `emailVerificationRequired`, `twoFactorEnabledAt`,
-`requiresPasswordChange` and `lastLoginIp`. Since 2.3.0 nothing in the
-application has read any of them. No version from 2.0.0 to 2.4.0 wrote a row
-to the table or a value to `lastLoginIp`; `requiresPasswordChange` was only
-ever written as `false`, `emailVerificationRequired` became `false` when a
-user followed the verification link, and `twoFactorEnabledAt` held the date
-on which 2FA was enabled (read in the source of each tag). Measured on a test
-database on 2026-10-05, with Prisma 6.19.3 and no terminal attached:
+### From 2.2.0 to 2.3.0
 
-- With **no user row**, `pnpm prisma:push` drops the table and the four
-  columns without a warning and without a question (exit code 0).
-- With **one user row** that holds the column defaults, `pnpm prisma:push`
-  prints "You are about to drop the column `emailVerificationRequired` on the
-  `User` table, which still contains 1 non-null values.", the same line for
-  `requiresPasswordChange`, and stops with "Use the --accept-data-loss flag
-  to ignore the data loss warnings" (exit code 1). Nothing is changed. Both
-  columns are `NOT NULL`, and both lines were printed in every measured state
-  that had a user. A row whose `twoFactorEnabledAt` is set adds the same line
-  for that column. A row in `PasswordResetToken`, which only code of your own
-  can have written, adds "You are about to drop the `PasswordResetToken`
-  table, which is not empty (1 rows)."
-- `pnpm prisma:push --accept-data-loss` then completes the push (exit code
-  0). The user row kept every other column, and its `Account` and
-  `SecurityEvent` rows stayed as they were (compared before and after). The
-  flag accepts every data-loss warning of that push, so check first that the
-  warnings name nothing but this table and these columns.
+The schema does not change (read in the schema of the two tags).
 
-Start the new code **before** this push: the opposite of the order that
-`RevokedSession` and the two link-grant columns need (for those columns, see
-above). Measured with the Prisma client of 2.4.0 against the
-pushed schema: a query that names its columns still works, but reading a
-whole user row fails ("The column `User.lastLoginIp` does not exist in the
-current database", P2022), and so does creating a user. Sign-in reads the
-whole row (read in the source), so the old code signs nobody in once the
-columns are gone. The new code does not need them: measured before the two
-link-grant columns were added to the schema, its integration suite passed
-against a database that still had the old schema (the E2E suite was not run
-that way). Coming from 2.0.0 or 2.1.0, which have no `RevokedSession`
-table, the two orders contradict each other; stop the application for the
-push (not measured).
+### From 2.1.0 to 2.2.0
 
-Two of the dropped values were more than a default, and both have a
-counterpart that stays (read in the source): the write that cleared
-`emailVerificationRequired` also set `User.emailVerified`, and the action
-that set `twoFactorEnabledAt` also wrote the `2fa_enabled` row in
-`SecurityEvent`.
+Session checks need the table `RevokedSession` and the column
+`User.sessionVersion`. Both are additive: an existing database gets them with
+`pnpm prisma:push` (measured on the test database: applied without a
+data-loss prompt). Push the schema **before** starting the new code: without
+the table every session check fails, and a failed check means "not signed in".
+Sessions issued before the upgrade are refused, so every user signs in once.
+If the app connects as a restricted database user, grant it `SELECT`,
+`INSERT` and `DELETE` on `"RevokedSession"` after the push: without `SELECT`
+every session check fails, without `INSERT` a sign-out revokes nothing (not
+measured: the test database is used with its owner).
+
+### From 2.0.0 to 2.1.0
+
+The column `User.primaryAuthMethod` is dropped and `User.lastLoginMethod` is
+added (read in the schema of the two tags). `CHANGELOG.md` says under
+"Upgrading a database from v2.0.0" that `pnpm prisma:push` refuses when a
+row still has a value in `primaryAuthMethod`, and what to run then; that
+push was not measured again for this release.
 
 ## Before you go live
 

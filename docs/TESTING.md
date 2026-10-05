@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-03; run the commands
+Three layers. The numbers below were measured on 2026-10-05; run the commands
 to check them yourself.
 
-| Layer       | Runner                | Count | What it covers                                                            |
-| ----------- | --------------------- | ----- | ------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 825   | lib, hooks, components, actions, API route handlers                       |
-| Integration | Jest + test DB        | 24    | UserRepository, registration, lockout, session checks on real PostgreSQL  |
-| End-to-end  | Playwright (Chromium) | 90    | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser |
+| Layer       | Runner                | Count | What it covers                                                                      |
+| ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
+| Unit        | Jest (jsdom / node)   | 1486  | lib, hooks, components, actions, API route handlers                                 |
+| Integration | Jest + test DB        | 51    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
+| End-to-end  | Playwright (Chromium) | 103   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,9 +19,9 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (849 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (825) — no DB
-pnpm test:integration # the real-DB integration file only (port 5433)
+pnpm test             # every Jest suite (1537 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (1486) — no DB
+pnpm test:integration # the real-DB integration file only (51, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
 
@@ -57,13 +57,19 @@ unique index on `User.email`. No job of the CI workflow runs the real mode.
 Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
-Coverage (measured): **56 % of statements** of the files matched by
-`collectCoverageFrom` in `jest.config.js` — `src/` without `src/app/**` (pages
-and route handlers), `src/middleware.ts`, `index.ts` barrels and the generated
-Prisma client (`src/generated/**`, counted until v2.1.0, when it made up most
-of the statements). The tests
-concentrate on the authentication and security modules; large parts of the UI
-have no unit tests. The error layer is tested by itself
+Coverage (measured on 2026-10-05 with `pnpm test:coverage` and the test
+database, twice, with the same result: 77.63 %): **77 % of statements** of
+the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
+without `src/app/**` (pages and route handlers), `src/middleware.ts`,
+`index.ts` barrels and the generated Prisma client (`src/generated/**`,
+counted until v2.1.0, when it made up most of the statements). The tests
+concentrate on the authentication and security modules (`src/lib/auth` 92 %,
+`src/lib/actions` 84 %); the components are covered less
+(`src/components/auth` 50 %, `src/components/security` 48 %), and no unit
+test runs the sign-in form (`credentials-form.tsx`) or the account page
+wrapper (0 %). The six route handlers and four of the ten pages under
+`src/app` have a unit test file each; they are outside this figure. The
+error layer is tested by itself
 (`src/lib/errors/__tests__/error-layer.test.ts`). The events layer is tested
 with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).
 There is no coverage threshold.
@@ -130,11 +136,13 @@ where Google would be.
     user might add. With the provider option
     `allowDangerousEmailAccountLinking` a visitor without a session is not
     linked to the user of the same e-mail address when that user has a
-    password, an `Account` row or a verified e-mail (one test for each). A
-    row with none of the three answers `OAuthAccountNotLinked` without the
-    option and is linked without a grant with it. A `createUser` event that
-    marks the new user verified makes a first sign-in fail, and the row it
-    leaves behind then answers `OAuthAccountNotLinked`.
+    password, an `Account` row or a verified e-mail (one test for each; none
+    of the three users holds a grant, and the option is not tested with a
+    live grant: see `SECURITY.md`). A row with none of the three answers
+    `OAuthAccountNotLinked` without the option and is linked without a grant
+    with it. A `createUser` event that marks the new user verified makes a
+    first sign-in fail, and the row it leaves behind then answers
+    `OAuthAccountNotLinked`.
 - **`jest.config.js` lets two packages of Auth.js be transformed** for that
   group. `@auth/core` and `@auth/prisma-adapter` are ES modules, and
   `next/jest` transforms nothing under `node_modules` except the packages
@@ -155,10 +163,11 @@ where Google would be.
   `src/test/unit/__tests__/authjs-source-pin.test.ts` records the versions
   of `next-auth`, `@auth/core` and `@auth/prisma-adapter` and the SHA-256 of
   the nine files that these statements, and the ones in `SECURITY.md`, were
-  read from. It says nothing about behaviour: it fails when a file is no
-  longer the file that was read, and names what that file is relied on for.
-  One of its tests changes a recorded version and a recorded hash and
-  expects both to be reported.
+  read from. It says nothing about behaviour: it fails when one of the three
+  packages is installed in another version or a file is no longer the file
+  that was read, and names what that file is relied on for. One of its tests
+  changes a recorded version and a recorded hash and expects both to be
+  reported.
 - **Unit tests** cover the rest in isolation: the wiring (the adapter of
   `authOptions` is the gate; `/api/auth/[...nextauth]` exports the wrapped
   handlers for GET and POST), the shape of the two statements of a grant,
@@ -173,9 +182,11 @@ where Google would be.
   arrives at that address.
 
 A mutation check was run on 2026-10-05 on the unit and integration tests of
-this change (262 tests in the twelve files that were run: 208 unit, 54
-integration; without a change none of them failed). Each change was made
-once and undone, and every one of them made tests fail:
+the link gate (262 tests in the twelve files that were run: 208 unit, 54
+integration; without a change none of them failed). The integration file had
+54 tests then and has 51 now: three tests of `UserRepository.findByCredentials`
+went later, together with that method, which the application did not call.
+Each change was made once and undone, and every one of them made tests fail:
 
 | Change                                                           | Failed tests (unit + integration)             |
 | ---------------------------------------------------------------- | --------------------------------------------- |
