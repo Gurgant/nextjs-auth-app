@@ -1,12 +1,10 @@
-import { resolveFormLocale, getFormTranslations } from "../form-locale-server";
+import { resolveFormLocale } from "../form-locale-server";
 import { getCurrentLocale } from "../get-locale";
 import { getLocaleFromFormData } from "../form-locale";
-import { getTranslations } from "next-intl/server";
 
 // Mock dependencies
 jest.mock("../get-locale");
 jest.mock("../form-locale");
-jest.mock("next-intl/server");
 
 describe("form-locale-server", () => {
   const mockGetCurrentLocale = getCurrentLocale as jest.MockedFunction<
@@ -14,19 +12,6 @@ describe("form-locale-server", () => {
   >;
   const mockGetLocaleFromFormData =
     getLocaleFromFormData as jest.MockedFunction<typeof getLocaleFromFormData>;
-  const mockGetTranslations = getTranslations as jest.MockedFunction<
-    typeof getTranslations
-  >;
-
-  // Create a proper mock translation function
-  const createMockTranslationFn = () => {
-    const fn = jest.fn((key: string) => key) as any;
-    fn.rich = jest.fn();
-    fn.markup = jest.fn();
-    fn.raw = jest.fn();
-    fn.has = jest.fn();
-    return fn;
-  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -78,62 +63,6 @@ describe("form-locale-server", () => {
     });
   });
 
-  describe("getFormTranslations", () => {
-    it("gets translations with resolved locale", async () => {
-      const formData = new FormData();
-      const mockTranslationFn = createMockTranslationFn();
-
-      mockGetLocaleFromFormData.mockReturnValue("es");
-      mockGetCurrentLocale.mockResolvedValue("fr");
-      mockGetTranslations.mockResolvedValue(mockTranslationFn);
-
-      const result = await getFormTranslations(formData, "validation");
-
-      expect(mockGetTranslations).toHaveBeenCalledWith({
-        locale: "es",
-        namespace: "validation",
-      });
-      expect(result).toBe(mockTranslationFn);
-    });
-
-    it("uses cookie locale for translations when form locale is default", async () => {
-      const formData = new FormData();
-      const mockTranslationFn = createMockTranslationFn();
-
-      mockGetLocaleFromFormData.mockReturnValue("en");
-      mockGetCurrentLocale.mockResolvedValue("ja");
-      mockGetTranslations.mockResolvedValue(mockTranslationFn);
-
-      const result = await getFormTranslations(formData, "auth");
-
-      expect(mockGetTranslations).toHaveBeenCalledWith({
-        locale: "ja",
-        namespace: "auth",
-      });
-      expect(result).toBe(mockTranslationFn);
-    });
-
-    it("works with different namespaces", async () => {
-      const formData = new FormData();
-      const mockTranslationFn = createMockTranslationFn();
-
-      mockGetLocaleFromFormData.mockReturnValue("de");
-      mockGetCurrentLocale.mockResolvedValue("en");
-      mockGetTranslations.mockResolvedValue(mockTranslationFn);
-
-      const namespaces = ["validation", "auth", "errors", "success", "common"];
-
-      for (const namespace of namespaces) {
-        await getFormTranslations(formData, namespace);
-
-        expect(mockGetTranslations).toHaveBeenCalledWith({
-          locale: "de",
-          namespace,
-        });
-      }
-    });
-  });
-
   describe("edge cases", () => {
     it("handles errors from getCurrentLocale gracefully", async () => {
       const formData = new FormData();
@@ -141,17 +70,6 @@ describe("form-locale-server", () => {
       mockGetCurrentLocale.mockRejectedValue(new Error("Cookie error"));
 
       await expect(resolveFormLocale(formData)).rejects.toThrow("Cookie error");
-    });
-
-    it("handles errors from getTranslations gracefully", async () => {
-      const formData = new FormData();
-      mockGetLocaleFromFormData.mockReturnValue("es");
-      mockGetCurrentLocale.mockResolvedValue("en");
-      mockGetTranslations.mockRejectedValue(new Error("Translation error"));
-
-      await expect(getFormTranslations(formData, "validation")).rejects.toThrow(
-        "Translation error",
-      );
     });
   });
 });

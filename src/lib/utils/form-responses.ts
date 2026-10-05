@@ -147,81 +147,12 @@ export function createFieldErrorResponse(
 }
 
 /**
- * Common error types for consistent messaging
- */
-export type CommonErrorType =
-  | "notFound"
-  | "unauthorized"
-  | "forbidden"
-  | "serverError"
-  | "unknown"
-  | "alreadyExists"
-  | "invalidInput";
-
-/**
- * Creates a generic error response for common error types
- *
- * @param type - The type of error
- * @param customMessage - Optional custom message to override default
- * @param _locale - Ignored (built-in messages are English; a custom message is returned as given)
- * @returns Error response with appropriate message
- *
- * @example
- * if (!user) {
- *   return createGenericErrorResponse('notFound', 'User not found');
- * }
- */
-export function createGenericErrorResponse(
-  type: CommonErrorType,
-  customMessage?: string,
-  _locale?: string,
-): ErrorResponse {
-  // The locale is ignored: the built-in messages are English and a custom
-  // message is returned as given. For a message in the user's language, use
-  // createErrorResponseI18n (form-responses-i18n.ts) with a key of the
-  // "Errors" messages.
-  const messages: Record<CommonErrorType, string> = {
-    notFound: "Resource not found",
-    unauthorized: "You are not authorized to perform this action",
-    forbidden: "Access forbidden",
-    serverError: "An error occurred on the server",
-    unknown: "Something went wrong. Please try again.",
-    alreadyExists: "This resource already exists",
-    invalidInput: "Invalid input provided",
-  };
-
-  return createErrorResponse(
-    customMessage || messages[type] || messages.unknown,
-  );
-}
-
-/**
  * Type guard to check if response is an error
  */
 export function isErrorResponse(
   response: ActionResponse,
 ): response is ErrorResponse {
   return !response.success;
-}
-
-/**
- * Type guard to check if response is a success
- */
-export function isSuccessResponse(
-  response: ActionResponse,
-): response is SuccessResponse {
-  return response.success;
-}
-
-/**
- * Checks if an error response has field errors
- */
-export function hasFieldErrors(response: ActionResponse): boolean {
-  return (
-    isErrorResponse(response) &&
-    !!response.errors &&
-    Object.keys(response.errors).length > 0
-  );
 }
 
 /**
@@ -251,41 +182,6 @@ export function getAllFieldErrors(response: ErrorResponse): string[] {
   return Object.values(response.errors)
     .flat()
     .filter((error): error is string => typeof error === "string");
-}
-
-/**
- * Wraps an action with error handling
- *
- * @param action - The async action to execute
- * @param locale - The locale for error translations
- * @param actionName - Optional name for logging
- * @returns Promise resolving to action response
- *
- * @example
- * return withErrorHandling(
- *   async () => {
- *     // Your action logic here
- *     return createSuccessResponse("Done!");
- *   },
- *   locale,
- *   "updateProfile"
- * );
- */
-export async function withErrorHandling<T extends ActionResponse>(
-  action: () => Promise<T>,
-  locale: string,
-  actionName?: string,
-): Promise<ActionResponse> {
-  try {
-    return await action();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return createValidationErrorResponse(error, locale);
-    }
-
-    logActionError(actionName || "unknown", error);
-    return createGenericErrorResponse("unknown");
-  }
 }
 
 /**

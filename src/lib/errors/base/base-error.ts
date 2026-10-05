@@ -13,11 +13,8 @@ import { ErrorOccurredEvent } from "@/lib/events/domain/system.events";
 export interface ErrorContext {
   [key: string]: unknown;
   userId?: string;
-  requestId?: string;
   correlationId?: string;
   timestamp?: Date;
-  path?: string;
-  method?: string;
 }
 
 export abstract class BaseError extends Error {
@@ -45,7 +42,7 @@ export abstract class BaseError extends Error {
     this.code = code;
     this.category = getErrorCategory(code);
     this.severity = getErrorSeverity(code);
-    this.statusCode = ErrorStatusMap[code] || 500;
+    this.statusCode = ErrorStatusMap[code];
     this.timestamp = new Date();
     this.details = details;
     this.context = {
@@ -135,15 +132,11 @@ export abstract class BaseError extends Error {
     };
 
     switch (this.severity) {
-      case ErrorSeverity.CRITICAL:
       case ErrorSeverity.HIGH:
         console.error(
           `[${this.severity.toUpperCase()}] ${this.name}:`,
           logData,
         );
-        break;
-      case ErrorSeverity.MEDIUM:
-        console.warn(`[${this.severity.toUpperCase()}] ${this.name}:`, logData);
         break;
       default:
         console.log(`[${this.severity.toUpperCase()}] ${this.name}:`, logData);

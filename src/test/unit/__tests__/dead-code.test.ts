@@ -5,7 +5,13 @@ import fs from "fs";
 import path from "path";
 import ts from "typescript";
 import * as formReset from "@/hooks/use-form-reset";
+import { AuditMiddleware } from "@/lib/commands/middleware/audit.middleware";
 import { BaseError } from "@/lib/errors/base/base-error";
+import {
+  ErrorCategory,
+  ErrorCode,
+  ErrorSeverity,
+} from "@/lib/errors/base/error-codes";
 import * as systemErrors from "@/lib/errors/domain/system-errors";
 import * as validationErrors from "@/lib/errors/domain/validation-errors";
 import { ErrorBuilder, createError } from "@/lib/errors/error-builder";
@@ -78,11 +84,16 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // that only the page passed, and the page's texts in the message files (a
 // namespace and five keys: `pnpm validate-translations` compares the files
 // with each other, not with the code, so a text that nothing reads passes
-// it). The parts of the Prisma schema that nothing read are listed too (the
+// it; message-keys.test.ts now compares the keys with the code).
+// The parts of the Prisma schema that nothing read are listed too (the
 // schema is no source file for A and B, and the client generated from it is
 // skipped): a model, fields of the User model, the member of the event type
 // that went with the model, and the member of the repository's update type
 // that went with one of the fields.
+// The rows for package.json, for the enums and the context of the error layer
+// and for the props of GradientPageLayout are of the same kind: a script, a
+// dependency and a member of an enum or of an interface are no exports
+// either.
 // `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
@@ -123,34 +134,162 @@ const RETIRED: {
     retired: ["ErrorDetails"],
   },
   {
+    holder: "members of ErrorContext",
+    members: () =>
+      interfaceMembers("src/lib/errors/base/base-error.ts", "ErrorContext"),
+    kept: "correlationId",
+    retired: ["requestId", "path", "method"],
+  },
+  {
+    holder: "ErrorCode",
+    members: () => Object.keys(ErrorCode),
+    kept: "VALIDATION_FAILED",
+    retired: [
+      "AUTHENTICATION_FAILED",
+      "INVALID_CREDENTIALS",
+      "SESSION_EXPIRED",
+      "ACCOUNT_LOCKED",
+      "ACCOUNT_DISABLED",
+      "EMAIL_NOT_VERIFIED",
+      "TWO_FACTOR_REQUIRED",
+      "TWO_FACTOR_FAILED",
+      "UNAUTHORIZED",
+      "FORBIDDEN",
+      "INSUFFICIENT_PERMISSIONS",
+      "RESOURCE_ACCESS_DENIED",
+      "MISSING_REQUIRED_FIELD",
+      "INVALID_FORMAT",
+      "VALUE_OUT_OF_RANGE",
+      "DUPLICATE_VALUE",
+      "BUSINESS_RULE_VIOLATION",
+      "CONCURRENT_MODIFICATION",
+      "QUOTA_EXCEEDED",
+      "RATE_LIMIT_EXCEEDED",
+      "TOO_MANY_REQUESTS",
+      "THROTTLED",
+      "SERVICE_UNAVAILABLE",
+      "DATABASE_ERROR",
+      "NETWORK_ERROR",
+      "TIMEOUT",
+      "CONFIGURATION_ERROR",
+      "EXTERNAL_SERVICE_ERROR",
+      "API_ERROR",
+      "WEBHOOK_FAILED",
+      "EMAIL_SEND_FAILED",
+      "SMS_SEND_FAILED",
+      "UNKNOWN",
+    ],
+  },
+  {
+    holder: "ErrorCategory",
+    members: () => Object.keys(ErrorCategory),
+    kept: "VALIDATION",
+    retired: [
+      "AUTHENTICATION",
+      "AUTHORIZATION",
+      "RATE_LIMITING",
+      "INTEGRATION",
+      "UNKNOWN",
+    ],
+  },
+  {
+    holder: "ErrorSeverity",
+    members: () => Object.keys(ErrorSeverity),
+    kept: "HIGH",
+    retired: ["MEDIUM", "CRITICAL"],
+  },
+  {
+    holder: "names exported by errors/types/error-details.ts",
+    members: () => namesExportedBy("src/lib/errors/types/error-details.ts"),
+    kept: "ErrorDetails",
+    retired: [
+      "BaseErrorDetails",
+      "ValidationErrorDetails",
+      "DuplicateValueErrorDetails",
+      "InvalidInputErrorDetails",
+      "SchemaValidationErrorDetails",
+      "AuthErrorDetails",
+      "AuthorizationErrorDetails",
+      "BusinessLogicErrorDetails",
+      "SystemErrorDetails",
+      "DatabaseErrorDetails",
+      "ExternalServiceErrorDetails",
+      "RateLimitErrorDetails",
+    ],
+  },
+  {
     holder: "ErrorFactory",
     members: () => Object.getOwnPropertyNames(ErrorFactory),
     kept: "wrap",
-    retired: ["fromCode", "is", "hasCode"],
+    retired: ["fromCode", "is", "hasCode", "auth", "system"],
   },
   {
     holder: "ErrorFactory.validation",
     members: () => Object.keys(ErrorFactory.validation),
     kept: "fromZod",
-    retired: ["duplicate", "schema", "field", "composite"],
+    retired: [
+      "duplicate",
+      "schema",
+      "field",
+      "composite",
+      "failed",
+      "missingField",
+      "invalidFormat",
+      "outOfRange",
+    ],
   },
   {
-    holder: "ErrorFactory.system",
-    members: () => Object.keys(ErrorFactory.system),
-    kept: "internal",
-    retired: ["externalService", "api"],
+    holder: "ErrorFactory.business",
+    members: () => Object.keys(ErrorFactory.business),
+    kept: "notFound",
+    retired: [
+      "ruleViolation",
+      "concurrentModification",
+      "quotaExceeded",
+      "invalidStateTransition",
+      "invariantViolation",
+      "preconditionFailed",
+      "postconditionFailed",
+      "dependency",
+      "workflow",
+    ],
   },
   {
     holder: "ErrorBuilder.prototype",
     members: () => Object.getOwnPropertyNames(ErrorBuilder.prototype),
     kept: "withUserId",
-    retired: ["withContext"],
+    retired: ["withContext", "withRequestId", "withPath", "withMethod"],
+  },
+  {
+    holder: "groups of createError()",
+    members: () => Object.keys(createError()),
+    kept: "business",
+    retired: ["auth", "system"],
   },
   {
     holder: "createError().validation",
     members: () => Object.keys(createError().validation),
     kept: "invalidInput",
-    retired: ["duplicate"],
+    retired: [
+      "duplicate",
+      "failed",
+      "fromZod",
+      "missingField",
+      "invalidFormat",
+      "outOfRange",
+    ],
+  },
+  {
+    holder: "createError().business",
+    members: () => Object.keys(createError().business),
+    kept: "alreadyExists",
+    retired: [
+      "ruleViolation",
+      "notFound",
+      "concurrentModification",
+      "quotaExceeded",
+      "invalidStateTransition",
+    ],
   },
   {
     holder: "exports of errors/domain/validation-errors",
@@ -161,13 +300,64 @@ const RETIRED: {
       "SchemaValidationError",
       "FieldValidationError",
       "CompositeValidationError",
+      "MissingRequiredFieldError",
+      "InvalidFormatError",
+      "ValueOutOfRangeError",
+    ],
+  },
+  {
+    holder: "names exported by errors/domain/business-errors.ts",
+    members: () => namesExportedBy("src/lib/errors/domain/business-errors.ts"),
+    kept: "ResourceNotFoundError",
+    retired: [
+      "BusinessRuleViolationError",
+      "ConcurrentModificationError",
+      "QuotaExceededError",
+      "InvalidStateTransitionError",
+      "InvariantViolationError",
+      "PreconditionFailedError",
+      "PostconditionFailedError",
+      "DependencyError",
+      "WorkflowError",
     ],
   },
   {
     holder: "exports of errors/domain/system-errors",
     members: () => Object.keys(systemErrors),
     kept: "InternalError",
-    retired: ["ExternalServiceError", "ApiError"],
+    retired: [
+      "ExternalServiceError",
+      "ApiError",
+      "ServiceUnavailableError",
+      "DatabaseError",
+      "NetworkError",
+      "TimeoutError",
+      "ConfigurationError",
+      "RateLimitError",
+      "WebhookFailedError",
+      "EmailSendFailedError",
+      "SmsSendFailedError",
+      "CircuitBreakerOpenError",
+      "ResourceExhaustedError",
+    ],
+  },
+  {
+    holder: "error classes of errors/domain (the auth errors went as a file)",
+    members: () =>
+      sourceFiles("src/lib/errors/domain").flatMap(namesExportedBy),
+    kept: "OperationNotAllowedError",
+    retired: [
+      "InvalidCredentialsError",
+      "SessionExpiredError",
+      "AccountLockedError",
+      "AccountDisabledError",
+      "EmailNotVerifiedError",
+      "TwoFactorRequiredError",
+      "TwoFactorFailedError",
+      "AuthorizationError",
+      "InsufficientPermissionsError",
+      "ResourceAccessDeniedError",
+    ],
   },
   {
     holder: "BaseEvent and BaseEvent.prototype",
@@ -241,7 +431,97 @@ const RETIRED: {
     holder: "names exported by test/builders/base.builder.ts",
     members: () => namesExportedBy("src/test/builders/base.builder.ts"),
     kept: "ChainableBuilder",
-    retired: ["CompositeBuilder"],
+    retired: [
+      "CompositeBuilder",
+      "StatefulBuilder",
+      "BuilderFactory",
+      "BuilderMethods",
+      "createBuilder",
+    ],
+  },
+  {
+    holder: "names exported by test/builders/account.builder.ts",
+    members: () => namesExportedBy("src/test/builders/account.builder.ts"),
+    kept: "AccountBuilder",
+    retired: ["AccountBuilderFactory", "accountBuilders", "AccountScenarios"],
+  },
+  {
+    holder: "names exported by test/builders/session.builder.ts",
+    members: () => namesExportedBy("src/test/builders/session.builder.ts"),
+    kept: "SessionBuilder",
+    retired: [
+      "NextAuthSessionBuilder",
+      "SessionBuilderFactory",
+      "sessionBuilders",
+    ],
+  },
+  {
+    holder: "names exported by test/builders/user.builder.ts",
+    members: () => namesExportedBy("src/test/builders/user.builder.ts"),
+    kept: "UserBuilder",
+    retired: ["userBuilders", "UserBuilderFactory"],
+  },
+  {
+    holder: "names exported by test/utils/test-utils.tsx",
+    members: () => namesExportedBy("src/test/utils/test-utils.tsx"),
+    kept: "generate",
+    retired: [
+      "render",
+      "createUser",
+      "waitFor",
+      "createDeferredPromise",
+      "mockConsole",
+      "mockFetch",
+      "timing",
+      "assert",
+      "TestCleanup",
+      "userEvent",
+    ],
+  },
+  {
+    holder: "names exported by utils/form-responses.ts",
+    members: () => namesExportedBy("src/lib/utils/form-responses.ts"),
+    kept: "createErrorResponse",
+    retired: [
+      "CommonErrorType",
+      "createGenericErrorResponse",
+      "isSuccessResponse",
+      "hasFieldErrors",
+      "withErrorHandling",
+    ],
+  },
+  {
+    holder: "names exported by utils/form-locale-server.ts",
+    members: () => namesExportedBy("src/lib/utils/form-locale-server.ts"),
+    kept: "resolveFormLocale",
+    retired: ["getFormTranslations"],
+  },
+  {
+    holder: "names exported by components/ui/card.tsx",
+    members: () => namesExportedBy("src/components/ui/card.tsx"),
+    kept: "CardContent",
+    retired: ["CardFooter"],
+  },
+  {
+    holder: "AuditMiddleware.prototype",
+    members: () => Object.getOwnPropertyNames(AuditMiddleware.prototype),
+    kept: "getAuditLogs",
+    retired: ["getAuditLogsByUser", "clearAuditLogs"],
+  },
+  {
+    holder: "scripts of package.json",
+    members: () => Object.keys(packageJson().scripts ?? {}),
+    kept: "test:e2e:chromium",
+    retired: ["test:e2e:firefox", "test:e2e:webkit"],
+  },
+  {
+    holder: "dependencies of package.json",
+    members: () => [
+      ...Object.keys(packageJson().dependencies ?? {}),
+      ...Object.keys(packageJson().devDependencies ?? {}),
+    ],
+    kept: "next-intl",
+    retired: ["negotiator", "@types/negotiator"],
   },
   {
     holder: "fields and methods of BaseCommand",
@@ -342,8 +622,23 @@ const RETIRED: {
       ...stringLiteralsIn("src/components/layouts/gradient-page-layout.tsx"),
       ...stringLiteralsIn("src/components/layouts/form-page-layout.tsx"),
     ],
-    kept: "purple-pink",
-    retired: ["green-blue"],
+    kept: "from-blue-50 via-white to-purple-50",
+    retired: [
+      "green-blue",
+      "blue-purple",
+      "purple-pink",
+      "from-purple-50 via-white to-pink-50",
+    ],
+  },
+  {
+    holder: "props of GradientPageLayout",
+    members: () =>
+      interfaceMembers(
+        "src/components/layouts/gradient-page-layout.tsx",
+        "GradientPageLayoutProps",
+      ),
+    kept: "children",
+    retired: ["gradient"],
   },
   {
     holder: "props of FormPageLayout",
@@ -472,6 +767,17 @@ function stringLiteralsIn(file: string): string[] {
   };
   visit(parsed);
   return texts;
+}
+
+/** The scripts and the dependencies that package.json names. */
+function packageJson(): {
+  scripts?: Record<string, string>;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+} {
+  return JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, "package.json"), "utf8"),
+  );
 }
 
 /** The models that prisma/schema.prisma declares. */
