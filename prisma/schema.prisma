@@ -70,6 +70,8 @@ model User {
   passwordSetAt           DateTime?
   lastLoginMethod         String?
   sessionVersion          Int                      @default(0)
+  linkGrantProvider       String?
+  linkGrantExpiresAt      DateTime?
   backupCodes             String[]
   twoFactorEnabled        Boolean                  @default(false)
   twoFactorSecret         String?

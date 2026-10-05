@@ -6,20 +6,32 @@
  * Contract of POST /api/auth/link-account/initiate: the password check the
  * account page makes before it starts the Google sign-in that links the
  * account (src/components/account/oauth-account-linking.tsx). In the order
- * the route decides:
- *   no session / session without a user id  -> 401
- *   five wrong passwords within 15 minutes  -> 429 + Retry-After
- *   password or provider missing            -> 400
- *   a provider other than "google"          -> 400
- *   user gone, or account without password  -> 404
- *   wrong password                          -> 401, counted, and an
- *                                              "account_link_failed" event
- *   Google already linked                   -> 400
- *   correct password                        -> 200 { success, provider } and
- *                                              an "account_link_initiated"
+ * the route decides, each refusal with its `code`:
+ *   no session / session without a user id  -> 401 authentication_required
+ *   five wrong passwords within 15 minutes  -> 429 too_many_attempts
+ *                                              + Retry-After
+ *   body that is no JSON object, password
+ *   or provider that is no string           -> 400 invalid_request
+ *   password or provider missing            -> 400 missing_fields
+ *   a provider other than "google"          -> 400 unsupported_provider
+ *   user gone                               -> 404 user_not_found
+ *   account without a password              -> 404 password_not_set
+ *   wrong password                          -> 401 invalid_password, counted,
+ *                                              and an "account_link_failed"
  *                                              event
- * The route links nothing and hands out no token: the security event is its
- * only write.
+ *   Google already linked                   -> 400 already_linked
+ *   a failing database                      -> 500 internal_error
+ *   correct password                        -> 200 { success, provider }, a
+ *                                              link grant on the user's row
+ *                                              and an
+ *                                              "account_link_initiated" event
+ * A refusal answers { error, code }: the English text, and the code that the
+ * account page translates (src/lib/auth/link-account-errors.ts). The route
+ * links nothing and hands out no token: the grant (two columns of the user's
+ * row, src/lib/auth/link-grant.ts) and the security event are its only
+ * writes, and the grant is written only after every check has passed. The
+ * two are written in one transaction: when either cannot be written, neither
+ * stays.
  *
  * The wrong passwords are counted per account and per client address (the
  * first entry of X-Forwarded-For), and in one count with those of the unlink
@@ -40,7 +52,12 @@ jest.mock("@/lib/auth", () => ({ auth: jest.fn() }));
 
 // Every model and every method exists on this Prisma client and is recorded,
 // so a read or a write that the route is not expected to make shows up in
-// `mockPrismaCalls` instead of going unnoticed.
+// `mockPrismaCalls` instead of going unnoticed. A transaction is recorded as
+// "$transaction" and hands its callback a client of its own, whose calls are
+// recorded as "tx.<model>.<method>". What the writes would leave in a
+// database is in `mockWritesKept`: a write outside a transaction at once, the
+// writes of a transaction when its callback has resolved, and none of them
+// when it has rejected.
 jest.mock("@/lib/prisma", () => {
   const delegate = (model: string) =>
     new Proxy(
@@ -50,9 +67,18 @@ jest.mock("@/lib/prisma", () => {
           mockPrismaCall(`${model}.${String(method)}`, args),
       },
     );
-  return {
-    prisma: new Proxy({}, { get: (_target, model) => delegate(String(model)) }),
-  };
+  const client = (prefix: string): unknown =>
+    new Proxy(
+      {},
+      {
+        get: (_target, model) =>
+          model === "$transaction"
+            ? (run: (tx: unknown) => Promise<unknown>) =>
+                mockTransaction(() => run(client("tx.")))
+            : delegate(`${prefix}${String(model)}`),
+      },
+    );
+  return { prisma: client("") };
 });
 
 import bcrypt from "bcryptjs";
@@ -68,15 +94,41 @@ const mockAuth = auth as unknown as jest.MockedFunction<() => Promise<unknown>>;
 
 /** The calls the route made on the Prisma client, in order. */
 const mockPrismaCalls: { name: string; args: unknown }[] = [];
+/** The writes among them that a database would keep, as "<model>.<method>". */
+const mockWritesKept: string[] = [];
+/** The writes of the transaction that is running. */
+const mockWritesPending: string[] = [];
 /** What prisma.user.findUnique answers: a row, null, or an Error to throw. */
 let mockUserRow: unknown = null;
+/** The one call that fails, in a transaction or outside one, when a test names one. */
+let mockFailingCall: string | null = null;
 
 function mockPrismaCall(name: string, args: unknown): Promise<unknown> {
   mockPrismaCalls.push({ name, args });
-  if (name !== "user.findUnique") return Promise.resolve({ id: "new-row" });
+  const inTransaction = name.startsWith("tx.");
+  const call = inTransaction ? name.slice("tx.".length) : name;
+  if (call === mockFailingCall) {
+    return Promise.reject(new Error("write refused"));
+  }
+  if (call !== "user.findUnique") {
+    (inTransaction ? mockWritesPending : mockWritesKept).push(call);
+    return Promise.resolve({ id: "new-row" });
+  }
   return mockUserRow instanceof Error
     ? Promise.reject(mockUserRow)
     : Promise.resolve(mockUserRow);
+}
+
+async function mockTransaction(run: () => Promise<unknown>): Promise<unknown> {
+  mockPrismaCalls.push({ name: "$transaction", args: undefined });
+  mockWritesPending.length = 0;
+  try {
+    const result = await run();
+    mockWritesKept.push(...mockWritesPending);
+    return result;
+  } finally {
+    mockWritesPending.length = 0;
+  }
 }
 
 const INITIATE_URL = "http://localhost:3000/api/auth/link-account/initiate";
@@ -135,6 +187,16 @@ const jsonRequest = (
 const post = (body: unknown, headers: RequestHeaders = PROXIED) =>
   POST(jsonRequest(INITIATE_URL, "POST", body, headers));
 
+/** A request whose body is this text as it is, JSON or not. */
+const postText = (body: string) =>
+  POST(
+    new NextRequest(INITIATE_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...PROXIED },
+      body,
+    }),
+  );
+
 const postPassword = (password: string, headers?: RequestHeaders) =>
   post({ password, provider: "google" }, headers);
 
@@ -151,10 +213,12 @@ const unlinkPassword = (password: string) =>
 
 const prismaCallNames = () => mockPrismaCalls.map((call) => call.name);
 
-/** The argument of the one prisma.securityEvent.create call. */
+/** The argument of the one securityEvent.create call, in a transaction or not. */
 function securityEventWritten(): unknown {
   const writes = mockPrismaCalls.filter(
-    (call) => call.name === "securityEvent.create",
+    (call) =>
+      call.name === "securityEvent.create" ||
+      call.name === "tx.securityEvent.create",
   );
   expect(writes).toHaveLength(1);
   return writes[0].args;
@@ -164,7 +228,9 @@ beforeEach(() => {
   jest.clearAllMocks();
   __resetRateLimitStore();
   mockPrismaCalls.length = 0;
+  mockWritesKept.length = 0;
   mockUserRow = userRow();
+  mockFailingCall = null;
   mockAuth.mockResolvedValue(session());
 });
 
@@ -188,21 +254,81 @@ describe("POST /api/auth/link-account/initiate with the correct password", () =>
     expect(body).not.toHaveProperty(field);
   });
 
-  it("reads the user of the session and writes one security event, nothing else", async () => {
+  it("reads the user of the session, writes the link grant on that row and one security event in one transaction, nothing else", async () => {
+    const before = Date.now();
     // A user id in the body is not an identity: the session is.
     await post({
       password: PASSWORD,
       provider: "google",
       userId: OTHER_USER_ID,
     });
+    const after = Date.now();
 
     expect(mockPrismaCalls).toStrictEqual([
       {
         name: "user.findUnique",
         args: { where: { id: USER_ID }, include: { accounts: true } },
       },
-      { name: "securityEvent.create", args: expect.anything() },
+      { name: "$transaction", args: undefined },
+      {
+        name: "tx.user.update",
+        args: {
+          where: { id: USER_ID },
+          data: {
+            linkGrantProvider: "google",
+            linkGrantExpiresAt: expect.any(Date),
+          },
+        },
+      },
+      { name: "tx.securityEvent.create", args: expect.anything() },
     ]);
+    expect(mockWritesKept).toEqual(["user.update", "securityEvent.create"]);
+    // The grant ends 300 seconds after the request (LINK_GRANT_TTL_SECONDS).
+    const grant = mockPrismaCalls[2].args as {
+      data: { linkGrantExpiresAt: Date };
+    };
+    const end = grant.data.linkGrantExpiresAt.getTime();
+    expect(end).toBeGreaterThanOrEqual(before + 300_000);
+    expect(end).toBeLessThanOrEqual(after + 300_000);
+  });
+
+  it("answers 500 and records no initiation when the grant cannot be written", async () => {
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    mockFailingCall = "user.update";
+
+    const res = await postPassword(PASSWORD);
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      error: "Internal server error",
+      code: "internal_error",
+    });
+    expect(prismaCallNames()).toEqual([
+      "user.findUnique",
+      "$transaction",
+      "tx.user.update",
+    ]);
+    expect(mockWritesKept).toEqual([]);
+    expect(logged).toHaveBeenCalledTimes(1);
+    logged.mockRestore();
+  });
+
+  // A grant without its event could be spent for five minutes with nothing
+  // in the audit trail that says a link was started.
+  it("answers 500 and leaves no grant when the event cannot be written", async () => {
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    mockFailingCall = "securityEvent.create";
+
+    const res = await postPassword(PASSWORD);
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      error: "Internal server error",
+      code: "internal_error",
+    });
+    expect(mockWritesKept).toEqual([]);
+    expect(logged).toHaveBeenCalledTimes(1);
+    logged.mockRestore();
   });
 
   it("records account_link_initiated with the provider and no link request", async () => {
@@ -249,6 +375,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toEqual({
       error: "Authentication required",
+      code: "authentication_required",
     });
     expect(mockPrismaCalls).toEqual([]);
   });
@@ -268,6 +395,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(429);
     await expect(res.json()).resolves.toEqual({
       error: "Too many attempts. Please try again later.",
+      code: "too_many_attempts",
     });
     const retryAfter = Number(res.headers.get("retry-after"));
     expect(Number.isInteger(retryAfter)).toBe(true);
@@ -287,8 +415,64 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({
       error: "Password and provider are required",
+      code: "missing_fields",
     });
     expect(mockPrismaCalls).toEqual([]);
+  });
+
+  it.each([
+    ["is not JSON", "{ not json"],
+    ["is empty", ""],
+    ["is JSON null", "null"],
+    ["is a JSON string", '"google"'],
+    ["is a JSON number", "5"],
+  ])(
+    "answers 400 when the body %s, before the database is asked",
+    async (_, body) => {
+      const res = await postText(body);
+
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: "Invalid request body",
+        code: "invalid_request",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
+
+  it.each([
+    ["the password is a number", { password: 12345678, provider: "google" }],
+    ["the password is an object", { password: {}, provider: "google" }],
+    ["the password is a list", { password: [PASSWORD], provider: "google" }],
+    ["the password is true", { password: true, provider: "google" }],
+    ["the provider is a list", { password: PASSWORD, provider: ["google"] }],
+    ["the provider is an object", { password: PASSWORD, provider: {} }],
+  ])("answers 400 when %s, before the database is asked", async (_, body) => {
+    const res = await post(body);
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid request body",
+      code: "invalid_request",
+    });
+    expect(mockPrismaCalls).toEqual([]);
+  });
+
+  it("does not count a request it answers with 400 as a wrong password", async () => {
+    // More of them than the wrong passwords the throttle allows.
+    for (let n = 0; n < RATE_LIMITS.passwordVerify.limit + 1; n++) {
+      expect((await postText("{ not json")).status).toBe(400);
+      expect(
+        (await post({ password: 12345678, provider: "google" })).status,
+      ).toBe(400);
+      expect((await post({ provider: "google" })).status).toBe(400);
+      expect(
+        (await post({ password: PASSWORD, provider: "github" })).status,
+      ).toBe(400);
+    }
+
+    expect((await postPassword("wrong")).status).toBe(401);
+    expect((await postPassword(PASSWORD)).status).toBe(200);
   });
 
   it("answers 400 for a provider other than google", async () => {
@@ -297,14 +481,19 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({
       error: "Unsupported provider",
+      code: "unsupported_provider",
     });
     expect(mockPrismaCalls).toEqual([]);
   });
 
   it.each([
-    ["the user no longer exists", null],
-    ["the account has no password", userRow({ password: null })],
-  ])("answers 404 when %s, and writes nothing", async (_, row) => {
+    ["the user no longer exists", null, "user_not_found"],
+    [
+      "the account has no password",
+      userRow({ password: null }),
+      "password_not_set",
+    ],
+  ])("answers 404 when %s, and writes nothing", async (_, row, code) => {
     mockUserRow = row;
 
     const res = await postPassword(PASSWORD);
@@ -312,6 +501,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({
       error: "User not found or no password set",
+      code,
     });
     expect(prismaCallNames()).toEqual(["user.findUnique"]);
   });
@@ -320,7 +510,10 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     const res = await postPassword("wrong");
 
     expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid password" });
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid password",
+      code: "invalid_password",
+    });
     expect(prismaCallNames()).toEqual([
       "user.findUnique",
       "securityEvent.create",
@@ -347,6 +540,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({
       error: "Account already linked to this provider",
+      code: "already_linked",
     });
     expect(prismaCallNames()).toEqual(["user.findUnique"]);
   });
@@ -360,6 +554,7 @@ describe("POST /api/auth/link-account/initiate, refused", () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({
       error: "Internal server error",
+      code: "internal_error",
     });
     expect(logged).toHaveBeenCalledTimes(1);
     logged.mockRestore();

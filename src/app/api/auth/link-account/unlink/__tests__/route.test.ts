@@ -6,23 +6,35 @@
  * Contract of DELETE /api/auth/link-account/unlink: the account page unlinks
  * Google with it, after asking for the password
  * (src/components/account/oauth-account-linking.tsx). In the order the route
- * decides:
- *   no session / session without a user id  -> 401
- *   five wrong passwords within 15 minutes  -> 429 + Retry-After
- *   password or provider missing            -> 400
- *   user gone, or account without password  -> 404
- *   wrong password                          -> 401, counted, and an
- *                                              "account_unlink_failed" event
- *   no account of that provider             -> 404
+ * decides, each refusal with its `code`:
+ *   no session / session without a user id  -> 401 authentication_required
+ *   five wrong passwords within 15 minutes  -> 429 too_many_attempts
+ *                                              + Retry-After
+ *   body that is no JSON object, password
+ *   or provider that is no string           -> 400 invalid_request
+ *   password or provider missing            -> 400 missing_fields
+ *   a provider other than "google"          -> 400 unsupported_provider
+ *   user gone                               -> 404 user_not_found
+ *   account without a password              -> 404 password_not_set
+ *   wrong password                          -> 401 invalid_password, counted,
+ *                                              and an "account_unlink_failed"
+ *                                              event
+ *   Google not linked                       -> 404 not_linked
+ *   a failing database                      -> 500 internal_error
  *   correct password                        -> 200 { success, message,
  *                                              provider, unlinkedAt }
- * With the 200, in one transaction: the Account row is deleted, the user row
- * loses `hasGoogleAccount` (and `lastLoginMethod` when Google was the last
- * method used) and an "account_unlinked" event is written.
+ * A refusal answers { error, code }: the English text, and the code that the
+ * account page translates (src/lib/auth/link-account-errors.ts). With the
+ * 200, in one transaction: the Account row is deleted, the user row loses
+ * `hasGoogleAccount` (and `lastLoginMethod` when Google was the last method
+ * used) and an "account_unlinked" event is written.
  *
- * The route holds one more answer, 400 "Cannot unlink the only authentication
- * method". No request gets it: an account without a password is answered 404
- * before it, so the password is always the other method.
+ * Google is the only provider the route unlinks, and it says so before it
+ * reads the user: the credentials Account row cannot be removed through it.
+ * The user always keeps a sign-in method, the password that was just
+ * checked: an account without one is answered 404 before anything is
+ * unlinked. (The route used to hold a 400 "Cannot unlink the only
+ * authentication method" for that; no request could get it.)
  *
  * The wrong passwords are counted per account and per client address (the
  * first entry of X-Forwarded-For), and in one count with those of the
@@ -170,6 +182,16 @@ const jsonRequest = (
 const del = (body: unknown, headers: RequestHeaders = PROXIED) =>
   DELETE(jsonRequest(UNLINK_URL, "DELETE", body, headers));
 
+/** A request whose body is this text as it is, JSON or not. */
+const delText = (body: string) =>
+  DELETE(
+    new NextRequest(UNLINK_URL, {
+      method: "DELETE",
+      headers: { "content-type": "application/json", ...PROXIED },
+      body,
+    }),
+  );
+
 const unlinkWith = (password: string, headers?: RequestHeaders) =>
   del({ password, provider: "google" }, headers);
 
@@ -281,8 +303,8 @@ describe("DELETE /api/auth/link-account/unlink with the correct password", () =>
     });
   });
 
-  // The password is the other method: no request reaches the answer "Cannot
-  // unlink the only authentication method".
+  // The password that was just checked is the other sign-in method, with
+  // or without a credentials Account row.
   it("unlinks Google also when it is the only account row of the user", async () => {
     mockUserRow = userRow({ accounts: [GOOGLE_ACCOUNT] });
 
@@ -320,6 +342,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toEqual({
       error: "Authentication required",
+      code: "authentication_required",
     });
     expect(mockPrismaCalls).toEqual([]);
   });
@@ -339,6 +362,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(429);
     await expect(res.json()).resolves.toEqual({
       error: "Too many attempts. Please try again later.",
+      code: "too_many_attempts",
     });
     const retryAfter = Number(res.headers.get("retry-after"));
     expect(Number.isInteger(retryAfter)).toBe(true);
@@ -358,14 +382,91 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({
       error: "Password and provider are required",
+      code: "missing_fields",
     });
     expect(mockPrismaCalls).toEqual([]);
   });
 
   it.each([
-    ["the user no longer exists", null],
-    ["the account has no password", userRow({ password: null })],
-  ])("answers 404 when %s, and writes nothing", async (_, row) => {
+    ["is not JSON", "{ not json"],
+    ["is empty", ""],
+    ["is JSON null", "null"],
+    ["is a JSON string", '"google"'],
+    ["is a JSON number", "5"],
+  ])(
+    "answers 400 when the body %s, before the database is asked",
+    async (_, body) => {
+      const res = await delText(body);
+
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: "Invalid request body",
+        code: "invalid_request",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
+
+  it.each([
+    ["the password is a number", { password: 12345678, provider: "google" }],
+    ["the password is an object", { password: {}, provider: "google" }],
+    ["the password is a list", { password: [PASSWORD], provider: "google" }],
+    ["the password is true", { password: true, provider: "google" }],
+    ["the provider is a list", { password: PASSWORD, provider: ["google"] }],
+    ["the provider is an object", { password: PASSWORD, provider: {} }],
+  ])("answers 400 when %s, before the database is asked", async (_, body) => {
+    const res = await del(body);
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid request body",
+      code: "invalid_request",
+    });
+    expect(mockPrismaCalls).toEqual([]);
+  });
+
+  // "credentials" is the provider of the Account row that registration
+  // writes: with the right password the route used to delete that row and to
+  // clear `lastLoginMethod`.
+  it.each(["credentials", "github", "Google", "google "])(
+    "answers 400 for the provider %j, with the right password too, before the user is read",
+    async (provider) => {
+      const res = await del({ password: PASSWORD, provider });
+
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: "Unsupported provider",
+        code: "unsupported_provider",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
+
+  it("does not count a request it answers with 400 as a wrong password", async () => {
+    // More of them than the wrong passwords the throttle allows.
+    for (let n = 0; n < RATE_LIMITS.passwordVerify.limit + 1; n++) {
+      expect((await delText("{ not json")).status).toBe(400);
+      expect(
+        (await del({ password: 12345678, provider: "google" })).status,
+      ).toBe(400);
+      expect((await del({ provider: "google" })).status).toBe(400);
+      expect(
+        (await del({ password: PASSWORD, provider: "credentials" })).status,
+      ).toBe(400);
+    }
+
+    expect((await unlinkWith("wrong")).status).toBe(401);
+    expect((await unlinkWith(PASSWORD)).status).toBe(200);
+  });
+
+  it.each([
+    ["the user no longer exists", null, "user_not_found"],
+    [
+      "the account has no password",
+      userRow({ password: null }),
+      "password_not_set",
+    ],
+  ])("answers 404 when %s, and writes nothing", async (_, row, code) => {
     mockUserRow = row;
 
     const res = await unlinkWith(PASSWORD);
@@ -373,6 +474,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({
       error: "User not found or no password set",
+      code,
     });
     expect(prismaCallNames()).toEqual(["user.findUnique"]);
   });
@@ -381,7 +483,10 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     const res = await unlinkWith("wrong");
 
     expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toEqual({ error: "Invalid password" });
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid password",
+      code: "invalid_password",
+    });
     expect(prismaCallNames()).toEqual([
       "user.findUnique",
       "securityEvent.create",
@@ -398,25 +503,15 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     });
   });
 
-  it.each([
-    [
-      "Google is not linked",
-      { password: PASSWORD, provider: "google" },
-      userRow({ accounts: [CREDENTIALS_ACCOUNT] }),
-    ],
-    [
-      "the user has no account of the provider named",
-      { password: PASSWORD, provider: "github" },
-      userRow(),
-    ],
-  ])("answers 404 when %s, and writes nothing", async (_, body, row) => {
-    mockUserRow = row;
+  it("answers 404 when Google is not linked, and writes nothing", async () => {
+    mockUserRow = userRow({ accounts: [CREDENTIALS_ACCOUNT] });
 
-    const res = await del(body);
+    const res = await unlinkWith(PASSWORD);
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({
       error: "Account not linked to this provider",
+      code: "not_linked",
     });
     expect(prismaCallNames()).toEqual(["user.findUnique"]);
   });
@@ -430,6 +525,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({
       error: "Failed to unlink account",
+      code: "internal_error",
     });
     expect(logged).toHaveBeenCalledTimes(1);
     logged.mockRestore();
@@ -444,6 +540,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({
       error: "Failed to unlink account",
+      code: "internal_error",
     });
     expect(prismaCallNames()).toEqual([
       "user.findUnique",

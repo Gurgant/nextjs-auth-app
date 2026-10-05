@@ -39,6 +39,9 @@
       "oauthCallbackError": "OAuth Connection Error",
       "oauthCallbackErrorDescription": "There was a problem connecting with your OAuth provider.",
       "oauthCallbackErrorDetails": "This could be due to network issues, provider downtime, or configuration problems. Please try signing in again.",
+      "linkNotConfirmed": "Google Account Not Linked",
+      "linkNotConfirmedDescription": "This Google account was not linked, because the link was not confirmed with your password.",
+      "linkNotConfirmedDetails": "To link a Google account, open your account settings, choose Link Account, enter your password and finish the Google step within 5 minutes. Each confirmation works once. An account that signs in with Google only cannot link a second Google account. If your account settings show a linked Google account that you did not link yourself, unlink it and change your password.",
       "howToResolve": "How to resolve this:",
       "signInWithEmailFirst": "Sign in with your email and password first",
       "goToAccountSettings": "Go to Account Settings",
@@ -46,9 +49,7 @@
       "tryEmailSignIn": "Try Email Sign In",
       "tryDifferentAccount": "Try Different Account",
       "tryAgain": "Try Again",
-      "goBack": "Go Back",
-      "needHelp": "Need help?",
-      "contactSupport": "Contact Support"
+      "goBack": "Go Back"
     }
   },
   "Common": {
@@ -142,7 +143,17 @@
     "oauthAuthenticationFailed": "OAuth authentication failed",
     "failedToLinkAccount": "Failed to link account",
     "failedToUnlinkAccount": "Failed to unlink account",
-    "accountUnlinkedSuccessfully": "Account unlinked successfully"
+    "accountUnlinkedSuccessfully": "Account unlinked successfully",
+    "linkErrors": {
+      "authenticationRequired": "Your session has ended. Please sign in again.",
+      "tooManyAttempts": "Too many attempts. Please try again later.",
+      "invalidRequest": "The request could not be read. Reload the page and try again.",
+      "unsupportedProvider": "This sign-in provider cannot be linked or unlinked here.",
+      "passwordNotSet": "This account has no password yet. Set a password first.",
+      "invalidPassword": "The password is not correct.",
+      "alreadyLinked": "A Google account is already linked to this account.",
+      "notLinked": "No Google account is linked to this account."
+    }
   },
   "CredentialsForm": {
     "invalidCredentials": "Invalid email or password",

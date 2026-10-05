@@ -24,6 +24,7 @@ import {
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useSafeLocale } from "@/hooks/use-safe-locale";
 import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
+import type { LinkAccountErrorCode } from "@/lib/auth/link-account-errors";
 
 interface AccountLinkingProps {
   accountInfo: {
@@ -53,6 +54,37 @@ export function OAuthAccountLinking({
     message: string;
   } | null>(null);
 
+  // The text of a refusal of the link routes, by its code. The routes also
+  // send an English `error` for readers of the API: it is not shown. A code
+  // this version does not know, or none, gets the general text of the
+  // operation.
+  const refusalText = (code: unknown, fallback: string): string => {
+    switch (code as LinkAccountErrorCode) {
+      case "authentication_required":
+      // The session's user is gone: the session has ended.
+      case "user_not_found":
+        return t("linkErrors.authenticationRequired");
+      case "too_many_attempts":
+        return t("linkErrors.tooManyAttempts");
+      case "invalid_request":
+      case "missing_fields":
+        return t("linkErrors.invalidRequest");
+      case "unsupported_provider":
+        return t("linkErrors.unsupportedProvider");
+      case "password_not_set":
+        return t("linkErrors.passwordNotSet");
+      case "invalid_password":
+        return t("linkErrors.invalidPassword");
+      case "already_linked":
+        return t("linkErrors.alreadyLinked");
+      case "not_linked":
+        return t("linkErrors.notLinked");
+      case "internal_error":
+      default:
+        return fallback;
+    }
+  };
+
   const handleLinkAccount = async (provider: "google") => {
     if (!password.trim()) {
       setResult({ success: false, message: t("passwordRequired") });
@@ -75,17 +107,19 @@ export function OAuthAccountLinking({
       if (!response.ok || !data.success) {
         setResult({
           success: false,
-          message: data.error || t("failedToInitiateAccountLinking"),
+          message: refusalText(data.code, t("failedToInitiateAccountLinking")),
         });
         return;
       }
 
-      // Step 2: Redirect to OAuth provider. The password re-verification
-      // above gates the flow; the actual linking happens server-side in the
-      // NextAuth callback (no client-held token is involved).
+      // Step 2: Redirect to OAuth provider. The server links the account in
+      // the NextAuth callback, and only because the password step above left
+      // a grant on the user's row (src/lib/auth/link-gate.ts): a Google
+      // sign-in started without it is refused. No client-held token is
+      // involved.
       const result = await signIn(provider, {
         redirect: false,
-        callbackUrl: `/${locale}/account?linked=${provider}`,
+        callbackUrl: `/${locale}/account`,
       });
 
       if (result?.error) {
@@ -123,7 +157,7 @@ export function OAuthAccountLinking({
       if (!response.ok || !data.success) {
         setResult({
           success: false,
-          message: data.error || t("failedToUnlinkAccount"),
+          message: refusalText(data.code, t("failedToUnlinkAccount")),
         });
         return;
       }

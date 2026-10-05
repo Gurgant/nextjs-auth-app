@@ -10,15 +10,20 @@ import {
   clearAttempts,
   RATE_LIMITS,
 } from "@/lib/rate-limit";
+import {
+  linkAccountRefusal,
+  readLinkAccountRequest,
+} from "@/lib/auth/link-account-request";
 
 export async function DELETE(request: NextRequest) {
   try {
     // Get authenticated session
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
+      return linkAccountRefusal(
+        401,
+        "authentication_required",
+        "Authentication required",
       );
     }
 
@@ -32,24 +37,24 @@ export async function DELETE(request: NextRequest) {
       RATE_LIMITS.passwordVerify,
     );
     if (limited.blocked) {
-      return NextResponse.json(
-        { error: "Too many attempts. Please try again later." },
-        {
-          status: 429,
-          headers: { "Retry-After": String(limited.retryAfterSeconds) },
-        },
+      return linkAccountRefusal(
+        429,
+        "too_many_attempts",
+        "Too many attempts. Please try again later.",
+        { "Retry-After": String(limited.retryAfterSeconds) },
       );
     }
 
-    const { password, provider } = await request.json();
-
-    // Validate required fields
-    if (!password || !provider) {
-      return NextResponse.json(
-        { error: "Password and provider are required" },
-        { status: 400 },
-      );
+    // Password and provider, checked before anything is read from the
+    // database: Google is the only provider this route unlinks (the
+    // credentials Account row is not one a user can remove). A request
+    // refused here is no password attempt: it is not counted toward the
+    // throttle.
+    const body = await readLinkAccountRequest(request);
+    if (!body.ok) {
+      return linkAccountRefusal(400, body.code, body.error);
     }
+    const { password, provider } = body;
 
     // Get user with current accounts
     const user = await prisma.user.findUnique({
@@ -58,9 +63,10 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!user || !user.password) {
-      return NextResponse.json(
-        { error: "User not found or no password set" },
-        { status: 404 },
+      return linkAccountRefusal(
+        404,
+        user ? "password_not_set" : "user_not_found",
+        "User not found or no password set",
       );
     }
 
@@ -80,7 +86,7 @@ export async function DELETE(request: NextRequest) {
         },
       });
 
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+      return linkAccountRefusal(401, "invalid_password", "Invalid password");
     }
 
     // Correct password — reset the throttle counter.
@@ -91,25 +97,15 @@ export async function DELETE(request: NextRequest) {
       (acc) => acc.provider === provider,
     );
     if (!accountToUnlink) {
-      return NextResponse.json(
-        { error: "Account not linked to this provider" },
-        { status: 404 },
+      return linkAccountRefusal(
+        404,
+        "not_linked",
+        "Account not linked to this provider",
       );
     }
 
-    // Check if user has at least one other auth method
-    const hasCredentials = !!user.password;
-    const hasOtherProviders =
-      user.accounts.filter((acc) => acc.provider !== provider).length > 0;
-
-    if (!hasCredentials && !hasOtherProviders) {
-      return NextResponse.json(
-        { error: "Cannot unlink the only authentication method" },
-        { status: 400 },
-      );
-    }
-
-    // Perform the unlink operation
+    // The user keeps a sign-in method: the password that was just checked
+    // (an account without one was answered above).
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Delete the account
       await tx.account.delete({
@@ -117,10 +113,7 @@ export async function DELETE(request: NextRequest) {
       });
 
       // Update user flags
-      const updateData: Prisma.UserUpdateInput = {};
-      if (provider === "google") {
-        updateData.hasGoogleAccount = false;
-      }
+      const updateData: Prisma.UserUpdateInput = { hasGoogleAccount: false };
       // "Last used" must not point at a method that is no longer linked.
       if (user.lastLoginMethod === provider) {
         updateData.lastLoginMethod = null;
@@ -159,9 +152,10 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     console.error("Account unlinking error:", error);
-    return NextResponse.json(
-      { error: "Failed to unlink account" },
-      { status: 500 },
+    return linkAccountRefusal(
+      500,
+      "internal_error",
+      "Failed to unlink account",
     );
   }
 }

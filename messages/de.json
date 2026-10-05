@@ -39,6 +39,9 @@
       "oauthCallbackError": "OAuth-Verbindungsfehler",
       "oauthCallbackErrorDescription": "Es gab ein Problem bei der Verbindung mit Ihrem OAuth-Anbieter.",
       "oauthCallbackErrorDetails": "Dies könnte auf Netzwerkprobleme, Anbieterausfall oder Konfigurationsprobleme zurückzuführen sein. Bitte versuchen Sie sich erneut anzumelden.",
+      "linkNotConfirmed": "Google-Konto Nicht Verknüpft",
+      "linkNotConfirmedDescription": "Dieses Google-Konto wurde nicht verknüpft, weil die Verknüpfung nicht mit Ihrem Passwort bestätigt wurde.",
+      "linkNotConfirmedDetails": "Um ein Google-Konto zu verknüpfen, öffnen Sie Ihre Kontoeinstellungen, wählen Sie Konto verknüpfen, geben Sie Ihr Passwort ein und schließen Sie den Google-Schritt innerhalb von 5 Minuten ab. Jede Bestätigung gilt nur einmal. Ein Konto, das sich nur mit Google anmeldet, kann kein zweites Google-Konto verknüpfen. Wenn Ihre Kontoeinstellungen ein verknüpftes Google-Konto zeigen, das Sie nicht selbst verknüpft haben, heben Sie die Verknüpfung auf und ändern Sie Ihr Passwort.",
       "howToResolve": "So lösen Sie dies:",
       "signInWithEmailFirst": "Melden Sie sich zuerst mit Ihrer E-Mail und Ihrem Passwort an",
       "goToAccountSettings": "Gehen Sie zu den Kontoeinstellungen",
@@ -46,9 +49,7 @@
       "tryEmailSignIn": "E-Mail-Anmeldung Versuchen",
       "tryDifferentAccount": "Anderes Konto Versuchen",
       "tryAgain": "Erneut Versuchen",
-      "goBack": "Zurück",
-      "needHelp": "Benötigen Sie Hilfe?",
-      "contactSupport": "Support Kontaktieren"
+      "goBack": "Zurück"
     }
   },
   "Common": {
@@ -142,7 +143,17 @@
     "oauthAuthenticationFailed": "OAuth-Authentifizierung fehlgeschlagen",
     "failedToLinkAccount": "Konto konnte nicht verknüpft werden",
     "failedToUnlinkAccount": "Kontoverknüpfung konnte nicht aufgehoben werden",
-    "accountUnlinkedSuccessfully": "Kontoverknüpfung erfolgreich aufgehoben"
+    "accountUnlinkedSuccessfully": "Kontoverknüpfung erfolgreich aufgehoben",
+    "linkErrors": {
+      "authenticationRequired": "Ihre Sitzung ist beendet. Bitte melden Sie sich erneut an.",
+      "tooManyAttempts": "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
+      "invalidRequest": "Die Anfrage konnte nicht gelesen werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+      "unsupportedProvider": "Für diesen Anmeldeanbieter kann hier keine Verknüpfung erstellt oder aufgehoben werden.",
+      "passwordNotSet": "Dieses Konto hat noch kein Passwort. Legen Sie zuerst ein Passwort fest.",
+      "invalidPassword": "Das Passwort ist nicht korrekt.",
+      "alreadyLinked": "Mit diesem Konto ist bereits ein Google-Konto verknüpft.",
+      "notLinked": "Mit diesem Konto ist kein Google-Konto verknüpft."
+    }
   },
   "CredentialsForm": {
     "invalidCredentials": "Ungültige E-Mail oder Passwort",

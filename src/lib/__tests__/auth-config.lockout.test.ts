@@ -217,6 +217,36 @@ describe("failed password attempts", () => {
     expect(mockLogSecurityEvent).not.toHaveBeenCalled();
   });
 
+  // One rule for what is kept of a request (requestMetadata in
+  // src/lib/security.ts): the first forwarded address, and the User-Agent
+  // cut to 512 characters.
+  it("hands the lock event the client address and the User-Agent as requestMetadata reads them", async () => {
+    mockRepo.verifyCredentials.mockResolvedValue({
+      status: "invalid",
+      userId: "u1",
+    });
+    mockRepo.registerFailedLogin.mockResolvedValueOnce({
+      attempts: 5,
+      lockedUntil: new Date(Date.now() + 15 * 60_000),
+      lockedNow: true,
+    });
+
+    await authorize(
+      { email: "alice@example.com", password: "nope" },
+      req(
+        "::ffff:203.0.113.7, 198.51.100.9",
+        "A".repeat(600) + "B".repeat(600),
+      ),
+    );
+
+    expect(mockLogSecurityEvent).toHaveBeenCalledTimes(1);
+    expect(mockLogSecurityEvent.mock.calls[0][0]).toMatchObject({
+      eventType: "account_locked",
+      ipAddress: "203.0.113.7",
+      userAgent: "A".repeat(512),
+    });
+  });
+
   it("still rejects the attempt when lockout bookkeeping fails", async () => {
     mockRepo.verifyCredentials.mockResolvedValue({
       status: "invalid",

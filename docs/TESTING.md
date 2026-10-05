@@ -45,6 +45,127 @@ have no unit tests. The error layer is tested by itself
 with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).
 There is no coverage threshold.
 
+### Account linking: what is measured and what is only read
+
+Whether a Google account is linked to an existing user is decided on the
+server (`src/lib/auth/link-gate.ts`; see `SECURITY.md`). No test completes a
+Google sign-in, so the tests reach that decision from both sides and stop
+where Google would be.
+
+- **The integration file** has two groups for it, on real PostgreSQL
+  (measured on 2026-10-05: 30 tests in the two groups; with `CI` set, which
+  gives the shared client a pool of two connections, they passed in three
+  runs of three).
+  - _Account-link gate - Real DB_ calls `linkAccount` on the adapter object
+    that the application hands to Auth.js (`authOptions.adapter`): the one
+    method through which Auth.js writes an `Account` row. A user with a
+    password is refused without a grant and linked once with one; a grant is
+    spent 299 999 ms after the password step and no longer at 300 000 ms,
+    with the end compared by PostgreSQL; it is bound to its user and to its
+    provider; the row of a first sign-in is linked without a grant, and
+    three rows that differ from it in one condition each are refused; a
+    second Google account is refused. A grant written in a transaction that
+    fails does not stay on the row: the password step writes the grant and
+    its event in one transaction, and the unit test of the route only models
+    one. For a user id that no row has, the test does not count events (the
+    foreign key refuses such a row, and a failed event write is kept
+    silent): it looks for the logged failure of an attempt to write one.
+  - Three of those tests **force an overlap**. In two, a second Prisma client
+    (`openSecondPrismaTestClient` in `src/lib/prisma-test.ts`) locks the
+    user's row, two calls are started on the shared client, and the lock is
+    released only when `pg_stat_activity` shows both of them waiting for it.
+    Run one after the other, two attempts would prove nothing about single
+    use. The third shows a limit that `SECURITY.md` declares ("Not one
+    transaction"): the second client holds every insert into `Account` back
+    with a table lock; a link is started and seen waiting to write its row,
+    a second grant is written and a second link started, and both Google
+    accounts end up linked. The wait for each of these states is bounded
+    (5 s); it is not a second attempt.
+  - _Auth.js handleLoginOrRegister with the gated adapter - Real DB_ runs
+    the function of `@auth/core` 0.41.3 that decides what a returning Google
+    sign-in becomes, as it is installed, with that adapter, and with the
+    app's session check (`createVerifiedDecode`) over a decode that reads
+    JSON instead of an encrypted token. A new visitor is created and linked;
+    a returning Google user signs in; the two refusals of Auth.js itself
+    (`OAuthAccountNotLinked`) leave a live grant unspent; a session links
+    after the password step and is refused without it; an account that signs
+    in with Google only is refused a second Google account; a signed-out
+    session counts as none. Three more cases give that function what a kit
+    user might add. With the provider option
+    `allowDangerousEmailAccountLinking` a visitor without a session is not
+    linked to the user of the same e-mail address when that user has a
+    password, an `Account` row or a verified e-mail (one test for each). A
+    row with none of the three answers `OAuthAccountNotLinked` without the
+    option and is linked without a grant with it. A `createUser` event that
+    marks the new user verified makes a first sign-in fail, and the row it
+    leaves behind then answers `OAuthAccountNotLinked`.
+- **`jest.config.js` lets two packages of Auth.js be transformed** for that
+  group. `@auth/core` and `@auth/prisma-adapter` are ES modules, and
+  `next/jest` transforms nothing under `node_modules` except the packages
+  named in two patterns that it generates. The config adds the two packages
+  to both patterns, and throws when `next/jest` no longer generates them.
+  Measured before the change: loading `handle-login.js` of `@auth/core`
+  failed with "SyntaxError: Cannot use import statement outside a module",
+  and the adapter with "SyntaxError: Unexpected token 'export'"; with the
+  change both load. `next.config.ts` and the build are not touched.
+  `next-auth` and its providers are still replaced by stand-ins. `@auth/core`
+  is no dependency of the project and exports no `./lib`: the test finds the
+  file beside `next-auth`, through the real path of that package.
+- **What that group does not run** is read in the source of `@auth/core`
+  0.41.3 and not measured: the exchange with Google; that Auth.js wraps an
+  error of the adapter into `AdapterError` and answers with a redirect that
+  sets no session cookie; that the request context of the refusal page
+  (`src/lib/auth/link-refusal.ts`) is still there when the gate runs.
+  `src/test/unit/__tests__/authjs-source-pin.test.ts` records the versions
+  of `next-auth`, `@auth/core` and `@auth/prisma-adapter` and the SHA-256 of
+  the nine files that these statements, and the ones in `SECURITY.md`, were
+  read from. It says nothing about behaviour: it fails when a file is no
+  longer the file that was read, and names what that file is relied on for.
+  One of its tests changes a recorded version and a recorded hash and
+  expects both to be reported.
+- **Unit tests** cover the rest in isolation: the wiring (the adapter of
+  `authOptions` is the gate; `/api/auth/[...nextauth]` exports the wrapped
+  handlers for GET and POST), the shape of the two statements of a grant,
+  the gate's decisions case by case, the wrapper that chooses the refusal
+  page, the two link routes with their codes, and the account page's text
+  for every code.
+- **E2E** (`e2e/tests/account-linking.e2e.ts`): the real route writes the
+  grant into the database and links nothing; the address a refused link is
+  sent to, opened directly, shows the refusal in Italian, by the
+  `NEXT_LOCALE` cookie and by the browser language alone, and its button
+  leads to the account page. It does not show that a refused Google callback
+  arrives at that address.
+
+A mutation check was run on 2026-10-05 on the unit and integration tests of
+this change (262 tests in the twelve files that were run: 208 unit, 54
+integration; without a change none of them failed). Each change was made
+once and undone, and every one of them made tests fail:
+
+| Change                                                           | Failed tests (unit + integration)             |
+| ---------------------------------------------------------------- | --------------------------------------------- |
+| the gate returns instead of throwing                             | 10 + 17                                       |
+| a first sign-in is any user without an `Account` row             | 2 + 5                                         |
+| a first sign-in is any user without a password                   | 3 + 6                                         |
+| a first sign-in may have a verified e-mail                       | 1 + 3                                         |
+| no row is linked without a grant                                 | 1 + 4                                         |
+| the gate does not look for an account of the provider            | 1 + 1                                         |
+| the gate writes a refusal event for a user id that no row has    | 1 + 1                                         |
+| the spend is a read followed by an unconditional write           | 14 + 2 (the two tests that overlap one grant) |
+| the spend does not compare the end of the grant                  | 9 + 2                                         |
+| the spend does not compare the provider                          | 9 + 1                                         |
+| the grant is written outside the transaction it is handed        | 4 + 1                                         |
+| the route writes no grant                                        | 2 + 0                                         |
+| the route writes the grant before it checks the password         | 5 + 0                                         |
+| the route writes the grant and its event without a transaction   | 3 + 0                                         |
+| `authOptions.adapter` is the Prisma adapter without the gate     | 2 + 19                                        |
+| `/api/auth/[...nextauth]` exports the handlers unwrapped         | 2 + 0                                         |
+| `/api/auth/[...nextauth]` wraps GET only                         | 1 + 0                                         |
+| the link routes accept any provider                              | 7 + 0                                         |
+| the link routes do not check that the password is a string       | 10 + 0                                        |
+| the account page shows the English `error` of the unlink route   | 12 + 0                                        |
+| the sign-in page forwards `error` without encoding it            | 1 + 0                                         |
+| the lock event of `authorize()` reads the `User-Agent` by itself | 1 + 0                                         |
+
 ## End-to-end (Playwright)
 
 ```bash

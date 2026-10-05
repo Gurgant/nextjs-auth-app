@@ -95,13 +95,52 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
 `advanced-auth.ts` (e-mail verification, 2FA lifecycle). The password check
 before linking Google and the unlinking of Google are API routes
 (`src/app/api/auth/link-account/{initiate,unlink}`) with their own password
-re-check, 429 throttling and security events. `initiate` links nothing and
-returns no token: it checks the password, records `account_link_initiated`
-and answers `{ success, provider }`. The account page then starts the Google
-sign-in, and Auth.js links the Google account to the signed-in user when
-Google returns (read in the source of `@auth/core` 0.41.3, not measured: the
-tests never complete a Google sign-in). The server does not require the
-password check for that — see "Known Limitations" in `SECURITY.md`.
+re-check, 429 throttling and security events. Both read the request in one
+place (`src/lib/auth/link-account-request.ts`): the body has to be a JSON
+object with a password and a provider, both strings, and Google is the only
+provider either route accepts; anything else is answered 400 before the
+database is asked and is not counted as a wrong password. Every refusal
+carries a `code` next to its English `error`
+(`src/lib/auth/link-account-errors.ts`): the account page shows the text of
+the code in the visitor's language, and never the English one.
+
+`initiate` links nothing and returns no token: it checks the password, writes
+a **link grant** on the user's row (`User.linkGrantProvider` and
+`User.linkGrantExpiresAt`: the provider, and an end 5 minutes later) and the
+`account_link_initiated` event in one transaction (a grant never stays
+without its event), and answers `{ success, provider }`. The account page
+then starts the Google sign-in. When Google returns, Auth.js links through
+the adapter it was given, and that adapter is the Prisma adapter with the
+link gate in front of it (`withLinkGate` in `src/lib/auth-config.ts`). Three
+files:
+
+- `src/lib/auth/link-grant.ts` writes the grant and spends it; the spend is
+  one conditional `UPDATE`, so a grant is used once however many callbacks
+  arrive together.
+- `src/lib/auth/link-gate.ts` is the rule, in the adapter's `linkAccount`.
+  The row Auth.js has just created for a first sign-in (no password, e-mail
+  not verified, no `Account` row) is linked as before. Any other user is
+  linked only after the grant was spent, and only when the row that was read
+  before the spend shows no account of that provider. Otherwise the gate
+  records `account_link_refused` and throws, which stops Auth.js before it
+  issues a session token (read in the source of `@auth/core` 0.41.3). It
+  decides from the database alone: no request, no cookie. The read, the
+  spend and the link are three statements, not one transaction: two password
+  steps whose links overlap can both link (`SECURITY.md`, "Not one
+  transaction").
+- `src/lib/auth/link-refusal.ts` only chooses the page a refusal ends on.
+  The route handlers of Auth.js (`src/app/api/auth/[...nextauth]/route.ts`)
+  are wrapped, and the redirect of a request in which the gate refused goes
+  to `/auth/error?error=LinkNotConfirmed`: without a locale, so the
+  middleware adds the visitor's.
+
+That Auth.js writes `Account` rows through `linkAccount` and nothing else was
+read in the source of `@auth/core` 0.41.3. The integration test runs
+Auth.js's decision function with the application's adapter on real
+PostgreSQL; no test completes a Google sign-in, so the exchange with Google
+before that function and the redirect after a refusal are read, not measured
+— see "Security Features" and "Known Limitations" in `SECURITY.md`, and
+`docs/TESTING.md`.
 
 - Account actions take the user's identity from `auth()`, never from a
   client-sent id. Exceptions: the "send verification e-mail" action is keyed
@@ -114,10 +153,11 @@ password check for that — see "Known Limitations" in `SECURITY.md`.
   checks its locale against the five supported ones, because the locale goes
   into the e-mailed link.
 - Rate limits come from `src/lib/rate-limit.ts`.
-- Security events are persisted by the actions, the link / unlink routes and
-  `authorize()` (2FA enable/disable, e-mail verification, link initiation
-  and unlinking, wrong link passwords, lockouts); sign-in and password events
-  are not persisted yet — see `SECURITY.md`.
+- Security events are persisted by the actions, the link / unlink routes,
+  the link gate and `authorize()` (2FA enable/disable, e-mail verification,
+  link initiation, completed and refused links, unlinking, wrong link
+  passwords, lockouts); sign-in and password events are not persisted yet —
+  see `SECURITY.md`.
 
 ## Supporting layers (`src/lib/`)
 
