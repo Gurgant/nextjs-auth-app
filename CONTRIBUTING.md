@@ -72,7 +72,8 @@ breaks for you, that itself is a bug worth reporting.
   as unread and goes into the allow-list.
 - Security-sensitive changes (auth flows, headers, crypto, rate limiting)
   should explain their reasoning in the PR description and update
-  `SECURITY.md` when they change the posture.
+  `SECURITY.md`, and its full text in `docs/SECURITY-DETAILS.md`, when they
+  change the posture.
 
 ## Reporting security issues
 

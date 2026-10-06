@@ -138,7 +138,7 @@ because `src/lib/auth-config.ts` asks Google for offline access
 (`access_type: "offline"`, `prompt: "consent"`), a `refresh_token` (read in
 the source of `@auth/core` 0.41.3, `lib/utils/providers.js`, not measured
 against Google: no test completes a Google sign-in). The link gate, through
-which Auth.js writes every `Account` row, hands the Prisma adapter the four
+which Auth.js writes an `Account` row, hands the Prisma adapter the four
 values only (`identityOf` in `src/lib/auth/link-gate.ts`), and the token
 columns of the row stay `NULL`.
 

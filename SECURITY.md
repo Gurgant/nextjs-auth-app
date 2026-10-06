@@ -283,7 +283,7 @@ Read these before deploying. In short, as shipped:
 
 The complete list follows, by area; the last two groups are for a project
 that changes the Auth.js setup or upgrades from an earlier version. Each
-limit is said in a line or two, and its title links to the full text in
+limit is said in a few lines, and its title links to the full text in
 [docs/SECURITY-DETAILS.md](docs/SECURITY-DETAILS.md#known-limitations-the-full-text),
 with what was measured and what was read in a library's source and not
 measured.
