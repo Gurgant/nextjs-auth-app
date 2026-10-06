@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-05; run the commands
+Three layers. The numbers below were measured on 2026-10-06; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                                      |
 | ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 1486  | lib, hooks, components, actions, API route handlers                                 |
-| Integration | Jest + test DB        | 51    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 103   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
+| Unit        | Jest (jsdom / node)   | 1545  | lib, hooks, components, actions, API route handlers                                 |
+| Integration | Jest + test DB        | 53    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
+| End-to-end  | Playwright (Chromium) | 105   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,9 +19,9 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (1537 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (1486) — no DB
-pnpm test:integration # the real-DB integration file only (51, port 5433)
+pnpm test             # every Jest suite (1598 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (1545) — no DB
+pnpm test:integration # the real-DB integration file only (53, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
 
@@ -57,13 +57,18 @@ unique index on `User.email`. No job of the CI workflow runs the real mode.
 Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
-Coverage (measured on 2026-10-05 with `pnpm test:coverage` and the test
-database, twice, with the same result: 77.63 %): **77 % of statements** of
+Coverage (measured on 2026-10-06 with `pnpm test:coverage` and the test
+database, twice: 78.17 % and 78.10 %): **78 % of statements** of
 the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
 without `src/app/**` (pages and route handlers), `src/middleware.ts`,
 `index.ts` barrels and the generated Prisma client (`src/generated/**`,
-counted until v2.1.0, when it made up most of the statements). The tests
-concentrate on the authentication and security modules (`src/lib/auth` 92 %,
+counted until v2.1.0, when it made up most of the statements). The two runs
+differ in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`,
+which the first run reached and the second did not: one test decrypts with
+another key and accepts an error as well as a text that is not the secret,
+and that decryption throws in about one case in eight (measured outside the
+suite with the same calls of the library: 519 of 4000). The tests
+concentrate on the authentication and security modules (`src/lib/auth` 93 %,
 `src/lib/actions` 84 %); the components are covered less
 (`src/components/auth` 50 %, `src/components/security` 48 %), and no unit
 test runs the sign-in form (`credentials-form.tsx`) or the account page
@@ -84,7 +89,8 @@ where Google would be.
 - **The integration file** has two groups for it, on real PostgreSQL
   (measured on 2026-10-05: 30 tests in the two groups; with `CI` set, which
   gives the shared client a pool of two connections, they passed in three
-  runs of three).
+  runs of three; since 2026-10-06 the groups have 32 tests, with the two on
+  what is stored of an account).
   - _Account-link gate - Real DB_ calls `linkAccount` on the adapter object
     that the application hands to Auth.js (`authOptions.adapter`): the one
     method through which Auth.js writes an `Account` row. A user with a
@@ -93,7 +99,12 @@ where Google would be.
     with the end compared by PostgreSQL; it is bound to its user and to its
     provider; the row of a first sign-in is linked without a grant, and
     three rows that differ from it in one condition each are refused; a
-    second Google account is refused. A grant written in a transaction that
+    second Google account is refused. What is stored: the adapter is handed
+    the account with the seven values Auth.js takes from a token response
+    (access, refresh and ID token, expiry, type, scope, session state), for
+    a first sign-in and for a link with a grant, and each row is read back
+    whole: it holds the user, the type, the provider and the account id, and
+    `NULL` in the seven columns. A grant written in a transaction that
     fails does not stay on the row: the password step writes the grant and
     its event in one transaction, and the unit test of the route only models
     one. For a user id that no row has, the test does not count events (the
@@ -132,8 +143,11 @@ where Google would be.
     (`OAuthAccountNotLinked`) leave a live grant unspent; a session links
     after the password step and is refused without it; an account that signs
     in with Google only is refused a second Google account; a signed-out
-    session counts as none. Three more cases give that function what a kit
-    user might add. With the provider option
+    session counts as none. A new visitor and a link after the password
+    step are also run with the seven values of a token response: Auth.js's
+    own `linkAccount` event receives them (so the function had them), and
+    the `Account` rows hold none. Three more cases give that function what
+    a kit user might add. With the provider option
     `allowDangerousEmailAccountLinking` a visitor without a session is not
     linked to the user of the same e-mail address when that user has a
     password, an `Account` row or a verified e-mail (one test for each; none
@@ -162,18 +176,25 @@ where Google would be.
   (`src/lib/auth/link-refusal.ts`) is still there when the gate runs.
   `src/test/unit/__tests__/authjs-source-pin.test.ts` records the versions
   of `next-auth`, `@auth/core` and `@auth/prisma-adapter` and the SHA-256 of
-  the nine files that these statements, and the ones in `SECURITY.md`, were
-  read from. It says nothing about behaviour: it fails when one of the three
-  packages is installed in another version or a file is no longer the file
-  that was read, and names what that file is relied on for. One of its tests
-  changes a recorded version and a recorded hash and expects both to be
-  reported.
+  the eleven files that these statements, the ones in `SECURITY.md` and the
+  ones under "Return address" below were read from. It says nothing about
+  behaviour: it fails when one of the three packages is installed in another
+  version or a file is no longer the file that was read, and names what that
+  file is relied on for. One of its tests changes a recorded version and a
+  recorded hash and expects both to be reported. One statement rests on a
+  search of the packages, which no hash of a file covers, and only the
+  recorded versions make it due again: that Auth.js reads no stored token
+  back. The search found one place where Auth.js asks its adapter for a
+  stored `Account` row (`getAccount`, in `lib/utils/webauthn-utils.js` of
+  `@auth/core`); it runs for a WebAuthn provider, and the application
+  configures none.
 - **Unit tests** cover the rest in isolation: the wiring (the adapter of
   `authOptions` is the gate; `/api/auth/[...nextauth]` exports the wrapped
   handlers for GET and POST), the shape of the two statements of a grant,
-  the gate's decisions case by case, the wrapper that chooses the refusal
-  page, the two link routes with their codes, and the account page's text
-  for every code.
+  the gate's decisions case by case, what the gate hands the adapter to
+  store (the four values, in both cases that end in a link), the wrapper
+  that chooses the refusal page, the two link routes with their codes, and
+  the account page's text for every code.
 - **E2E** (`e2e/tests/account-linking.e2e.ts`): the real route writes the
   grant into the database and links nothing; the address a refused link is
   sent to, opened directly, shows the refusal in Italian, by the
@@ -184,8 +205,9 @@ where Google would be.
 A mutation check was run on 2026-10-05 on the unit and integration tests of
 the link gate (262 tests in the twelve files that were run: 208 unit, 54
 integration; without a change none of them failed). The integration file had
-54 tests then and has 51 now: three tests of `UserRepository.findByCredentials`
-went later, together with that method, which the application did not call.
+54 tests then and has 53 now: three tests of `UserRepository.findByCredentials`
+went later, together with that method, which the application did not call,
+and two tests on what is stored of an account came on 2026-10-06.
 Each change was made once and undone, and every one of them made tests fail:
 
 | Change                                                           | Failed tests (unit + integration)             |
@@ -212,6 +234,160 @@ Each change was made once and undone, and every one of them made tests fail:
 | the account page shows the English `error` of the unlink route   | 12 + 0                                        |
 | the sign-in page forwards `error` without encoding it            | 1 + 0                                         |
 | the lock event of `authorize()` reads the `User-Agent` by itself | 1 + 0                                         |
+
+A second check was run on 2026-10-06 on what the gate stores (the 22 unit
+tests of `link-gate.test.ts` and `auth-config.link-gate.test.ts` and the 53
+of the integration file; without a change none of them failed):
+
+| Change                                                          | Failed tests (unit + integration) |
+| --------------------------------------------------------------- | --------------------------------- |
+| a first sign-in hands the adapter the account as it comes       | 3 + 2                             |
+| a link after the password step hands it the account as it comes | 2 + 2                             |
+| the access token is kept with the four values                   | 5 + 2                             |
+
+Measured on 2026-10-06 with the code of 2.5.0, before that change: the two
+integration tests on what is stored failed, and each found all seven values
+of the token response in the row (51 of the 53 tests passed).
+
+### Return address: what is measured and what is only read
+
+After a sign-in, a link or a sign-out Auth.js sends the browser to the
+address that the `redirect` callback of `src/lib/auth-config.ts` answers.
+The rule is the same in every language: an address on this origin is kept
+as it was asked for, with its query string and fragment, and anything else
+becomes the base URL. An address that carries a user name or a password
+counts as anything else. No test completes a Google sign-in, so the two
+Google flows are measured up to the address Auth.js keeps for the return,
+and read from there.
+
+- **Unit** (`src/lib/__tests__/auth-config.redirect.test.ts`) calls the
+  callback as a function: addresses on this origin, as a path and as an
+  absolute URL; the account page and the home page of each of the five
+  locales; and the addresses that have to become the base URL. Among those:
+  another origin, an origin that only starts with the base URL
+  (`https://app.example.evil.test`), the base URL as the user name of
+  another host (`https://app.example@evil.test`), a protocol-relative
+  address, backslashes in place of slashes, a tab or a line break between
+  two slashes, another port or scheme of the same host, `javascript:`,
+  `data:`, a `blob:` address of this origin, and this origin with a user
+  name or a password before the host (`https://user:pw@app.example`). Three
+  cases show that the answer is the address as the URL parser resolved it,
+  not the text that was sent.
+- **E2E** (`e2e/tests/return-address.e2e.ts`), two tests. In a browser, the
+  Sign out button on the Spanish home ends the session and leaves the
+  browser on `/es`. And the running Auth.js is asked ten times, through
+  its sign-out endpoint and without a session, to return to an address:
+  five on this origin, one under each locale (the English, the German and
+  the Italian account page, a Spanish address with a query string and a
+  fragment, the French home as an absolute URL) and five that are not (the
+  base URL with a longer port, as a user name and as the start of a host
+  name; `//evil.test`; `/\evil.test`). The test compares the `url` of each
+  answer and the address Auth.js then holds in its callback-url cookie.
+  Other specs show a sign-in with e-mail and password ending on the account
+  page of its locale (`/en`, `/es`, `/fr`) and a sign-out ending on `/en`.
+  The e-mail form goes to the account page itself (`router.push`). It names
+  no address, so next-auth posts the address of the page the form is on,
+  and of the callback's answer the form uses the `error` parameter, and
+  `code` only when there is an `error`: next-auth reads both from the
+  answer's query string (`react.js`), and the form takes a sign-in whose
+  answer has an `error` for a refused one (`if (res?.error)`). So when the address of the page carries `?error=`
+  itself, an accepted sign-in is not followed by the move to the account
+  page (measured, below).
+- **Read, not measured**: the two Google flows. "Sign in with Google" and
+  the link of the account page both ask for `/{locale}/account`. That the
+  browser arrives there rests on what was read in the source of next-auth
+  5.0.0-beta.32 and `@auth/core` 0.41.3: `signIn()` posts that address as
+  `callbackUrl` (`react.js`); Auth.js passes it through the callback and
+  keeps the answer in the callback-url cookie (`lib/init.js`,
+  `lib/utils/callback-url.js`; the E2E test measures this step, at the
+  sign-out endpoint); when Google returns, the request names no address, so
+  Auth.js asks the callback with the one of the cookie and redirects to its
+  answer (`lib/actions/callback/index.js`). The four files are among the
+  eleven of the source pin (see "Account linking").
+
+Measured on 2026-10-06 with the code of 2.5.0, before the rule was changed:
+
+- As a function (the 56 cases of the unit test above, against the callback
+  of 2.5.0): 26 failed. `/en/account` was answered with `/en`, and so were
+  the two addresses of the test that contain `/signout` and `/auth/signin`,
+  under the Italian and the French locale.
+  `https://app.example.evil.test/account`,
+  `https://app.example@evil.test/account` and
+  `https://app.example:8443/account` were answered as they were sent.
+- At the running Auth.js (the E2E test above, which did not ask for the
+  Italian account page then): `/en/account` was answered with
+  `http://localhost:3000/en`, the three other addresses of this origin as
+  they were asked for, and `http://localhost:30000/account`,
+  `http://localhost:3000@evil.test/account` and
+  `http://localhost:3000.evil.test/account` as they were sent, each with
+  that address in the callback-url cookie. With the last of them in the
+  cookie, the next request to Auth.js was answered 500 (`InvalidCallbackUrl`
+  in the log), and the test ended there.
+- In a browser, with a spec that was not kept, under English and under
+  German: a sign-out ended on the home page of the locale, the deletion of
+  the account as well, and a sign-in with e-mail and password on its
+  account page. The Spanish sign-out test above passed on that code too.
+- The e-mail form on a home address that carries `?error=x`, in a browser,
+  with a second spec that was not kept and a valid password. Under `/de`
+  and `/es` Auth.js answered with the address of the page, the user was
+  signed in, and the browser stayed on that address: it showed the
+  signed-in home and no alert. Under `/en` Auth.js answered with `/en`, and
+  the browser went on to `/en/account`. From `/en` and from `/en?code=x` it
+  reached `/en/account` as well.
+- The sign-out page of Auth.js itself, with the same spec. The application
+  serves it at `/api/auth/signout` (it configures no `pages.signOut`). A
+  signed-in user opened it with
+  `callbackUrl=http://localhost:3000@evil.test/landing`: Auth.js kept that
+  address in its callback-url cookie, and a sign-out sent without a browser
+  was answered with status 302 and that address as `Location`. In the
+  browser of the E2E suite (Chromium) the "Sign out" button ended the
+  session and the browser stayed on that page: the console said "Refused to
+  send form data" for the directive `form-action 'self'` of the
+  Content-Security-Policy, which `next.config.ts` sets on every response. A
+  browser that does not apply that directive to a redirect was not
+  measured.
+
+The same spec on the changed code: under `/en?error=x`, `/de?error=x` and
+`/es?error=x` alike the e-mail form signed the user in and the browser
+stayed on the address of the page, and from `/en` and from `/en?code=x` it
+reached `/en/account`. On the sign-out page the cookie held the base URL,
+the click was answered with a redirect to it, and the browser ended on
+`/en`, signed out.
+
+So the landing pages that change are those of the two Google flows under
+the English locale (the account page instead of the home page; read, not
+measured); of the e-mail form on an English home address that carries
+`?error=` (the home page, signed in, instead of the account page: what the
+other locales already did; a search of `src/` finds no link to a home
+address with that parameter); and of whatever asks Auth.js for an address
+that the old rule rewrote or let through.
+
+An address of this origin with a user name or a password before the host
+leads to no other host: the callback refuses it for what the page then
+does. Measured on 2026-10-06 in the same browser and with the same spec,
+on the callback as it was before it refused such an address: asked through
+the sign-out page to return to `http://user:pw@localhost:3000/en`, Auth.js
+kept that address in the cookie and redirected to it, the browser opened
+the page under it, and there `fetch("/api/auth/session")` threw a
+`TypeError` ("Request cannot be constructed from a URL that includes
+credentials"); on `/en` opened without them the same request was answered
+with status 200. With the rule, the same steps ended on `/en` and the
+request was answered with status 200. Not measured: another browser, and
+what the application's own requests do on a page opened with a user name in
+its address.
+
+A mutation check was run on 2026-10-06 on the callback (the 56 cases of the
+unit test; each change made once and undone):
+
+| Change                                                              | Failed tests                    |
+| ------------------------------------------------------------------- | ------------------------------- |
+| a comparison of text (`startsWith`) in place of the URL parser      | 15                              |
+| the default `redirect` callback of `@auth/core` 0.41.3              | 18                              |
+| `origin` compared in place of scheme, host and port                 | 1 (the `blob:` address)         |
+| the text that was sent is answered in place of the resolved address | 21                              |
+| an address with a user name or a password is kept                   | 4                               |
+| only the user name is looked at                                     | 1 (a password and no user name) |
+| only the password is looked at                                      | 1 (a user name and no password) |
 
 ## End-to-end (Playwright)
 
@@ -492,6 +668,12 @@ answered with 200 and 200, the other twelve as on 2026-10-03. In the
 second run `next dev` printed one "Compiled" line without a route during the
 warm-up, directly after it compiled `/api/auth/[...nextauth]`; no file had
 changed.
+
+Measured again on 2026-10-06, with the 105 tests of 2.5.1 and the same
+fourteen requests (`CI=1 pnpm test:e2e`, one full run on the same machine):
+every test passed, all 16 "Compiled" lines of the dev server came before the
+first test, and the fourteen requests were answered as on 2026-10-05. The
+warm-up took 45.9 s, and Playwright reported 5.8 minutes for the run.
 
 ### In CI
 

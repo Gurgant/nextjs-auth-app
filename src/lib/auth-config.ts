@@ -106,7 +106,8 @@ export const isGoogleConfigured = Boolean(
 export const authOptions = {
   // Auth.js writes Account rows through this adapter. The gate decides which
   // of them it may write: linking a provider to an existing user needs the
-  // password step first (src/lib/auth/link-gate.ts).
+  // password step first (src/lib/auth/link-gate.ts). It also decides what a
+  // row holds: whose account it is, and none of the provider's tokens.
   adapter: withLinkGate(PrismaAdapter(prisma)),
   trustHost: true, // Required for E2E tests and development
   providers: [
@@ -267,40 +268,34 @@ export const authOptions = {
     maxAge: resolveSessionMaxAge(),
   },
   callbacks: {
+    // Where Auth.js sends the browser after a sign-in, a link or a sign-out.
+    // It asks with the `callbackUrl` of the request, or with the address it
+    // kept in its callback-url cookie (the return from Google), and with its
+    // own origin as `baseUrl`. One rule for every language: an address on
+    // this origin is kept as it was asked for, with its query string and
+    // fragment; anything else becomes the base URL. A URL parser says which
+    // host an address leads to, as a browser would read it: a comparison of
+    // text takes "https://app.example.evil.test" and
+    // "https://app.example@evil.test" for this origin. The answer is the
+    // address as the parser resolved it, not the text that was sent.
     async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      // For signout, redirect to home page
-      if (url.includes("/signout") || url.includes("/auth/signin")) {
-        return `${baseUrl}/en`;
+      try {
+        const base = new URL(baseUrl);
+        const target = new URL(url, base);
+        // Scheme, host and port. Not `origin`: a "blob:" address has the
+        // origin of the address inside it. And no user name or password
+        // before the host: on a page that Chromium opened with one in its
+        // address, `fetch` of a relative address throws (docs/TESTING.md).
+        return target.protocol === base.protocol &&
+          target.host === base.host &&
+          !target.username &&
+          !target.password
+          ? target.href
+          : baseUrl;
+      } catch {
+        // No address at all.
+        return baseUrl;
       }
-
-      // Check if this is a post-login redirect - redirect to home page to show success message
-      if (url === baseUrl || url === `${baseUrl}/` || url.includes("/en")) {
-        // After successful login, redirect to home page to show login success page
-        return `${baseUrl}/en`;
-      }
-
-      // Default redirect URL
-      let redirectUrl = baseUrl;
-
-      // If url is relative, make it absolute
-      if (url.startsWith("/")) {
-        redirectUrl = `${baseUrl}${url}`;
-      } else if (url.startsWith(baseUrl)) {
-        // If it's already an absolute URL to our site, use it
-        redirectUrl = url;
-      } else {
-        // For external URLs, check if they're allowed
-        try {
-          const urlObj = new URL(url);
-          // Only allow redirects to our own domain
-          if (urlObj.origin === baseUrl) {
-            redirectUrl = url;
-          }
-        } catch {
-          // If URL parsing failed, use default redirect
-        }
-      }
-      return redirectUrl;
     },
     async signIn(params: { user: User; account?: Account | null }) {
       const { user, account } = params;

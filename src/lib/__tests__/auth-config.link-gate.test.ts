@@ -96,6 +96,30 @@ it("refuses to link onto a user that has a password and no grant, and does not r
   expect(base.linkAccount).not.toHaveBeenCalled();
 });
 
+it("hands the Prisma adapter whose account it is and none of Google's tokens", async () => {
+  // The row Auth.js has just created for a first sign-in: linked without a
+  // grant.
+  mockPrisma.user.findUnique.mockResolvedValue({
+    password: null,
+    emailVerified: null,
+    accounts: [],
+  });
+  base.linkAccount.mockClear();
+
+  await adapter.linkAccount({
+    ...googleAccount,
+    access_token: "access-token-from-google",
+    refresh_token: "refresh-token-from-google",
+    id_token: "id-token-from-google",
+    expires_at: 1_800_000_000,
+    token_type: "bearer",
+    scope: "openid profile email",
+    session_state: "session-state-from-google",
+  });
+
+  expect(base.linkAccount.mock.calls).toStrictEqual([[googleAccount]]);
+});
+
 it("hands Auth.js linkAccount as a key of its own and every other method as the Prisma adapter's", () => {
   // Auth.js wraps the adapter key by key (@auth/core lib/init.js).
   expect(Object.keys(adapter).sort()).toEqual(["getUser", "linkAccount"]);

@@ -73,6 +73,19 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
   address stored on the user. That is decided in one place,
   `src/lib/auth/google-email-verification.ts`, called from the `jwt` callback;
   an existing verification date is kept.
+- **Return address** — after a sign-in, a link or a sign-out Auth.js sends
+  the browser to the address that the `redirect` callback answers. The
+  callback keeps an address on the application's own origin as it was asked
+  for, in every language, with its query string and fragment, and answers
+  anything else with the base URL; a URL parser, not a comparison of text,
+  says which host an address leads to, and an address that carries a user
+  name or a password is not kept. The e-mail form names no address, so
+  Auth.js is asked with the address of the page the form is on. Of the
+  answer the form takes the `error` parameter that next-auth reads from its
+  query string, and `code` only when there is an `error`; when there is
+  none, the form goes to the account page of its locale itself
+  (`src/components/auth/credentials-form.tsx`). What is measured of this and
+  what is read: `docs/TESTING.md`, "Return address".
 - 2FA secrets and backup codes are stored **encrypted** (`src/lib/security.ts`,
   passphrase `ENCRYPTION_KEY`, rule in `src/lib/env-rules.ts`).
 
@@ -140,7 +153,10 @@ files:
   decides from the database alone: no request, no cookie. The read, the
   spend and the link are three statements, not one transaction: two password
   steps whose links overlap can both link (`SECURITY.md`, "Not one
-  transaction").
+  transaction"). Whichever way a link is made, the Prisma adapter is handed
+  the four values that say whose account it is (`userId`, `type`,
+  `provider`, `providerAccountId`) and not the provider's tokens: the token
+  columns of `Account` stay `NULL`.
 - `src/lib/auth/link-refusal.ts` only chooses the page a refusal ends on.
   The route handlers of Auth.js (`src/app/api/auth/[...nextauth]/route.ts`)
   are wrapped, and the redirect of a request in which the gate refused goes
@@ -152,7 +168,8 @@ read in the source of `@auth/core` 0.41.3. The integration test runs
 Auth.js's decision function with the application's adapter on real
 PostgreSQL; no test completes a Google sign-in, so the exchange with Google
 before that function and the redirect after a refusal are read, not measured
-— see "Security Features" and "Known Limitations" in `SECURITY.md`, and
+— see "What the application protects" and "Known Limitations" in
+`SECURITY.md`, the full text in `docs/SECURITY-DETAILS.md`, and
 `docs/TESTING.md`.
 
 - Account actions take the user's identity from `auth()`, never from a

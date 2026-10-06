@@ -5,11 +5,13 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 
-// Source pin for Auth.js. The link gate (src/lib/auth/link-gate.ts) and the
-// refusal page (src/lib/auth/link-refusal.ts) rest on what a few files of the
-// installed Auth.js do, and no test completes a Google sign-in, so part of
-// that was READ in the source and not measured (SECURITY.md, "Linking Google
-// needs the password"; docs/TESTING.md, "Account linking"). This test says
+// Source pin for Auth.js. The link gate (src/lib/auth/link-gate.ts), what it
+// stores of an account, the refusal page (src/lib/auth/link-refusal.ts) and
+// the address a Google sign-in returns to (the `redirect` callback of
+// src/lib/auth-config.ts) rest on what a few files of the installed Auth.js
+// do, and no test completes a Google sign-in, so part of that was READ in the
+// source and not measured (SECURITY.md, "Linking Google needs the password";
+// docs/TESTING.md, "Account linking" and "Return address"). This test says
 // nothing about behaviour. It makes the reading due again: it fails when one
 // of those files is not the file that was read, which an upgrade of the
 // pinned beta would otherwise pass unnoticed.
@@ -52,7 +54,8 @@ const PINNED: {
     reliedOnFor:
       "adapter.linkAccount is the only writer of Account rows; a new user is " +
       "created with emailVerified null and linked right after; Auth.js's own " +
-      "refusals (OAuthAccountNotLinked) come before linkAccount",
+      "refusals (OAuthAccountNotLinked) come before linkAccount; a stored " +
+      "account is looked up through getUserByAccount only, for its user",
   },
   {
     package: "@auth/core",
@@ -61,7 +64,9 @@ const PINNED: {
     reliedOnFor:
       "the signIn callback runs before handleLoginOrRegister; the jwt " +
       "callback, the session cookie and the signIn event come after it, so " +
-      "an error thrown by linkAccount stops all three",
+      "an error thrown by linkAccount stops all three; the jwt callback is " +
+      "handed the account of the provider's answer, not the stored row; an " +
+      "accepted sign-in is answered with a redirect to options.callbackUrl",
   },
   {
     package: "@auth/core",
@@ -69,7 +74,18 @@ const PINNED: {
     sha256: "45a08cee278050cf25e4b8af2d9414da97ecffdc0c2b522f8fa1374fb271fa94",
     reliedOnFor:
       "the adapter is wrapped key by key (Object.keys), and an error of an " +
-      "adapter method is logged and thrown again as AdapterError",
+      "adapter method is logged and thrown again as AdapterError; every " +
+      "request sets options.callbackUrl through createCallbackUrl and keeps " +
+      "the answer in the callback-url cookie",
+  },
+  {
+    package: "@auth/core",
+    file: "lib/utils/callback-url.js",
+    sha256: "268a164c3a8e138f58992df9bbc0d8a24d6418eed95b877acf740e75a63e236d",
+    reliedOnFor:
+      "the redirect callback is asked with the callbackUrl of the request, " +
+      "or else with the callback-url cookie (the return from Google), and " +
+      "with the origin of the request as baseUrl; its answer is used as it is",
   },
   {
     package: "@auth/core",
@@ -109,7 +125,9 @@ const PINNED: {
     sha256: "87fccb0f032aa60cfadba19c527f169704af4b5d917637b0634c330d4c48953e",
     reliedOnFor:
       "createUser writes what it is given (no password, no Account row); " +
-      "linkAccount stores the account as it comes; no method uses `this`",
+      "linkAccount stores the account it is handed as it comes; " +
+      "getUserByAccount returns the user of an Account row and nothing of " +
+      "the row; no method uses `this`",
   },
   {
     package: "next-auth",
@@ -119,13 +137,25 @@ const PINNED: {
       "handlers.GET and handlers.POST are (request) => Auth(request, " +
       "config): the Response the refusal wrapper sees is the one Auth returns",
   },
+  {
+    package: "next-auth",
+    file: "react.js",
+    sha256: "905278113298170e6c76460d3e2e95c18eb8e4eb3be408ad9a3a933f54065304",
+    reliedOnFor:
+      "signIn() and signOut() post the callbackUrl they are given (the " +
+      "address of the page when there is none); a call that redirects " +
+      "sends the browser to the `url` of the answer, and a signIn() that " +
+      "does not takes `error` and `code` from the query string of that `url`",
+  },
 ];
 
 const REREAD =
   "Auth.js is not the Auth.js that was read. Before trusting the link gate, " +
-  "read the files below again (SECURITY.md, 'Linking Google needs the " +
-  "password'; docs/TESTING.md, 'Account linking'), then record the new " +
-  "versions and hashes in src/test/unit/__tests__/authjs-source-pin.test.ts.";
+  "what it stores and the address a sign-in returns to, read the files " +
+  "below again (SECURITY.md, 'Linking Google needs the password'; " +
+  "docs/TESTING.md, 'Account linking' and 'Return address'), then record " +
+  "the new versions and hashes in " +
+  "src/test/unit/__tests__/authjs-source-pin.test.ts.";
 
 /** The changes between what is installed and what is recorded: none when they agree. */
 function changes(packages: typeof PACKAGES, pinned: typeof PINNED): string[] {
