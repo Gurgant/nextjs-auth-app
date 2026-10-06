@@ -57,6 +57,12 @@ release pipeline.
 A database that an earlier version has used is upgraded as described below,
 the newest release first.
 
+### From 2.5.1 to 2.5.2
+
+The schema, the dependencies and the lockfile do not change: there is
+nothing to push and nothing to install. The release adds two placeholder
+pages, `/{locale}/terms` and `/{locale}/privacy`; see "Before you go live".
+
 ### From 2.5.0 to 2.5.1
 
 The schema does not change (`prisma/schema.prisma` is the same file in both
@@ -339,7 +345,7 @@ The column `User.primaryAuthMethod` is dropped and `User.lastLoginMethod` is
 added (read in the schema of the two tags). `CHANGELOG.md` says under
 "Upgrading a database from v2.0.0" that `pnpm prisma:push` refuses when a
 row still has a value in `primaryAuthMethod`, and what to run then; that
-push was not measured again for 2.5.0 or 2.5.1.
+push was not measured again for 2.5.0, 2.5.1 or 2.5.2.
 
 ## Before you go live
 
