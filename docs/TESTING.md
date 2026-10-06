@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-05; run the commands
+Three layers. The numbers below were measured on 2026-10-06; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                                      |
 | ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 1486  | lib, hooks, components, actions, API route handlers                                 |
-| Integration | Jest + test DB        | 51    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 103   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
+| Unit        | Jest (jsdom / node)   | 1545  | lib, hooks, components, actions, API route handlers                                 |
+| Integration | Jest + test DB        | 53    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
+| End-to-end  | Playwright (Chromium) | 105   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,9 +19,9 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (1537 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (1486) — no DB
-pnpm test:integration # the real-DB integration file only (51, port 5433)
+pnpm test             # every Jest suite (1598 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (1545) — no DB
+pnpm test:integration # the real-DB integration file only (53, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
 
@@ -57,13 +57,18 @@ unique index on `User.email`. No job of the CI workflow runs the real mode.
 Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
-Coverage (measured on 2026-10-05 with `pnpm test:coverage` and the test
-database, twice, with the same result: 77.63 %): **77 % of statements** of
+Coverage (measured on 2026-10-06 with `pnpm test:coverage` and the test
+database, twice: 78.17 % and 78.10 %): **78 % of statements** of
 the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
 without `src/app/**` (pages and route handlers), `src/middleware.ts`,
 `index.ts` barrels and the generated Prisma client (`src/generated/**`,
-counted until v2.1.0, when it made up most of the statements). The tests
-concentrate on the authentication and security modules (`src/lib/auth` 92 %,
+counted until v2.1.0, when it made up most of the statements). The two runs
+differ in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`,
+which the first run reached and the second did not: one test decrypts with
+another key and accepts an error as well as a text that is not the secret,
+and that decryption throws in about one case in eight (measured outside the
+suite with the same calls of the library: 519 of 4000). The tests
+concentrate on the authentication and security modules (`src/lib/auth` 93 %,
 `src/lib/actions` 84 %); the components are covered less
 (`src/components/auth` 50 %, `src/components/security` 48 %), and no unit
 test runs the sign-in form (`credentials-form.tsx`) or the account page
@@ -378,7 +383,7 @@ unit test; each change made once and undone):
 | ------------------------------------------------------------------- | ------------------------------- |
 | a comparison of text (`startsWith`) in place of the URL parser      | 15                              |
 | the default `redirect` callback of `@auth/core` 0.41.3              | 18                              |
-| `origin` compared in place of scheme and host                       | 1 (the `blob:` address)         |
+| `origin` compared in place of scheme, host and port                 | 1 (the `blob:` address)         |
 | the text that was sent is answered in place of the resolved address | 21                              |
 | an address with a user name or a password is kept                   | 4                               |
 | only the user name is looked at                                     | 1 (a password and no user name) |
@@ -663,6 +668,12 @@ answered with 200 and 200, the other twelve as on 2026-10-03. In the
 second run `next dev` printed one "Compiled" line without a route during the
 warm-up, directly after it compiled `/api/auth/[...nextauth]`; no file had
 changed.
+
+Measured again on 2026-10-06, with the 105 tests of 2.5.1 and the same
+fourteen requests (`CI=1 pnpm test:e2e`, one full run on the same machine):
+every test passed, all 16 "Compiled" lines of the dev server came before the
+first test, and the fourteen requests were answered as on 2026-10-05. The
+warm-up took 45.9 s, and Playwright reported 5.8 minutes for the run.
 
 ### In CI
 

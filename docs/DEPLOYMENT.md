@@ -60,7 +60,9 @@ the newest release first.
 ### From 2.5.0 to 2.5.1
 
 The schema does not change (`prisma/schema.prisma` is the same file in both
-versions), so there is nothing to push.
+versions), so there is nothing to push. Run `pnpm install` before the build:
+the lockfile names a newer version of one indirect dependency
+(`source-map-js` 1.2.2).
 
 From 2.5.1 an `Account` row says whose account it is and holds none of the
 provider's tokens (`SECURITY.md`, "For a Google account the application
@@ -337,7 +339,7 @@ The column `User.primaryAuthMethod` is dropped and `User.lastLoginMethod` is
 added (read in the schema of the two tags). `CHANGELOG.md` says under
 "Upgrading a database from v2.0.0" that `pnpm prisma:push` refuses when a
 row still has a value in `primaryAuthMethod`, and what to run then; that
-push was not measured again for this release.
+push was not measured again for 2.5.0 or 2.5.1.
 
 ## Before you go live
 

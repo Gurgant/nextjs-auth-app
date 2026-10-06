@@ -1,5 +1,155 @@
 # Changelog
 
+## [v2.5.1] - 2026-10-06
+
+A security fix for the address the browser returns to after a sign-in,
+Google's tokens are no longer stored, and `README.md` and `SECURITY.md` are
+reordered. The database schema does not change.
+
+### 🔒 Security
+
+- **The return address could leave the origin: an open redirect.** After a
+  sign-in, a link or a sign-out, Auth.js sends the browser to the address
+  that the `redirect` callback answers. Up to 2.5.0 the callback compared
+  text, and answered an address that begins with the base URL as it was
+  sent: for `https://app.example` also `https://app.example.evil.test/…`,
+  `https://app.example@evil.test/…` and `https://app.example:8443/…`.
+  Measured with the code of 2.5.0 at the sign-out endpoint of the running
+  Auth.js: asked for `http://localhost:3000@evil.test/account`, it answered
+  with that address and kept it in its callback-url cookie.
+  - **Who could have been affected.** No caller of the application passed
+    such an address: each names a path under its locale, and the e-mail
+    form names none (read in the source). Affected is a project built on
+    the starter that hands `signIn()` or `signOut()` a `callbackUrl` a
+    visitor controls, and Auth.js's own sign-out page, which the
+    application serves at `/api/auth/signout`: it took the address from its
+    query string, and the sign-out was answered with a redirect to it
+    (measured). In Chromium the browser did not follow that redirect,
+    because the Content-Security-Policy has `form-action 'self'`; no other
+    browser was measured.
+  - **Now** the callback parses the address against the base URL and keeps
+    it only when its scheme, host and port are those of the base URL and it
+    carries no user name or password. Anything else is answered with the
+    base URL.
+  - **Tested** by 56 unit cases that call the callback, and in the E2E
+    suite: the running Auth.js is asked ten times to return to an address,
+    five on the origin and five that are not, and its answer and its cookie
+    are compared. The measurements on both versions and a mutation check
+    are in `docs/TESTING.md`, "Return address".
+- **Google's tokens are no longer stored.** Up to 2.5.0 the adapter stored
+  a Google account as Auth.js handed it over: next to the four values that
+  say whose account it is, what the token response carried, in plain text,
+  in the seven token columns of the `Account` row (`access_token`,
+  `refresh_token`, `id_token`, `expires_at`, `token_type`, `scope`,
+  `session_state`). Nothing in the application read them. The link gate,
+  through which Auth.js writes an `Account` row, now hands the adapter
+  `userId`, `type`, `provider` and `providerAccountId` only, and the seven
+  columns stay `NULL`.
+  - Measured on real PostgreSQL by two tests of the integration file, for a
+    first Google sign-in and for a link after the password step, each
+    handed all seven values; with the code of 2.5.0 the same two tests
+    found all seven in the row. A returning Google user whose row holds no
+    token signs in (measured with Auth.js's decision function, not against
+    Google). That Auth.js writes an `Account` row through `linkAccount` only
+    and reads no stored token back was read in the source of `@auth/core`
+    0.41.3 and `@auth/prisma-adapter` 2.11.3.
+  - Rows written by earlier versions keep their tokens until the statement
+    under "Upgrading from v2.5.0" is run. Google is still asked for a
+    refresh token, which is no longer kept (`SECURITY.md`).
+  - A project that needs the tokens, to call a Google API, returns the
+    whole account from `identityOf` in `src/lib/auth/link-gate.ts`, and
+    should encrypt them first.
+- **`source-map-js` 1.2.2** (was 1.2.1), in the lockfile only, for the
+  advisory GHSA-68fv-2mgg-jv7q (high): a crafted source map can make an
+  earlier version block the event loop (read in the advisory). No file of
+  the application imports the package; `postcss`, which Next depends on,
+  and `@tailwindcss/node` bring it (`pnpm why source-map-js`).
+
+### 🔧 Changed
+
+- **After the two Google flows an English user returns to the account
+  page.** "Sign in with Google" and the Google link of the account page ask
+  for `/{locale}/account`. The old rule sent every address that contains
+  `/en` to `/en`, so under English the browser came back to the home page,
+  and under the four other languages to the account page. Measured: the
+  callback as a function, and the running Auth.js, which answers
+  `/en/account` with that address and keeps it in its callback-url cookie.
+  That the browser is sent to the address of that cookie when Google
+  returns was read in the source of `next-auth` 5.0.0-beta.32 and
+  `@auth/core` 0.41.3, not measured: no test completes a Google sign-in.
+- **Other answers of the `redirect` callback that changed.** The rule is
+  now the same in every language.
+  - The e-mail form on an English home address that carries `?error=`:
+    after a sign-in the browser stays on that address, signed in, and no
+    longer goes on to `/en/account`. The four other languages already did
+    this (measured in a browser under German and Spanish, on both versions,
+    with a spec that was not kept: `docs/TESTING.md`). No link of the
+    application leads to such an address.
+  - An address of this origin that contains `/signout` or `/auth/signin` is
+    kept; it became `/en`.
+  - `//host`, `/\host` and the same with a tab or a line break between the
+    slashes become the base URL. They were answered with the base URL
+    followed by that text.
+  - An address of this origin with a user name or a password before the
+    host becomes the base URL: in Chromium a page opened under such an
+    address could not `fetch` a relative address (measured). A `blob:`
+    address of this origin becomes the base URL as well.
+  - The answer is the address as the URL parser resolved it, not the text
+    that was sent: dot segments are resolved, a path without its leading
+    slash is resolved from the root (`es/account` became the base URL), and
+    `https://app.example` is answered with `https://app.example/` (it
+    became `/en`).
+  - Unchanged: a sign-in with e-mail and password ends on
+    `/{locale}/account` (E2E suite: en, es, fr) and a sign-out on
+    `/{locale}` (en, es); the account deletion asks for the same address as
+    the sign-out (read in the source).
+- **Documents.** `README.md` and `SECURITY.md` say first what the project
+  does and protects, then the limits as a short list. The long paragraphs
+  with the measurements moved to the new `docs/SECURITY-DETAILS.md`, and
+  each of the 39 entries of the complete list in `SECURITY.md` links to its
+  full text there. No limit was dropped: this release ends one (the English
+  landing page after a link) and narrows one to the rows that earlier
+  versions wrote (Google's stored tokens). In `SECURITY.md` the heading
+  "Security Features" is now "What the application protects", and "Known
+  Limitations & Hardening Notes" is "Known Limitations".
+- **Screenshots.** The README shows eight, all taken on 2026-10-06, three
+  of them new (the 2FA step of the sign-in, two parts of the account page).
+  Fifteen image files are removed: thirteen that no file referred to and
+  two that the README no longer shows.
+
+### ⬆️ Upgrading from v2.5.0
+
+- The database schema does not change (`prisma/schema.prisma` is the same
+  file), so there is nothing to push. There is no new environment variable
+  and no change in the message files.
+- Run `pnpm install`: the lockfile changed.
+- Optional: clear the tokens that earlier versions stored. One `UPDATE` of
+  `"Account"`, printed in `docs/DEPLOYMENT.md`, sets the seven token columns
+  to `NULL` in every row that holds a value in one of them. Measured on the
+  test database (PostgreSQL 16.10) with four `Account` rows of two users,
+  three of which held a value: it answered `UPDATE 3`, the other columns of
+  the four rows and the two user rows were as before, and a second run
+  answered `UPDATE 0`. No account is unlinked and no session ends. Run it
+  when no instance of 2.5.0 is left; it does not reach a backup and revokes
+  nothing at Google.
+- Nothing else. Code of your own that reads a token column of `Account`, or
+  that counted on an address with `/en` in it being sent to `/en`, finds
+  the change under Security and Changed.
+
+### 🧪 Tests
+
+- Jest: 1598 tests (was 1537): 1545 without a database (was 1486) and 53 in
+  the integration file (was 51). Playwright: 105 tests in 12 spec files (was
+  103 in 11), counted with `playwright test --list`.
+- Coverage: 78 % of statements (was 77 %); two runs gave 78.17 % and
+  78.10 %.
+- New files: `auth-config.redirect.test.ts` and `return-address.e2e.ts`;
+  three unit tests on what the gate hands the adapter. The Auth.js source
+  pin covers eleven files (was nine).
+- The whole Playwright suite was run once on the code of this release, with
+  the version set and before the documents were edited: 105 passed, exit
+  code 0, no "Compiled" line of the dev server after the first test.
+
 ## [v2.5.0] - 2026-10-05
 
 Linking Google is enforced on the server, the server answers in the
