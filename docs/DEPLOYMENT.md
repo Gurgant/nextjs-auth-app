@@ -63,9 +63,10 @@ The schema does not change (`prisma/schema.prisma` is the same file in both
 versions), so there is nothing to push.
 
 From 2.5.1 an `Account` row says whose account it is and holds none of the
-provider's tokens (`SECURITY.md`, "Of a Google account the application
-stores whose it is"). Rows that an earlier version wrote keep what it stored
-for a Google account: the values of Google's token response, in plain text.
+provider's tokens (`SECURITY.md`, "For a Google account the application
+stores which user it belongs to"). Rows that an earlier version wrote keep
+what it stored for a Google account: the values of Google's token response,
+in plain text.
 Nothing in the application reads them. One statement clears them:
 
 ```sql

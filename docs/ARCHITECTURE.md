@@ -168,7 +168,8 @@ read in the source of `@auth/core` 0.41.3. The integration test runs
 Auth.js's decision function with the application's adapter on real
 PostgreSQL; no test completes a Google sign-in, so the exchange with Google
 before that function and the redirect after a refusal are read, not measured
-— see "Security Features" and "Known Limitations" in `SECURITY.md`, and
+— see "What the application protects" and "Known Limitations" in
+`SECURITY.md`, the full text in `docs/SECURITY-DETAILS.md`, and
 `docs/TESTING.md`.
 
 - Account actions take the user's identity from `auth()`, never from a
