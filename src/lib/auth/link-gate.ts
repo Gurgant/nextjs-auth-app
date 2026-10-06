@@ -5,7 +5,8 @@ import { spendLinkGrant } from "@/lib/auth/link-grant";
 import { noteLinkRefusal } from "@/lib/auth/link-refusal";
 
 /**
- * The rule for linking a provider account to a user. Server-only (Prisma).
+ * The rule for linking a provider account to a user, and what is stored of
+ * the account. Server-only (Prisma).
  *
  * Auth.js writes an Account row through `adapter.linkAccount` and through
  * nothing else (read in @auth/core 0.41.3, lib/actions/callback/
@@ -17,6 +18,10 @@ import { noteLinkRefusal } from "@/lib/auth/link-refusal";
  *   - Any other user is linked only after spending the grant that the
  *     password step left on the row (./link-grant.ts), and only when the row
  *     showed no account of that provider yet.
+ *
+ * Either way the row says whose account it is and nothing more
+ * (`identityOf` below): the tokens of the provider, which Auth.js hands over
+ * with the account, are not stored.
  *
  * A refusal throws: returning without linking would let Auth.js go on as
  * after a successful link (a new session token, the signIn event). The rule
@@ -38,6 +43,23 @@ export class LinkNotConfirmedError extends Error {
     super(`Account link refused: ${reason}`);
     this.name = "LinkNotConfirmedError";
   }
+}
+
+/**
+ * What the application stores of a provider account: the four values that
+ * say whose it is. Auth.js hands `linkAccount` more: what the provider's
+ * token endpoint answered (for Google an access token, an ID token, their
+ * expiry, scope and type and, with offline access, a refresh token). Nothing
+ * reads those values back: the application calls no API of the provider, and
+ * Auth.js looks an account up by provider and account id to find its user
+ * (read in @auth/core 0.41.3 and @auth/prisma-adapter 2.11.3). So they are
+ * left out, with anything else a provider adds, and the token columns of the
+ * Account table stay NULL. A project that needs the tokens returns the
+ * account from here as it comes, and should encrypt them first.
+ */
+function identityOf(account: AdapterAccount): AdapterAccount {
+  const { userId, type, provider, providerAccountId } = account;
+  return { userId, type, provider, providerAccountId };
 }
 
 /** The adapter with the rule in front of its `linkAccount`; every other method is the adapter's own. */
@@ -69,7 +91,7 @@ export function withLinkGate(base: Adapter): Omit<Adapter, "linkAccount"> & {
         user.emailVerified === null &&
         user.accounts.length === 0
       ) {
-        await link(account);
+        await link(identityOf(account));
         return;
       }
 
@@ -98,7 +120,7 @@ export function withLinkGate(base: Adapter): Omit<Adapter, "linkAccount"> & {
         throw new LinkNotConfirmedError(reason);
       }
 
-      await link(account);
+      await link(identityOf(account));
       // No address and no browser: an adapter is handed no request.
       await logSecurityEvent({
         userId: account.userId,

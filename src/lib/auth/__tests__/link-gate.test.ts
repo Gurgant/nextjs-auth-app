@@ -57,13 +57,31 @@ function mockCall(name: string, args: unknown): Promise<unknown> {
 }
 
 const USER_ID = "user-1";
+/** What the application stores of an account: whose it is. */
+const IDENTITY = {
+  userId: USER_ID,
+  type: "oidc",
+  provider: "google",
+  providerAccountId: "google-subject-1",
+};
+/**
+ * The account as Auth.js hands it over: the identity and the seven values it
+ * takes from the provider's token response (@auth/core lib/utils/providers.js).
+ */
 const googleAccount: AdapterAccount = {
   userId: USER_ID,
   type: "oidc",
   provider: "google",
   providerAccountId: "google-subject-1",
   access_token: "access-token-from-google",
+  refresh_token: "refresh-token-from-google",
+  id_token: "id-token-from-google",
+  expires_at: 1_800_000_000,
+  token_type: "bearer",
+  scope: "openid profile email",
+  session_state: "session-state-from-google",
 };
+const LINK_IDENTITY = { name: "base.linkAccount", args: IDENTITY };
 
 /** The columns the gate reads. By default: a user with a password. */
 const userRow = (over: Record<string, unknown> = {}) => ({
@@ -140,12 +158,8 @@ describe("a first sign-in: the row Auth.js has just created", () => {
 
     await expect(link()).resolves.toBeUndefined();
 
-    expect(mockCalls).toStrictEqual([
-      READ_USER,
-      { name: "base.linkAccount", args: googleAccount },
-    ]);
-    // The very object Auth.js handed over, tokens included.
-    expect(mockCalls[1].args).toBe(googleAccount);
+    // Whose account it is, and none of the tokens Auth.js handed over.
+    expect(mockCalls).toStrictEqual([READ_USER, LINK_IDENTITY]);
     expect(mockNoteLinkRefusal).not.toHaveBeenCalled();
   });
 
@@ -186,7 +200,7 @@ describe("a user that is not new", () => {
     expect(mockCalls).toStrictEqual([
       READ_USER,
       SPEND_GRANT,
-      { name: "base.linkAccount", args: googleAccount },
+      LINK_IDENTITY,
       {
         name: "securityEvent.create",
         args: {
@@ -258,6 +272,36 @@ describe("a user that is not new", () => {
       args: { where: { id: USER_ID, linkGrantProvider: "github" } },
     });
   });
+});
+
+describe("what is stored of the account", () => {
+  // The two cases that end in a link: the row of a first sign-in, and a user
+  // with a grant.
+  it.each([
+    ["a first sign-in", userRow({ password: null, accounts: [] }), 0],
+    ["a link after the password step", userRow(), 1],
+  ])(
+    "%s: the adapter is handed whose account it is, and nothing else Auth.js handed over",
+    async (_, row, grantsSpent) => {
+      mockUserRow = row;
+      mockGrantsSpent = grantsSpent;
+      // A provider can answer with more than the seven values, and its
+      // `account` callback can pass that on.
+      const handedOver: AdapterAccount = {
+        ...googleAccount,
+        refresh_token_expires_in: 15_552_000,
+      };
+      const asHandedOver = { ...handedOver };
+
+      await link(handedOver);
+
+      expect(
+        mockCalls.filter((call) => call.name === "base.linkAccount"),
+      ).toStrictEqual([LINK_IDENTITY]);
+      // The object Auth.js handed over is left as it was.
+      expect(handedOver).toStrictEqual(asHandedOver);
+    },
+  );
 });
 
 describe("a user id that no row has", () => {

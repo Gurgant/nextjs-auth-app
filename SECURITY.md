@@ -479,30 +479,47 @@ Read these before deploying. They are real, not hypothetical.
     Features). A later version that writes accounts another way would pass
     the gate by; one that creates users another way would block first Google
     sign-ins.
-  - **Left as it is.** A successful link shows no notice, and under the
-    English locale the visitor lands on the home page, not on the account
-    page: the `redirect` callback sends every address that contains `/en`
-    there (read in the code, not measured). Linking ends no other session. A
-    session that ends during the Google step makes Auth.js create a new user
-    for a Google address it does not know (measured with a signed-out
-    session).
-- **Google's tokens are stored in plain text, and nothing reads them.** For
-  every Google account the Prisma adapter stores the account as Auth.js hands
-  it over, in the `Account` row: `access_token`, `id_token`, `expires_at`,
+  - **Left as it is.** A successful link shows no notice. Linking ends no
+    other session. A session that ends during the Google step makes Auth.js
+    create a new user for a Google address it does not know (measured with a
+    signed-out session).
+- **Of a Google account the application stores whose it is, and none of
+  Google's tokens.** An `Account` row holds `userId`, `type`, `provider` and
+  `providerAccountId`. With the account, Auth.js hands its adapter what
+  Google's token endpoint answered: `access_token`, `id_token`, `expires_at`,
   `scope`, `token_type` and, because `src/lib/auth-config.ts` asks Google for
   offline access (`access_type: "offline"`, `prompt: "consent"`), a
-  `refresh_token`. The scope Auth.js asks for is `openid profile email`. The
-  row is written once, when the user is created or the account is linked; a
-  later sign-in with that account does not update it. Nothing in the
-  application reads these columns: it calls no Google API and refreshes no
-  token (a search of `src/` for the column names finds the type declarations,
-  tests and test builders, and no other code). A copy of the database or of
-  a backup therefore holds a refresh token for every linked Google account.
-  Read in the source of `@auth/core` 0.41.3 (`lib/utils/providers.js`,
-  `lib/actions/callback/`) and of `@auth/prisma-adapter` 2.11.3, not measured
-  against Google: no test completes a Google sign-in. That the adapter stores
-  a token it is handed is measured (the integration test, with an access
-  token).
+  `refresh_token` (read in the source of `@auth/core` 0.41.3,
+  `lib/utils/providers.js`, not measured against Google: no test completes a
+  Google sign-in). The link gate, through which Auth.js writes every
+  `Account` row, hands the Prisma adapter the four values only (`identityOf`
+  in `src/lib/auth/link-gate.ts`), and the token columns of the row stay
+  `NULL`. Measured on 2026-10-06 on real PostgreSQL (the integration test),
+  for the first sign-in of a new visitor and for a link after the password
+  step, through the adapter object the application hands to Auth.js and
+  through Auth.js's decision function, each handed all seven values of a
+  token response: the rows hold none of them, while Auth.js's own
+  `linkAccount` event still receives them. Nothing reads these columns: the
+  application calls no Google API and refreshes no token (a search of the
+  repository for the column names finds the Prisma schema, the type
+  declaration, tests, test builders and the seed of the E2E suite, and no
+  other code), and Auth.js looks a Google account up by its provider and
+  account id and takes the user of the row (read in the source of
+  `@auth/core` 0.41.3 and of `@auth/prisma-adapter` 2.11.3; a returning
+  Google user whose row holds no token signs in, measured with Auth.js's
+  decision function). The columns stay in the schema: it is the `Account`
+  model that Auth.js documents for its adapters (`adapters.js` of
+  `@auth/core` 0.41.3). A project that needs the tokens (to call a Google
+  API) returns the whole account from `identityOf`, and should encrypt them
+  first. **Rows written by versions up to 2.5.0 keep what those versions
+  stored**, every value Auth.js handed over, in plain text (measured on
+  2026-10-06 with the code of 2.5.0: the same tests found all seven values
+  in the rows), until an operator clears them; `docs/DEPLOYMENT.md` gives
+  the statement. The Google provider is still configured with
+  `access_type: "offline"` and `prompt: "consent"`, so Google is still asked
+  for a refresh token that the application no longer keeps: the two
+  parameters were left as they are, because a Google sign-in without them
+  cannot be measured here.
 - **Sensitive actions do not require re-authentication**: disabling 2FA,
   adding a password to a Google account and deleting the account need only a
   session. Together with the previous points, a hijacked session can turn 2FA
@@ -594,10 +611,10 @@ Read these before deploying. They are real, not hypothetical.
       user while the owner is linking, bind the link grant to the browser
       that entered the password, and tell the owner when an account was
       linked (see Known Limitations).
-- [ ] Decide whether you need Google's tokens: the starter stores them in
-      plain text in `Account` and never reads them. If you call no Google
-      API, do not ask for offline access and do not store them; if you do,
-      encrypt them.
+- [ ] Clear Google's tokens from the `Account` rows that a version up to
+      2.5.0 wrote (`docs/DEPLOYMENT.md`): the starter no longer stores them
+      and never read them. If you call a Google API and need them, store
+      them encrypted (see Known Limitations).
 - [ ] Tighten the **Content-Security-Policy** (nonces if you render dynamically;
       add any third-party origins you use).
 - [ ] Rotate secrets periodically and monitor the security-event table.

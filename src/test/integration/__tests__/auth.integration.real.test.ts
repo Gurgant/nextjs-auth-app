@@ -738,6 +738,19 @@ describe("Authentication Integration Tests (Real Database)", () => {
   const linkThroughTheAppsAdapter = (account: AdapterAccount) =>
     authOptions.adapter.linkAccount(account);
 
+  // What Auth.js takes from the token response of a provider and hands to
+  // linkAccount with the account (@auth/core lib/utils/providers.js): the
+  // seven values the Account table has a column for.
+  const GOOGLE_TOKENS = {
+    access_token: "access-token-from-google",
+    refresh_token: "refresh-token-from-google",
+    id_token: "id-token-from-google",
+    expires_at: 1_800_000_000,
+    token_type: "bearer",
+    scope: "openid profile email",
+    session_state: "session-state-from-google",
+  };
+
   const googleAccount = (
     userId: string,
     providerAccountId: string,
@@ -746,7 +759,30 @@ describe("Authentication Integration Tests (Real Database)", () => {
     type: "oidc",
     provider: "google",
     providerAccountId,
-    access_token: "access-token-from-google",
+    ...GOOGLE_TOKENS,
+  });
+
+  /** The Google Account rows of a user, with every column of the table. */
+  const googleRowsOf = (userId: string) =>
+    prisma.account.findMany({
+      where: { userId, provider: "google" },
+      orderBy: { providerAccountId: "asc" },
+    });
+
+  /** An Account row that says whose Google account it is and holds no token. */
+  const identityOnly = (userId: string, providerAccountId: string) => ({
+    id: expect.any(String),
+    userId,
+    type: "oidc",
+    provider: "google",
+    providerAccountId,
+    refresh_token: null,
+    access_token: null,
+    expires_at: null,
+    token_type: null,
+    scope: null,
+    id_token: null,
+    session_state: null,
   });
 
   /** A user as registration writes it: a password and its credentials Account row. */
@@ -986,23 +1022,49 @@ describe("Authentication Integration Tests (Real Database)", () => {
       ]);
     });
 
-    it("links without a grant onto the row Auth.js has just created for a first Google sign-in", async () => {
+    /**
+     * The row of a new visitor, created through the adapter with what
+     * @auth/core passes (handle-login.js:260): the profile and
+     * `emailVerified: null`. The adapter drops the id.
+     */
+    const createAsAuthJsDoes = (email: string) => {
       const createUser = authOptions.adapter.createUser;
       if (!createUser) throw new Error("authOptions.adapter has no createUser");
-      // What @auth/core passes for a new visitor (handle-login.js:260): the
-      // profile and `emailVerified: null`. The adapter drops the id.
-      const created = await createUser({
+      return createUser({
         id: "ignored",
         name: "New Visitor",
-        email: "new-visitor@example.com",
+        email,
         image: null,
         emailVerified: null,
       } as AdapterUser);
+    };
+
+    it("links without a grant onto the row Auth.js has just created for a first Google sign-in", async () => {
+      const created = await createAsAuthJsDoes("new-visitor@example.com");
 
       await linkThroughTheAppsAdapter(googleAccount(created.id, "g-new"));
 
       await expect(googleAccountIdsOf(created.id)).resolves.toEqual(["g-new"]);
       await expect(gateEventsOf(created.id)).resolves.toEqual([]);
+    });
+
+    // The two cases in which Auth.js writes an Account row. Both times the
+    // adapter is handed the account with the seven values of Google's token
+    // response; the row says whose account it is and holds none of them.
+    it("stores whose Google account it is and none of Google's tokens, for a first sign-in and for a link after the password step", async () => {
+      const created = await createAsAuthJsDoes("new-visitor@example.com");
+      const withPassword = await makePasswordUser("honest@example.com");
+      await issueLinkGrant(withPassword.id, "google");
+
+      await linkThroughTheAppsAdapter(googleAccount(created.id, "g-new"));
+      await linkThroughTheAppsAdapter(googleAccount(withPassword.id, "g-own"));
+
+      await expect(googleRowsOf(created.id)).resolves.toEqual([
+        identityOnly(created.id, "g-new"),
+      ]);
+      await expect(googleRowsOf(withPassword.id)).resolves.toEqual([
+        identityOnly(withPassword.id, "g-own"),
+      ]);
     });
 
     // Each row differs from the one above in one thing, so each of the three
@@ -1057,17 +1119,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
 
       await linkThroughTheAppsAdapter(googleAccount(user.id, "g-own"));
 
-      await expect(
-        prisma.account.findMany({
-          where: { userId: user.id, provider: "google" },
-        }),
-      ).resolves.toMatchObject([
-        {
-          type: "oidc",
-          providerAccountId: "g-own",
-          access_token: "access-token-from-google",
-        },
-      ]);
+      await expect(googleAccountIdsOf(user.id)).resolves.toEqual(["g-own"]);
       await expect(grantOf(user.id)).resolves.toEqual(NO_GRANT);
       await expect(gateEventsOf(user.id)).resolves.toEqual([
         {
@@ -1336,8 +1388,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
         provider: string;
         type: "oidc";
         providerAccountId: string;
-        access_token: string;
-      },
+      } & typeof GOOGLE_TOKENS,
       options: unknown,
     ) => Promise<{ user: { id: string; email: string }; isNewUser: boolean }>;
 
@@ -1365,6 +1416,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
       ofOnesOwn: {
         allowDangerousEmailAccountLinking?: boolean;
         createUser?: (message: { user: { id: string } }) => Promise<void>;
+        linkAccount?: (message: { account: unknown }) => Promise<void>;
       } = {},
     ) => ({
       adapter: authOptions.adapter,
@@ -1373,7 +1425,10 @@ describe("Authentication Integration Tests (Real Database)", () => {
           token ? JSON.parse(token) : null,
         ),
       },
-      events: { createUser: ofOnesOwn.createUser },
+      events: {
+        createUser: ofOnesOwn.createUser,
+        linkAccount: ofOnesOwn.linkAccount,
+      },
       session: {
         strategy: "jwt",
         maxAge: 60,
@@ -1409,7 +1464,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
           provider: "google",
           type: "oidc",
           providerAccountId: subject,
-          access_token: "access-token-from-google",
+          ...GOOGLE_TOKENS,
         },
         options,
       );
@@ -1519,6 +1574,51 @@ describe("Authentication Integration Tests (Real Database)", () => {
       ]);
       // Auth.js created no user for the Google address.
       await expect(prisma.user.count()).resolves.toBe(1);
+    });
+
+    it("Auth.js is handed Google's tokens and the Account row it leaves holds none of them: a new visitor, and a link after the password step", async () => {
+      const user = await makePasswordUser("honest@example.com");
+      await issueLinkGrant(user.id, "google");
+      // What Auth.js tells its linkAccount event after each link: the
+      // account it goes on with.
+      const linked: unknown[] = [];
+      const options = authJsOptions({
+        linkAccount: async ({ account }) => {
+          linked.push(account);
+        },
+      });
+
+      const visitor = await googleReturns(
+        undefined,
+        "g-new",
+        "new-visitor@example.com",
+        options,
+      );
+      await googleReturns(
+        sessionTokenOf(user.id, "sid-honest"),
+        "g-own",
+        "own-google-address@example.com",
+        options,
+      );
+
+      // Auth.js had the tokens both times, so the rows below could have held
+      // them.
+      expect(linked).toEqual([
+        expect.objectContaining({
+          providerAccountId: "g-new",
+          ...GOOGLE_TOKENS,
+        }),
+        expect.objectContaining({
+          providerAccountId: "g-own",
+          ...GOOGLE_TOKENS,
+        }),
+      ]);
+      await expect(googleRowsOf(visitor.user.id)).resolves.toEqual([
+        identityOnly(visitor.user.id, "g-new"),
+      ]);
+      await expect(googleRowsOf(user.id)).resolves.toEqual([
+        identityOnly(user.id, "g-own"),
+      ]);
     });
 
     it("a live session without the password step cannot link a Google account", async () => {

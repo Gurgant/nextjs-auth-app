@@ -57,6 +57,55 @@ release pipeline.
 A database that an earlier version has used is upgraded as described below,
 the newest release first.
 
+### From 2.5.0 to 2.5.1
+
+The schema does not change (`prisma/schema.prisma` is the same file in both
+versions), so there is nothing to push.
+
+From 2.5.1 an `Account` row says whose account it is and holds none of the
+provider's tokens (`SECURITY.md`, "Of a Google account the application
+stores whose it is"). Rows that an earlier version wrote keep what it stored
+for a Google account: the values of Google's token response, in plain text.
+Nothing in the application reads them. One statement clears them:
+
+```sql
+UPDATE "Account"
+SET "access_token" = NULL,
+    "refresh_token" = NULL,
+    "id_token" = NULL,
+    "expires_at" = NULL,
+    "token_type" = NULL,
+    "scope" = NULL,
+    "session_state" = NULL
+WHERE num_nonnulls("access_token", "refresh_token", "id_token", "expires_at",
+                   "token_type", "scope", "session_state") > 0;
+```
+
+It empties the seven columns in every row that holds a value in one of them,
+whatever the provider, and changes nothing else, so every account stays
+linked. **Measured** on 2026-10-06 on the test database (PostgreSQL 16.10,
+with `psql`), with four `Account` rows of two users: a Google row with an
+access token, a refresh token, an ID token and their expiry, type and scope;
+the credentials row of the same user; a Google row without a refresh token;
+and a row of another provider with a value in `expires_at` and
+`session_state` only. The statement answered `UPDATE 3`. Afterwards the
+seven columns were `NULL` in all four rows, and the other five columns of
+each row and the two user rows were as before (compared as text, before and
+after; the same comparison over every column reported the three rows that
+had changed). A second run answered `UPDATE 0`.
+
+**Not measured.** The four rows were written with `INSERT`, not by the
+application: that 2.5.0 stores these values was measured with its code (the
+integration test, before the change). No Google sign-in was made after the
+statement; a returning Google user whose row holds no token signs in with
+Auth.js's decision function (the integration test). The statement reaches
+this database only: a backup made before it still holds the values, and
+nothing is revoked at Google.
+
+If instances of both versions run during the upgrade, run the statement when
+no instance of 2.5.0 is left: 2.5.0 stores the tokens of every account that
+is linked through it.
+
 ### From 2.4.0 to 2.5.0
 
 The schema of 2.5.0 changes in both directions, and one `pnpm prisma:push`
