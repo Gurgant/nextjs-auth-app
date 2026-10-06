@@ -50,18 +50,26 @@ breaks for you, that itself is a bug worth reporting.
   The header of that file lists what the check does not see.
 - No link without a page: `pnpm test:unit` fails when an internal link
   target that a file under `src/app` or `src/components` writes as a literal
-  (an `href`, a `callbackUrl`, the argument of `router.push()` or
-  `redirect()`) is served by no page and no route handler under `src/app`.
-  Remove the link or add the page; the header of
-  `src/test/unit/__tests__/link-targets.test.ts` lists what the check does
-  not see, such as a target built at run time.
+  (an `href`, a `callbackUrl` or a `redirectTo`, as a JSX attribute or an
+  object property; the first argument of `push()`, `replace()` or
+  `prefetch()` on a name that the file binds to `useRouter()`; the first
+  argument of `redirect()` or `permanentRedirect()`) is served by no page
+  and no route handler under `src/app`. Remove the link or add the page. The
+  check also reports a link that something else serves, such as a path
+  without a locale (the middleware redirects it) or a static file: write
+  the locale, or add the link with its reason to `ALLOWED_DEAD_LINKS` in
+  `src/test/unit/__tests__/link-targets.test.ts`. The header of that file
+  lists what the check does not see, such as a target built at run time.
 - If you touch UI strings, update **all five** locale files in `messages/`
   (`pnpm validate-translations` enforces key parity). `pnpm test:unit` fails
   when a key of `messages/en.json` is read by no application file under
   `src/` (tests do not count), or when a message file writes a key twice:
   delete the key from the five files, or add it to the allow-list in
   `src/test/unit/__tests__/message-keys.test.ts` with the place that reads
-  it.
+  it. The header of that file lists the forms that the check takes for a
+  read; a key that the code reads in another way (through a template, a
+  namespace in a variable, a translator handed to another file) is reported
+  as unread and goes into the allow-list.
 - Security-sensitive changes (auth flows, headers, crypto, rate limiting)
   should explain their reasoning in the PR description and update
   `SECURITY.md` when they change the posture.

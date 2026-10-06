@@ -99,10 +99,14 @@ re-check, 429 throttling and security events. Both read the request in one
 place (`src/lib/auth/link-account-request.ts`): the body has to be a JSON
 object with a password and a provider, both strings, and Google is the only
 provider either route accepts; anything else is answered 400 before the
-database is asked and is not counted as a wrong password. Every refusal
-carries a `code` next to its English `error`
-(`src/lib/auth/link-account-errors.ts`): the account page shows the text of
-the code in the visitor's language, and never the English one.
+route makes its own query (the user with the accounts) and is not counted as
+a wrong password. The session check of `auth()` comes first and has asked
+the database by then (`SECURITY.md`, "Every session check needs the
+database"); a request without a session is answered 401, and one over the
+throttle 429, before the body is read (read in the two routes; their unit
+tests replace `auth()`). Every refusal carries a `code` next to its English
+`error` (`src/lib/auth/link-account-errors.ts`): the account page shows the
+text of the code in the visitor's language, and never the English one.
 
 `unlink` removes every `Account` row of the provider that the user has when
 its `DELETE` runs (there can be more than one: `SECURITY.md`, "Not one

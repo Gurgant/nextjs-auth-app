@@ -1,6 +1,6 @@
 {
   "name": "nextjs-auth-app",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Next.js 15 authentication starter: credentials + Google OAuth, enforced TOTP 2FA, RBAC, i18n (5 locales), Prisma + PostgreSQL, Jest + Playwright.",
   "private": true,
   "scripts": {

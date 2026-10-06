@@ -449,18 +449,21 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     ["there is no session", null],
     ["the session has no user", { expires: new Date().toISOString() }],
     ["the session's user has no id", session({ email: "someone@example.com" })],
-  ])("answers 401 when %s, before the database is asked", async (_, value) => {
-    mockAuth.mockResolvedValue(value);
+  ])(
+    "answers 401 when %s, before the route queries the user",
+    async (_, value) => {
+      mockAuth.mockResolvedValue(value);
 
-    const res = await unlinkWith(PASSWORD);
+      const res = await unlinkWith(PASSWORD);
 
-    expect(res.status).toBe(401);
-    await expect(res.json()).resolves.toEqual({
-      error: "Authentication required",
-      code: "authentication_required",
-    });
-    expect(mockPrismaCalls).toEqual([]);
-  });
+      expect(res.status).toBe(401);
+      await expect(res.json()).resolves.toEqual({
+        error: "Authentication required",
+        code: "authentication_required",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
 
   it("answers 429 with Retry-After after five wrong passwords, even to the right one", async () => {
     expect(RATE_LIMITS.passwordVerify).toEqual({
@@ -509,7 +512,7 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     ["is a JSON string", '"google"'],
     ["is a JSON number", "5"],
   ])(
-    "answers 400 when the body %s, before the database is asked",
+    "answers 400 when the body %s, before the route queries the user",
     async (_, body) => {
       const res = await delText(body);
 
@@ -529,16 +532,19 @@ describe("DELETE /api/auth/link-account/unlink, refused", () => {
     ["the password is true", { password: true, provider: "google" }],
     ["the provider is a list", { password: PASSWORD, provider: ["google"] }],
     ["the provider is an object", { password: PASSWORD, provider: {} }],
-  ])("answers 400 when %s, before the database is asked", async (_, body) => {
-    const res = await del(body);
+  ])(
+    "answers 400 when %s, before the route queries the user",
+    async (_, body) => {
+      const res = await del(body);
 
-    expect(res.status).toBe(400);
-    await expect(res.json()).resolves.toEqual({
-      error: "Invalid request body",
-      code: "invalid_request",
-    });
-    expect(mockPrismaCalls).toEqual([]);
-  });
+      expect(res.status).toBe(400);
+      await expect(res.json()).resolves.toEqual({
+        error: "Invalid request body",
+        code: "invalid_request",
+      });
+      expect(mockPrismaCalls).toEqual([]);
+    },
+  );
 
   // "credentials" is the provider of the Account row that registration
   // writes: with the right password the route used to delete that row and to
