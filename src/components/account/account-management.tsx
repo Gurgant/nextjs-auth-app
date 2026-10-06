@@ -92,7 +92,7 @@ export function AccountManagement({ user, locale }: AccountManagementProps) {
     {
       onSuccess: () => {
         setTimeout(async () => {
-          await signOut({ callbackUrl: `/${locale}?deleted=true` });
+          await signOut({ callbackUrl: `/${locale}` });
         }, 2000);
       },
     },

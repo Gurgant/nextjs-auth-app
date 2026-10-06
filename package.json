@@ -16,7 +16,6 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:push:dev": "cross-env DATABASE_URL=postgresql://postgres:postgres123@127.0.0.1:5432/nextjs_auth_db prisma db push",
     "db:push:test": "cross-env DATABASE_URL=postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db prisma db push",
-    "db:setup:all": "./scripts/setup-databases.sh",
     "db:reset:test": "cross-env DATABASE_URL=postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db prisma db push --force-reset",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",

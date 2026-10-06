@@ -48,25 +48,6 @@ export class UserRepository
     });
   }
 
-  async findByCredentials(
-    email: string,
-    password: string,
-  ): Promise<User | null> {
-    const user = await this.findByEmail(email);
-
-    if (!user || !user.password) {
-      return null;
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return null;
-    }
-
-    return user;
-  }
-
   async createWithAccount(data: CreateUserWithAccountDTO): Promise<User> {
     const {
       email,
@@ -171,16 +152,6 @@ export class UserRepository
     });
   }
 
-  async updateLastLogin(userId: string): Promise<void> {
-    await this.model.update({
-      where: { id: userId },
-      data: {
-        lastLoginAt: new Date(),
-        updatedAt: new Date(),
-      },
-    });
-  }
-
   async updatePassword(
     userId: string,
     hashedPassword: string,
@@ -194,50 +165,6 @@ export class UserRepository
         ...(options.revokeSessions ? { sessionVersion: { increment: 1 } } : {}),
       },
     });
-  }
-
-  async verifyEmail(userId: string): Promise<void> {
-    await this.model.update({
-      where: { id: userId },
-      data: { emailVerified: new Date() },
-    });
-  }
-
-  async enableTwoFactor(userId: string, secret: string): Promise<void> {
-    await this.model.update({
-      where: { id: userId },
-      data: {
-        twoFactorEnabled: true,
-        twoFactorSecret: secret,
-      },
-    });
-  }
-
-  async disableTwoFactor(userId: string): Promise<void> {
-    await this.model.update({
-      where: { id: userId },
-      data: {
-        twoFactorEnabled: false,
-        twoFactorSecret: null,
-      },
-    });
-  }
-
-  async findByProvider(
-    provider: string,
-    providerAccountId: string,
-  ): Promise<User | null> {
-    const account = await this.prisma.account.findFirst({
-      where: {
-        provider,
-        providerAccountId,
-      },
-      include: {
-        user: true,
-      },
-    });
-
-    return account?.user || null;
   }
 
   /**

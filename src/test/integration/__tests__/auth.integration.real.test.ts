@@ -71,20 +71,6 @@ jest.mock("@/lib/repositories", () => ({
       findById: async (id: string) => {
         return prisma.user.findUnique({ where: { id } });
       },
-      findByCredentials: async (email: string, password: string) => {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.password) return null;
-        const isValid = await bcrypt.compare(password, user.password);
-        return isValid ? user : null;
-      },
-      create: async (data: {
-        name?: string;
-        email: string;
-        password?: string;
-        emailVerified?: Date | null;
-      }) => {
-        return prisma.user.create({ data });
-      },
       createWithAccount: async (data: {
         name?: string;
         email: string;
@@ -121,12 +107,6 @@ jest.mock("@/lib/repositories", () => ({
         }>,
       ) => {
         return prisma.user.update({ where: { id }, data });
-      },
-      updateLastLogin: async (id: string) => {
-        return prisma.user.update({
-          where: { id },
-          data: { lastLoginAt: new Date() },
-        });
       },
       updatePassword: (
         id: string,
@@ -238,88 +218,6 @@ describe("Authentication Integration Tests (Real Database)", () => {
       });
       expect(users).toHaveLength(1);
       expect(users[0].name).toBe("Existing User");
-    });
-  });
-
-  // Credentials login in production flows through NextAuth authorize()
-  // (src/lib/auth-config.ts), whose data seam is UserRepository. These tests
-  // exercise the REAL repository against the real database.
-  describe("User Login - Real DB", () => {
-    it("should verify valid credentials via the real UserRepository", async () => {
-      // Arrange - Create user in database
-      const password = "ValidPass123!";
-      const hashedPassword = await bcrypt.hash(password, 4);
-
-      const user = await prisma.user.create({
-        data: {
-          name: "Login Test User",
-          email: "logintest@example.com",
-          password: hashedPassword,
-          emailVerified: new Date(),
-        },
-      });
-
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          provider: "credentials",
-          providerAccountId: user.email,
-          type: "credentials",
-        },
-      });
-
-      const userRepo = new UserRepository(prisma);
-
-      // Act - same calls authorize() makes on successful login
-      const found = await userRepo.findByCredentials(
-        "logintest@example.com",
-        password,
-      );
-      expect(found?.id).toBe(user.id);
-      await userRepo.updateLastLogin(user.id);
-
-      // Assert - last login was updated in database
-      const updatedUser = await prisma.user.findUnique({
-        where: { id: user.id },
-      });
-      expect(updatedUser?.lastLoginAt).toBeTruthy();
-    });
-
-    it("should reject an invalid password via the real UserRepository", async () => {
-      // Arrange
-      const user = await prisma.user.create({
-        data: {
-          name: "Invalid Pass User",
-          email: "invalidpass@example.com",
-          password: await bcrypt.hash("Correct123!", 4),
-        },
-      });
-
-      const userRepo = new UserRepository(prisma);
-
-      // Act
-      const found = await userRepo.findByCredentials(
-        "invalidpass@example.com",
-        "Wrong123!",
-      );
-
-      // Assert
-      expect(found).toBeNull();
-
-      // Verify lastLoginAt was NOT updated
-      const unchangedUser = await prisma.user.findUnique({
-        where: { id: user.id },
-      });
-      expect(unchangedUser?.lastLoginAt).toBeNull();
-    });
-
-    it("should reject a non-existent user via the real UserRepository", async () => {
-      const userRepo = new UserRepository(prisma);
-      const found = await userRepo.findByCredentials(
-        "ghost@example.com",
-        "Whatever123!",
-      );
-      expect(found).toBeNull();
     });
   });
 
@@ -547,11 +445,13 @@ describe("Authentication Integration Tests (Real Database)", () => {
     }, 10000); // 10 second timeout for transaction rollback
   });
 
-  describe("Database Query Performance - Real DB", () => {
-    it("should handle bulk operations efficiently", async () => {
+  describe("Bulk insert - Real DB", () => {
+    // This test used to measure the insert and to assert that it took less
+    // than 15 seconds. A limit on wall-clock time says how busy the machine
+    // is, not whether the code works, so the measurement and the limit are
+    // gone. What the test asserts is that every row is in the table.
+    it("should store every user of one createMany", async () => {
       // Arrange - Create many users
-      const startTime = Date.now();
-
       const users = Array.from({ length: 100 }, (_, i) => ({
         name: `Bulk User ${i}`,
         email: `bulk${i}@example.com`,
@@ -561,13 +461,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
       // Act
       await prisma.user.createMany({ data: users });
 
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-
       // Assert
-      console.log(`Created 100 users in ${duration}ms`);
-      expect(duration).toBeLessThan(15000); // Should complete within reasonable time
-
       const count = await prisma.user.count();
       expect(count).toBe(100);
 
@@ -962,6 +856,20 @@ describe("Authentication Integration Tests (Real Database)", () => {
 
   type SecondClient = ReturnType<typeof openSecondPrismaTestClient>;
 
+  // The three tests that force an overlap hold a lock on a second client and
+  // wait for a state of PostgreSQL. One such wait takes LOCK_WAIT_MS at most,
+  // and the transaction that holds the lock is given LOCK_HOLD_LIMIT_MS.
+  // Each of the three tests has a limit of its own in Jest, 30 s: above its
+  // waits added up (one in two of them, two in the third) and above the limit
+  // of the transaction. With Jest's default of 5 s, which is one wait, a test
+  // that did not see its state was reported as "Exceeded timeout", never with
+  // the message of the wait, and Jest went on to the next test while the
+  // calls of this one were still running (measured for all three: links that
+  // the second and the third had started then failed to write their event
+  // for a user that the next test had deleted).
+  const LOCK_WAIT_MS = 5_000;
+  const LOCK_HOLD_LIMIT_MS = 15_000;
+
   /**
    * Resolves when PostgreSQL shows `howMany` statements that match `statement`
    * waiting for a lock. A bounded wait for a state, not a second attempt: the
@@ -972,7 +880,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
     statement: string,
     howMany: number,
   ): Promise<void> {
-    const deadline = Date.now() + 5000;
+    const deadline = Date.now() + LOCK_WAIT_MS;
     for (;;) {
       const [{ waiting }] = await holder.$queryRaw<
         { waiting: number }[]
@@ -983,7 +891,8 @@ describe("Authentication Integration Tests (Real Database)", () => {
       if (waiting === howMany) return;
       if (Date.now() > deadline) {
         throw new Error(
-          `${waiting} of ${howMany} calls were waiting for the lock after 5 s`,
+          `${waiting} of ${howMany} calls were waiting for the lock after ` +
+            `${LOCK_WAIT_MS / 1000} s`,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -997,28 +906,35 @@ describe("Authentication Integration Tests (Real Database)", () => {
    * nothing about single use. The second client has a pool of its own, so
    * the pool of the shared one (two connections in CI) is not what puts the
    * calls in a row.
+   *
+   * When the wait fails, the lock is released all the same, and the calls
+   * are left to end before the failure is handed on: nothing of a failed test
+   * is still held or still running when the next one starts.
    */
   async function whileTheRowIsLocked<T>(
     userId: string,
     start: () => Promise<T>[],
   ): Promise<PromiseSettledResult<T>[]> {
     const holder = openSecondPrismaTestClient();
+    // What the calls became: set when they are started, and it never rejects.
+    let settled: Promise<PromiseSettledResult<T>[]> = Promise.resolve([]);
     try {
-      const { settled } = await holder.$transaction(
+      await holder.$transaction(
         async (tx) => {
           await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
           const calls = start();
-          const settled = Promise.allSettled(calls);
+          settled = Promise.allSettled(calls);
           await untilWaitingForALock(holder, 'UPDATE%"User"%', calls.length);
-          // Wrapped: a promise returned as it is would be awaited here, with
-          // the lock still held.
-          return { settled };
         },
-        { timeout: 15_000 },
+        { timeout: LOCK_HOLD_LIMIT_MS },
       );
       return await settled;
     } finally {
+      // The transaction has ended here, committed or rolled back, and the
+      // lock with it; a connection that is closed ends its transaction too.
+      // Only after that can the calls end.
       await holder.$disconnect();
+      await settled;
     }
   }
 
@@ -1026,8 +942,9 @@ describe("Authentication Integration Tests (Real Database)", () => {
    * Runs `during` while a second client holds every INSERT into "Account"
    * back (a table lock that lets the table be read). `during` starts links
    * on the shared client and says, through `inserts`, how many of them have
-   * to be seen waiting before it goes on. The lock is released when it
-   * returns.
+   * to be seen waiting before it goes on. The lock is released when `during`
+   * returns and when it fails; the links it started are the caller's to wait
+   * for.
    */
   async function whileNoAccountRowCanBeWritten<T>(
     during: (inserts: (howMany: number) => Promise<void>) => Promise<T>,
@@ -1041,7 +958,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
             untilWaitingForALock(holder, 'INSERT%"Account"%', howMany),
           );
         },
-        { timeout: 15_000 },
+        { timeout: LOCK_HOLD_LIMIT_MS },
       );
     } finally {
       await holder.$disconnect();
@@ -1111,9 +1028,10 @@ describe("Authentication Integration Tests (Real Database)", () => {
     );
 
     it("refuses for a user id that no row has, and does not try to write an event", async () => {
-      // Counting the events would show nothing: one for a user id that no
-      // row has cannot be stored (foreign key), and logSecurityEvent keeps a
-      // write that failed to itself. It logs it, and that is looked for.
+      // The events are not counted: that would show nothing. One for a user
+      // id that no row has cannot be stored (foreign key), and
+      // logSecurityEvent keeps a write that failed to itself. It logs it,
+      // and that is looked for.
       const logged = jest.spyOn(console, "error").mockImplementation(() => {});
       try {
         await expect(
@@ -1131,7 +1049,6 @@ describe("Authentication Integration Tests (Real Database)", () => {
         logged.mockRestore();
       }
       await expect(prisma.account.count()).resolves.toBe(0);
-      await expect(prisma.securityEvent.count()).resolves.toBe(0);
     });
 
     it("links once after the password step left a grant: the grant is used up, the link is recorded, and a second link is refused", async () => {
@@ -1295,7 +1212,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
           .sort(),
       ).toEqual([false, true]);
       await expect(grantOf(user.id)).resolves.toEqual(NO_GRANT);
-    });
+    }, 30_000); // above the waits for the lock and the limit of its transaction
 
     it("two links with one grant that overlap, each with another Google account: one is linked, the other is refused for the grant", async () => {
       const user = await makePasswordUser("race-link@example.com");
@@ -1321,7 +1238,7 @@ describe("Authentication Integration Tests (Real Database)", () => {
         "account_link_completed",
         "account_link_refused",
       ]);
-    });
+    }, 30_000); // above the waits for the lock and the limit of its transaction
 
     // What the gate does NOT prevent, and SECURITY.md says so ("Not one
     // transaction"): it looks for an account of the provider in the row it
@@ -1329,43 +1246,57 @@ describe("Authentication Integration Tests (Real Database)", () => {
     // third statement.
     it("two password steps whose links overlap, each with a grant of its own: both Google accounts are linked", async () => {
       const user = await makePasswordUser("two-steps@example.com");
-      const outcomeOf = (link: Promise<void>) =>
-        link.then(
+      // What each link that was started became: these never reject.
+      const outcomes: Promise<unknown>[] = [];
+      const outcomeOf = (link: Promise<void>) => {
+        const outcome = link.then(
           () => "linked",
           (error: unknown) => error,
         );
+        outcomes.push(outcome);
+        return outcome;
+      };
 
-      const { links } = await whileNoAccountRowCanBeWritten(async (inserts) => {
-        await issueLinkGrant(user.id, "google");
-        const first = outcomeOf(
-          linkThroughTheAppsAdapter(googleAccount(user.id, "g-one")),
+      try {
+        const { links } = await whileNoAccountRowCanBeWritten(
+          async (inserts) => {
+            await issueLinkGrant(user.id, "google");
+            const first = outcomeOf(
+              linkThroughTheAppsAdapter(googleAccount(user.id, "g-one")),
+            );
+            await inserts(1);
+            // The first link has spent its grant and waits to write its row.
+            // This is what a second password step reads: no grant, no Google
+            // account. It writes a grant.
+            await expect(grantOf(user.id)).resolves.toEqual(NO_GRANT);
+            await expect(googleAccountIdsOf(user.id)).resolves.toEqual([]);
+            await issueLinkGrant(user.id, "google");
+            const second = outcomeOf(
+              linkThroughTheAppsAdapter(googleAccount(user.id, "g-two")),
+            );
+            await inserts(2);
+            // Wrapped: a promise returned as it is would be awaited there,
+            // with the lock still held.
+            return { links: Promise.all([first, second]) };
+          },
         );
-        await inserts(1);
-        // The first link has spent its grant and waits to write its row.
-        // This is what a second password step reads: no grant, no Google
-        // account. It writes a grant.
-        await expect(grantOf(user.id)).resolves.toEqual(NO_GRANT);
-        await expect(googleAccountIdsOf(user.id)).resolves.toEqual([]);
-        await issueLinkGrant(user.id, "google");
-        const second = outcomeOf(
-          linkThroughTheAppsAdapter(googleAccount(user.id, "g-two")),
-        );
-        await inserts(2);
-        // Wrapped, as in whileTheRowIsLocked.
-        return { links: Promise.all([first, second]) };
-      });
 
-      await expect(links).resolves.toEqual(["linked", "linked"]);
-      await expect(googleAccountIdsOf(user.id)).resolves.toEqual([
-        "g-one",
-        "g-two",
-      ]);
-      const events = await gateEventsOf(user.id);
-      expect(events.map((event) => event.eventType)).toEqual([
-        "account_link_completed",
-        "account_link_completed",
-      ]);
-    });
+        await expect(links).resolves.toEqual(["linked", "linked"]);
+        await expect(googleAccountIdsOf(user.id)).resolves.toEqual([
+          "g-one",
+          "g-two",
+        ]);
+        const events = await gateEventsOf(user.id);
+        expect(events.map((event) => event.eventType)).toEqual([
+          "account_link_completed",
+          "account_link_completed",
+        ]);
+      } finally {
+        // The lock is released by now. A test that failed lets the links it
+        // started end before it does: none runs on into the next test.
+        await Promise.all(outcomes);
+      }
+    }, 30_000); // above the waits for the lock and the limit of its transaction
 
     // The password step writes the grant and its event in one transaction
     // (the initiate route). On the mocked client of the route's unit test a

@@ -71,11 +71,19 @@ async function expectUserDashboardFor(page: Page, user: TestUser) {
   ).toBeVisible();
 }
 
-/** The one role-conditional card on /en/dashboard/user (rendered for USER only). */
-const upgradeCard = (page: Page) =>
-  page
-    .getByTestId("user-dashboard")
-    .getByRole("heading", { name: "Upgrade to Pro", exact: true });
+/**
+ * An entry of "Available Features" on /en/dashboard/user. The list is what the
+ * page renders differently for each role: getRoleFeatures(role) in
+ * src/lib/auth/roles.ts.
+ */
+const feature = (page: Page, name: string) =>
+  page.getByTestId("user-dashboard").getByText(name, { exact: true });
+
+// One entry that USER and PRO_USER share, one that only PRO_USER has and one
+// that only ADMIN has.
+const FEATURE_OF_USER_AND_PRO = "Basic dashboard";
+const FEATURE_OF_PRO_ONLY = "Advanced analytics";
+const FEATURE_OF_ADMIN_ONLY = "User management";
 
 test.describe("Role-based access control", () => {
   test.describe("signed out", () => {
@@ -120,12 +128,14 @@ test.describe("Role-based access control", () => {
       await signInViaApi(page, USERS.user);
     });
 
-    test("is served /en/dashboard/user, stamped with role USER, with the Upgrade to Pro card", async ({
+    test("is served /en/dashboard/user, stamped with role USER, with the features of a USER and none of a PRO_USER", async ({
       page,
     }) => {
       await expectServed(page, USER_DASHBOARD);
       await expectUserDashboardFor(page, USERS.user);
-      await expect(upgradeCard(page)).toBeVisible();
+      await expect(feature(page, FEATURE_OF_USER_AND_PRO)).toBeVisible();
+      await expect(feature(page, FEATURE_OF_PRO_ONLY)).toHaveCount(0);
+      await expect(feature(page, FEATURE_OF_ADMIN_ONLY)).toHaveCount(0);
     });
 
     test("is redirected from /en/dashboard/pro to /en/dashboard/user", async ({
@@ -159,12 +169,14 @@ test.describe("Role-based access control", () => {
       ).toBeVisible();
     });
 
-    test("is served /en/dashboard/user, stamped with role PRO_USER, without the Upgrade to Pro card", async ({
+    test("is served /en/dashboard/user, stamped with role PRO_USER, with the features of a PRO_USER", async ({
       page,
     }) => {
       await expectServed(page, USER_DASHBOARD);
       await expectUserDashboardFor(page, USERS.pro);
-      await expect(upgradeCard(page)).toHaveCount(0);
+      await expect(feature(page, FEATURE_OF_USER_AND_PRO)).toBeVisible();
+      await expect(feature(page, FEATURE_OF_PRO_ONLY)).toBeVisible();
+      await expect(feature(page, FEATURE_OF_ADMIN_ONLY)).toHaveCount(0);
     });
 
     test("is redirected from /en/admin to /en/dashboard/user", async ({
@@ -214,7 +226,8 @@ test.describe("Role-based access control", () => {
 
       await expectServed(page, USER_DASHBOARD);
       await expectUserDashboardFor(page, USERS.admin);
-      await expect(upgradeCard(page)).toHaveCount(0);
+      await expect(feature(page, FEATURE_OF_ADMIN_ONLY)).toBeVisible();
+      await expect(feature(page, FEATURE_OF_PRO_ONLY)).toHaveCount(0);
     });
   });
 

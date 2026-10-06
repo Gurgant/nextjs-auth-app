@@ -3,13 +3,12 @@
  * Set TEST_MODE=mock for mocked tests (fast, no DB needed)
  * Set TEST_MODE=real for real database tests
  * Default: mock
+ *
+ * `pnpm test` and `pnpm test:unit` run this file in mock mode. Real mode is
+ * started by hand only (`pnpm test:hybrid:real`, or `pnpm test:all:real`):
+ * no job of the CI workflow runs it.
  */
 
-// Only import PrismaClient if we're in real mode
-const PrismaClient =
-  process.env.TEST_MODE === "real"
-    ? require("@/generated/prisma").PrismaClient
-    : null;
 import { RegisterUserCommand } from "@/lib/commands/auth/register-user.command";
 import { mockPrismaClient, resetPrismaMocks } from "../../mocks/prisma.mock";
 import { UserBuilder } from "../../builders/user.builder";
@@ -21,18 +20,10 @@ const IS_REAL_DB = TEST_MODE === "real";
 
 console.log(`🔧 Running in ${TEST_MODE} mode`);
 
-// Create appropriate database client
-const realPrisma = IS_REAL_DB
-  ? new PrismaClient({
-      datasources: {
-        db: {
-          url:
-            process.env.DATABASE_URL ||
-            "postgresql://postgres:postgres123@127.0.0.1:5433/nextjs_auth_db",
-        },
-      },
-    })
-  : null;
+// In real mode the client is the one of the integration test, loaded only
+// then. Its rule decides which database this file may clear: a DATABASE_URL
+// that is not a test database is not used (src/lib/prisma-test.ts).
+const realPrisma = IS_REAL_DB ? require("@/lib/prisma-test").prismaTest : null;
 
 // Use real or mock Prisma based on mode
 const prisma = IS_REAL_DB ? realPrisma : mockPrismaClient;
@@ -66,7 +57,6 @@ const dbHelpers = {
       console.log("🧹 Cleaned real database");
     } else {
       resetPrismaMocks();
-      dbHelpers._mockUsers = [];
       console.log("🧹 Reset mock database");
     }
   },
@@ -76,11 +66,6 @@ const dbHelpers = {
       return realPrisma.user.create({ data });
     } else {
       const user = new UserBuilder().withMany(data).build();
-      // Track the user creation in mock
-      if (!dbHelpers._mockUsers) {
-        dbHelpers._mockUsers = [];
-      }
-      dbHelpers._mockUsers.push(user);
       mockPrismaClient.user.create.mockResolvedValue(user);
       mockPrismaClient.user.findUnique.mockImplementation((args: any) => {
         if (args.where?.email === data.email || args.where?.id === user.id) {
@@ -109,16 +94,6 @@ const dbHelpers = {
       return account;
     }
   },
-
-  async countUsers() {
-    if (IS_REAL_DB && realPrisma) {
-      return realPrisma.user.count();
-    } else {
-      return dbHelpers._mockUsers ? dbHelpers._mockUsers.length : 0;
-    }
-  },
-
-  _mockUsers: [] as any[],
 };
 
 // Mock the repositories to use our hybrid prisma
@@ -130,12 +105,6 @@ jest.mock("@/lib/repositories", () => ({
       },
       findById: async (id: string) => {
         return dbHelpers.findUser({ id });
-      },
-      findByCredentials: async (email: string, password: string) => {
-        const user = await dbHelpers.findUser({ email });
-        if (!user || !user.password) return null;
-        const isValid = await bcrypt.compare(password, user.password);
-        return isValid ? user : null;
       },
       createWithAccount: async (data: any) => {
         const user = await dbHelpers.createUser({
@@ -158,19 +127,6 @@ jest.mock("@/lib/repositories", () => ({
           const updatedUser = { id, ...data };
           mockPrismaClient.user.update.mockResolvedValue(updatedUser);
           return updatedUser;
-        }
-      },
-      updateLastLogin: async (id: string) => {
-        if (IS_REAL_DB && realPrisma) {
-          return realPrisma.user.update({
-            where: { id },
-            data: { lastLoginAt: new Date() },
-          });
-        } else {
-          const user = await dbHelpers.findUser({ id });
-          const updated = { ...user, lastLoginAt: new Date() };
-          mockPrismaClient.user.update.mockResolvedValue(updated);
-          return updated;
         }
       },
       updatePassword: async (
@@ -279,84 +235,42 @@ describe(`Hybrid Authentication Tests (${TEST_MODE} mode)`, () => {
     });
   });
 
-  describe("Performance Comparison", () => {
-    it("should show performance difference between modes", async () => {
-      const iterations = 10;
-      const startTime = Date.now();
-
-      for (let i = 0; i < iterations; i++) {
-        await dbHelpers.createUser({
-          name: `Perf User ${i}`,
-          email: `perf${i}@example.com`,
-          password: await bcrypt.hash("Test123!", 4),
-        });
-      }
-
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      const avgTime = duration / iterations;
-
-      console.log(`
-        📊 Performance Results (${TEST_MODE} mode):
-        - Total time: ${duration}ms
-        - Average per operation: ${avgTime.toFixed(2)}ms
-        - Operations: ${iterations} user creations
-      `);
-
-      // Mock should be faster than real DB, but bcrypt hashing still takes time
-      if (IS_REAL_DB) {
-        expect(avgTime).toBeLessThan(500); // Real DB operations
-      } else {
-        expect(avgTime).toBeLessThan(400); // Mock operations with bcrypt overhead
-      }
-
-      // Verify all users were created
-      const count = await dbHelpers.countUsers();
-      expect(count).toBe(iterations);
-    }, 30000); // 30 second timeout for performance test with bcrypt
-  });
-
-  describe("Mode-Specific Features", () => {
-    if (IS_REAL_DB) {
+  // Two tests of this group are gone. "[REAL DB ONLY] should store every user
+  // it creates" inserted ten rows through Prisma and counted them: it called
+  // no code of the application. "[MOCK ONLY] should allow instant test data
+  // setup" set the answer of a mock and asserted that answer, in an
+  // `expect(...).resolves` that was neither awaited nor returned: the test
+  // had ended before the assertion was made. Measured with the expected
+  // length made wrong and the file run alone: no test was reported as
+  // failed, and the unhandled rejection ended the Jest process instead.
+  // What is left has no counterpart in mock mode: a mock has no constraints.
+  if (IS_REAL_DB) {
+    describe("Mode-Specific Features", () => {
+      // The unique index on User.email, in the database as the schema was
+      // pushed to it. Registration looks the address up and creates the user
+      // in two steps (register-user.command.ts), so between two registrations
+      // that overlap this index is what is left to refuse the second (read
+      // in the code, not measured).
       it("[REAL DB ONLY] should handle database constraints", async () => {
-        // This test only runs in real DB mode
-        const user = await dbHelpers.createUser({
+        await dbHelpers.createUser({
           name: "Constraint Test",
           email: "constraint@example.com",
           password: await bcrypt.hash("Test123!", 4),
         });
 
-        // Try to create duplicate (should fail with real constraint)
-        try {
-          await realPrisma!.user.create({
+        await expect(
+          realPrisma.user.create({
             data: {
               name: "Duplicate",
               email: "constraint@example.com", // Same email
               password: "whatever",
             },
-          });
-          fail("Should have thrown unique constraint error");
-        } catch (error: any) {
-          expect(error.code).toBe("P2002"); // Prisma unique constraint error
-        }
+          }),
+        ).rejects.toMatchObject({ code: "P2002" }); // Prisma unique constraint error
+        await expect(
+          realPrisma.user.count({ where: { email: "constraint@example.com" } }),
+        ).resolves.toBe(1);
       });
-    } else {
-      it("[MOCK ONLY] should allow instant test data setup", () => {
-        // This test only runs in mock mode
-        // Instantly setup complex scenarios without database overhead
-        const users = Array.from({ length: 1000 }, (_, i) => ({
-          id: `user-${i}`,
-          email: `mock${i}@example.com`,
-        }));
-
-        mockPrismaClient.user.findMany.mockResolvedValue(users as any);
-
-        // This would be very slow with real DB but instant with mocks
-        expect(mockPrismaClient.user.findMany()).resolves.toHaveLength(1000);
-      });
-    }
-  });
+    });
+  }
 });
-
-// Export test utilities for other tests to use
-export { dbHelpers, TEST_MODE, IS_REAL_DB };

@@ -21,22 +21,8 @@ export default async function UserDashboardPage({
   const { locale } = await params;
   const session = await auth();
 
-  // Enhanced session validation for E2E tests
   if (!session?.user) {
-    // In E2E test environment, provide more graceful handling
-    if (process.env.NODE_ENV === "test") {
-      console.log("🔍 User dashboard: No session found, redirecting to signin");
-    }
     redirect(`/${locale}/auth/signin`);
-  }
-
-  // E2E Test debugging
-  if (process.env.NODE_ENV === "test") {
-    console.log("📊 User dashboard loaded:", {
-      hasSession: !!session,
-      userEmail: session.user?.email,
-      userRole: session.user?.role,
-    });
   }
 
   const userRole = (session.user.role as Role) || "USER";
@@ -314,62 +300,6 @@ export default async function UserDashboardPage({
               </div>
               <p className="text-sm text-gray-600">
                 Manage your password and two-factor authentication
-              </p>
-            </a>
-            {userRole === "USER" && (
-              <a
-                href={`/${locale}/upgrade`}
-                className="group block p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-lg border border-blue-200 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-              >
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="font-semibold text-blue-700">
-                    Upgrade to Pro
-                  </h3>
-                </div>
-                <p className="text-sm text-blue-600">
-                  Unlock advanced features and enhanced capabilities
-                </p>
-              </a>
-            )}
-            <a
-              href={`/${locale}/help`}
-              className="group block p-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-            >
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="font-semibold text-gray-900">Help & Support</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Get assistance and find answers to your questions
               </p>
             </a>
           </div>

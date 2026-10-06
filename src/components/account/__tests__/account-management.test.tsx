@@ -1,10 +1,18 @@
 /**
  * AccountManagement hands disableTwoFactorAuth the locale of the page, so the
- * action answers in the user's language. The Server Actions, the account data
- * and the account-linking card are replaced by mocks; useTranslations (mocked
- * in jest.setup.js) returns the message key.
+ * action answers in the user's language, and signs out to the home page of
+ * that locale once the account is deleted. The Server Actions, the account
+ * data and the account-linking card are replaced by mocks; useTranslations
+ * and signOut (mocked in jest.setup.js) return the message key and nothing.
  */
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { signOut } from "next-auth/react";
 
 const mockDisableTwoFactorAuth = jest.fn();
 jest.mock("@/lib/actions/advanced-auth", () => ({
@@ -15,9 +23,10 @@ jest.mock("@/lib/actions/advanced-auth", () => ({
   enableTwoFactorAuth: jest.fn(),
 }));
 
+const mockDeleteUserAccount = jest.fn();
 jest.mock("@/lib/actions/auth", () => ({
   updateUserProfile: jest.fn(),
-  deleteUserAccount: jest.fn(),
+  deleteUserAccount: (...args: unknown[]) => mockDeleteUserAccount(...args),
   addPasswordToGoogleUser: jest.fn(),
   changeUserPassword: jest.fn(),
 }));
@@ -56,6 +65,7 @@ describe("AccountManagement", () => {
 
   afterEach(() => {
     confirmSpy.mockRestore();
+    jest.useRealTimers();
   });
 
   const renderPage = () =>
@@ -89,5 +99,35 @@ describe("AccountManagement", () => {
 
     expect(confirmSpy).toHaveBeenCalledWith("disableTwoFactorConfirm");
     expect(mockDisableTwoFactorAuth).not.toHaveBeenCalled();
+  });
+
+  // No page reads a parameter from the address the sign-out leads to.
+  it("signs out to the home page of the locale two seconds after the account is deleted, with no query string", async () => {
+    jest.useFakeTimers();
+    mockDeleteUserAccount.mockResolvedValue({
+      success: true,
+      message: "Konto gelöscht",
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "deleteAccount" }));
+    const confirmation = screen.getByLabelText("typeEmailToConfirm");
+    fireEvent.change(confirmation, { target: { value: "alice@example.com" } });
+    await act(async () => {
+      fireEvent.submit(confirmation.closest("form")!);
+    });
+
+    expect(mockDeleteUserAccount).toHaveBeenCalledTimes(1);
+
+    // One millisecond short of the two seconds: still signed in.
+    await act(async () => {
+      jest.advanceTimersByTime(1999);
+    });
+    expect(signOut).not.toHaveBeenCalled();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(jest.mocked(signOut).mock.calls).toEqual([[{ callbackUrl: "/de" }]]);
   });
 });

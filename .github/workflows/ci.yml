@@ -57,6 +57,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # Key parity of the five message files; the pre-commit hook runs the
+      # same script, but a hook can be skipped.
+      - name: Validate translations
+        run: pnpm validate-translations
+
       - name: Push schema to the test database
         run: pnpm prisma:push
 

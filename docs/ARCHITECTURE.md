@@ -104,6 +104,15 @@ carries a `code` next to its English `error`
 (`src/lib/auth/link-account-errors.ts`): the account page shows the text of
 the code in the visitor's language, and never the English one.
 
+`unlink` removes every `Account` row of the provider that the user has when
+its `DELETE` runs (there can be more than one: `SECURITY.md`, "Not one
+transaction"), clears `hasGoogleAccount` on the user row and writes the
+`account_unlinked` event with the number of rows removed, all in one
+transaction. When no row is left to remove by then, because another request
+unlinked them, it writes nothing and answers `not_linked`. A link that
+writes its row after that `DELETE` is not removed (the same section of
+`SECURITY.md`).
+
 `initiate` links nothing and returns no token: it checks the password, writes
 a **link grant** on the user's row (`User.linkGrantProvider` and
 `User.linkGrantExpiresAt`: the provider, and an end 5 minutes later) and the
@@ -218,7 +227,11 @@ that publishes an event goes on without them, and a listener that fails gets
 up to three attempts, one second apart. The bus also has members that
 nothing calls (`subscribe` with a callback, `publishMany`, `unsubscribe`,
 `unsubscribeAll`, `getSubscriptionsByType`): they are kept on purpose, as the
-ordinary equipment of an example bus.
+ordinary equipment of an example bus. Two more members are called only by
+the test file named above: `getSubscriptions` of the bus (a test checks that
+the bus has its two listeners and no other) and `getMetrics` of the
+analytics listener (its summary hands out the newest 100 entries, so the
+limit of 10,000 is read there).
 
 The errors layer is what those two commands use: `ErrorFactory`
 (`validation.fromZod`, `validation.invalidInput`, `business.notFound`,
@@ -246,13 +259,13 @@ It holds no input, no output, no error text and nothing of the request
 
 **next-intl** with five locales (`en`, `es`, `fr`, `it`, `de`) in `messages/`
 at the repository root. All locales carry the same keys — enforced by
-`pnpm validate-translations` in the pre-commit hook and by an E2E test. A
-unit test (`src/test/unit/__tests__/message-keys.test.ts`) fails when a key
-of `messages/en.json` is read by no application file under `src/` (tests do
-not count), or when a message file writes a key twice in one object; its
-header lists the forms of a read that it knows. Every page lives under
-`src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt still
-contain English-only strings.
+`pnpm validate-translations` in the pre-commit hook and in CI, and by an E2E
+test. A unit test (`src/test/unit/__tests__/message-keys.test.ts`) fails when
+a key of `messages/en.json` is read by no application file under `src/`
+(tests do not count), or when a message file writes a key twice in one
+object; its header lists the forms of a read that it knows. Every page lives
+under `src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt
+still contain English-only strings.
 
 What the server actions and the two commands answer comes from the `Errors`
 and `Success` namespaces, and the field errors of the forms that an action
@@ -260,7 +273,9 @@ validates itself from `validation`, all in the locale of the request (see
 "Server actions"). `/api/account/info` does not know the language of the page
 that asks: it names each failure with a `code`, and the account page says it
 in its own language (`src/hooks/use-account-data.ts`). The link / unlink
-routes still answer English texts.
+routes do the same: each refusal carries a `code` next to its English
+`error`, and the account page shows the text of the code in its own language
+(see "Server actions").
 
 The language selector of the navigation bar
 (`src/components/language-selector.tsx`) leads to the page the visitor is on,

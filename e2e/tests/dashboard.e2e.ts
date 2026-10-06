@@ -253,9 +253,10 @@ test.describe("Access control", () => {
         exact: true,
       }),
     ).toBeVisible();
+    // The one link of "Admin Actions": the metrics endpoint, a route handler.
     await expect(
-      panel.getByRole("link", { name: "Manage Users", exact: true }),
-    ).toHaveAttribute("href", "/en/admin/users");
+      panel.getByRole("link", { name: "System Metrics", exact: true }),
+    ).toHaveAttribute("href", "/api/admin/metrics");
   });
 
   test("a USER opening /en/admin is redirected to /en/dashboard/user without the admin panel", async ({

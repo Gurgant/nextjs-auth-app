@@ -361,12 +361,15 @@ describe("the listeners keep a bounded number of entries", () => {
 describe("what the audit listener prints to the server console", () => {
   const env = process.env as Record<string, string>;
 
-  // The details printed are the entry's: no error text.
+  // The details printed are the entry's: no error text. The critical error
+  // is made by hand: the errors layer has no critical error (see
+  // docs/ARCHITECTURE.md), so its type and code are names that no real error
+  // has.
   const PRINTED_ERRORS = [
     ["[AUDIT] ERROR: Command Failed: RegisterUserCommand", {}],
     [
       "[AUDIT] CRITICAL: System Error",
-      { errorType: "DatabaseError", code: "SYS_1502" },
+      { errorType: "ExampleCriticalError", code: "EXAMPLE_0001" },
     ],
   ];
 
@@ -399,9 +402,9 @@ describe("what the audit listener prints to the server console", () => {
     await events.eventBus.publish(
       new events.ErrorOccurredEvent(
         {
-          errorType: "DatabaseError",
+          errorType: "ExampleCriticalError",
           message: "No answer for alice@example.com",
-          context: { email: "alice@example.com", code: "SYS_1502" },
+          context: { email: "alice@example.com", code: "EXAMPLE_0001" },
           severity: "critical",
           occurredAt: new Date(),
         },

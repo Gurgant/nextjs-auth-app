@@ -25,24 +25,6 @@ export abstract class BaseEvent<TPayload = unknown>
   }
 
   /**
-   * Create a new event with same correlation ID
-   */
-  correlate<T>(
-    EventClass: new (
-      payload: T,
-      metadata?: Partial<EventMetadata>,
-    ) => IEvent<T>,
-    payload: T,
-  ): IEvent<T> {
-    return new EventClass(payload, {
-      correlationId: this.metadata.correlationId,
-      causationId: this.metadata.eventId,
-      userId: this.metadata.userId,
-      locale: this.metadata.locale,
-    });
-  }
-
-  /**
    * Convert event to JSON
    */
   toJSON(): object {
@@ -51,19 +33,5 @@ export abstract class BaseEvent<TPayload = unknown>
       payload: this.payload,
       metadata: this.metadata,
     };
-  }
-
-  /**
-   * Get event age in milliseconds
-   */
-  getAge(): number {
-    return Date.now() - this.metadata.timestamp.getTime();
-  }
-
-  /**
-   * Check if event is older than specified milliseconds
-   */
-  isOlderThan(milliseconds: number): boolean {
-    return this.getAge() > milliseconds;
   }
 }

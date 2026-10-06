@@ -101,6 +101,15 @@ const ALLOWED_UNUSED_EXPORTS: Record<string, string> = {};
 // get, and the two texts of the link that the auth error page had to
 // /support, a page that does not exist (the texts themselves are gone from
 // the message files, where message-keys.test.ts would report them as unread).
+// The rows for the repositories, for their provider, for the base event and
+// for the two listeners are of the first kind: methods that nothing in the
+// application called, each with the member of the interface that declared
+// it, where there was one. Two of them are for what a name still stands for:
+// `update` of the base repository is still declared, abstract, and what went
+// is its body, which the one repository overrides and nothing reached, with
+// the member of the delegate type that only that body called. A script of
+// package.json went together with the shell file it started, which is no
+// source file for A.
 // `kept` is a member that is
 // still there, so a holder that cannot be read does not pass. C looks at
 // names, not at use: a member that returns with a caller is no longer
@@ -373,7 +382,7 @@ const RETIRED: {
       ...Object.getOwnPropertyNames(BaseEvent.prototype),
     ],
     kept: "toJSON",
-    retired: ["fromJSON"],
+    retired: ["fromJSON", "correlate", "getAge", "isOlderThan"],
   },
   {
     holder: "event classes exported by lib/events",
@@ -415,6 +424,26 @@ const RETIRED: {
       "getEventStore",
       "eventStore",
     ],
+  },
+  {
+    holder: "fields and methods of AnalyticsHandler",
+    members: () =>
+      classMembers(
+        "src/lib/events/handlers/analytics.handler.ts",
+        "AnalyticsHandler",
+      ),
+    kept: "getSummary",
+    retired: ["reset"],
+  },
+  {
+    holder: "fields and methods of AuditLogHandler",
+    members: () =>
+      classMembers(
+        "src/lib/events/handlers/audit-log.handler.ts",
+        "AuditLogHandler",
+      ),
+    kept: "getAuditLogs",
+    retired: ["getStats"],
   },
   {
     holder: "names exported by two-factor.ts",
@@ -480,6 +509,12 @@ const RETIRED: {
     ],
   },
   {
+    holder: "names exported by test/mocks/prisma.mock.ts",
+    members: () => namesExportedBy("src/test/mocks/prisma.mock.ts"),
+    kept: "mockPrismaClient",
+    retired: ["mockPrisma"],
+  },
+  {
     holder: "names exported by utils/form-responses.ts",
     members: () => namesExportedBy("src/lib/utils/form-responses.ts"),
     kept: "createErrorResponse",
@@ -515,7 +550,13 @@ const RETIRED: {
     holder: "scripts of package.json",
     members: () => Object.keys(packageJson().scripts ?? {}),
     kept: "test:e2e:chromium",
-    retired: ["test:e2e:firefox", "test:e2e:webkit"],
+    retired: ["test:e2e:firefox", "test:e2e:webkit", "db:setup:all"],
+  },
+  {
+    holder: "files under scripts",
+    members: () => fs.readdirSync(path.join(REPO_ROOT, "scripts")),
+    kept: "validate-translations.js",
+    retired: ["setup-databases.sh"],
   },
   {
     holder: "dependencies of package.json",
@@ -620,6 +661,108 @@ const RETIRED: {
       ),
     kept: "lastPasswordChange",
     retired: ["requiresPasswordChange"],
+  },
+  {
+    holder: "methods of PrismaRepository",
+    members: () =>
+      classMembers(
+        "src/lib/repositories/base/prisma.repository.ts",
+        "PrismaRepository",
+      ),
+    kept: "findById",
+    retired: [
+      "findOne",
+      "findAll",
+      "findPaginated",
+      "create",
+      "createMany",
+      "updateMany",
+      "deleteMany",
+      "exists",
+      "count",
+      "transaction",
+    ],
+  },
+  {
+    holder: "methods of PrismaRepository that have a body",
+    members: () =>
+      methodsWithBody(
+        "src/lib/repositories/base/prisma.repository.ts",
+        "PrismaRepository",
+      ),
+    kept: "findById",
+    retired: ["update"],
+  },
+  {
+    holder: "members of PrismaModelDelegate",
+    members: () =>
+      typeMembers(
+        "src/lib/repositories/base/prisma.repository.ts",
+        "PrismaModelDelegate",
+      ),
+    kept: "findUnique",
+    retired: ["update"],
+  },
+  {
+    holder: "members of IRepository",
+    members: () =>
+      interfaceMembers(
+        "src/lib/repositories/base/repository.interface.ts",
+        "IRepository",
+      ),
+    kept: "findById",
+    retired: [
+      "findOne",
+      "findAll",
+      "findPaginated",
+      "create",
+      "createMany",
+      "updateMany",
+      "deleteMany",
+      "exists",
+      "count",
+    ],
+  },
+  {
+    holder: "methods of UserRepository",
+    members: () =>
+      classMembers(
+        "src/lib/repositories/user/user.repository.ts",
+        "UserRepository",
+      ),
+    kept: "verifyCredentials",
+    retired: [
+      "findByCredentials",
+      "updateLastLogin",
+      "verifyEmail",
+      "enableTwoFactor",
+      "disableTwoFactor",
+      "findByProvider",
+    ],
+  },
+  {
+    holder: "members of IUserRepository",
+    members: () =>
+      interfaceMembers(
+        "src/lib/repositories/user/user.repository.interface.ts",
+        "IUserRepository",
+      ),
+    kept: "verifyCredentials",
+    retired: [
+      "findByCredentials",
+      "updateLastLogin",
+      "verifyEmail",
+      "enableTwoFactor",
+      "disableTwoFactor",
+      "findByProvider",
+    ],
+  },
+  {
+    holder: "fields and methods of RepositoryProvider",
+    members: () =>
+      classMembers("src/lib/repositories/provider.ts", "RepositoryProvider"),
+    kept: "getUserRepository",
+    retired: ["reset", "transaction"],
   },
   {
     holder: "security event types (string literals of security.ts)",
@@ -870,6 +1013,40 @@ function classMembers(file: string, name: string): string[] {
     .filter(ts.isClassDeclaration)
     .filter((declaration) => declaration.name?.text === name)
     .flatMap((declaration) => [...declaration.members])
+    .map((member) => member.name?.getText(parsed) ?? "");
+}
+
+/**
+ * The names of the methods of a class that have a body. An abstract method
+ * has a name and nothing that runs: `classMembers` lists it, this does not.
+ */
+function methodsWithBody(file: string, name: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  return parsed.statements
+    .filter(ts.isClassDeclaration)
+    .filter((declaration) => declaration.name?.text === name)
+    .flatMap((declaration) => [...declaration.members])
+    .filter(ts.isMethodDeclaration)
+    .filter((member) => member.body !== undefined)
+    .map((member) => member.name.getText(parsed));
+}
+
+/**
+ * The names of the members of an object type that a file of the repository
+ * declares with `type`.
+ */
+function typeMembers(file: string, name: string): string[] {
+  const source = fs.readFileSync(path.join(REPO_ROOT, file), "utf8");
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest);
+  return parsed.statements
+    .filter(ts.isTypeAliasDeclaration)
+    .filter((declaration) => declaration.name.text === name)
+    .flatMap((declaration) =>
+      ts.isTypeLiteralNode(declaration.type)
+        ? [...declaration.type.members]
+        : [],
+    )
     .map((member) => member.name?.getText(parsed) ?? "");
 }
 

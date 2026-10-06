@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import en from "../../messages/en.json";
 import {
   USERS,
   cookieJarCopy,
@@ -193,10 +194,9 @@ test("changing the password ends every session of the user, the one that changed
       .locator('form:has(#currentPassword) button[type="submit"]')
       .click();
 
-    // Hardcoded English in ChangePasswordCommand.
-    await expect(
-      page.getByText("Password changed successfully! Please sign in again."),
-    ).toBeVisible();
+    // What ChangePasswordCommand answers: a text of the message files, in the
+    // locale of the form.
+    await expect(page.getByText(en.Success.passwordChanged)).toBeVisible();
     // The change itself ended both sessions; no sign-out has run yet. This
     // browser's token is presented from the copy: its own sign-out is held.
     expect(await (await jar.get("/api/auth/session")).json()).toBeNull();

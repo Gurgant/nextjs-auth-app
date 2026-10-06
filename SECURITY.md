@@ -244,20 +244,24 @@ Google step), a Google account linked to an existing user
 (`account_link_completed`, written by the link gate after the `Account` row,
 with the provider and the Google account id), a refused link
 (`account_link_refused`, with the provider and the reason: `no_grant` or
-`already_linked`), unlinking (`account_unlinked`), wrong passwords when
-linking / unlinking; account lockouts. **Not recorded** (console or in-memory
-only): sign-ins, failed sign-ins, the Google account of a new user (a first
-Google sign-in), password changes, adding a password, backup-code use,
-account deletion. An e-mail marked verified by a Google sign-in is not
-recorded either: it only sets the date on the user row. Security events are
-deleted together with the account (`onDelete: Cascade`). Each records the
-client IP as the rate limiter reads it (a valid address or none, see "Abuse
-prevention") and at most the first 512 characters of the `User-Agent`; the
-two events of the link gate record neither, because Auth.js hands an adapter
-no request. Rows written by
+`already_linked`), unlinking (`account_unlinked`, with the provider, the
+number of `Account` rows that were removed and the accounts the route had
+read), wrong passwords when linking / unlinking; account lockouts. **Not
+recorded** (console or in-memory only): sign-ins, failed sign-ins, the
+Google account of a new user (a first Google sign-in), password changes,
+adding a password, backup-code use, account deletion. An e-mail marked
+verified by a Google sign-in is not recorded either: it only sets the date
+on the user row. Security events are deleted together with the account
+(`onDelete: Cascade`). Each records the client IP as the rate limiter reads
+it (a valid address or none, see "Abuse prevention") and at most the first
+512 characters of the `User-Agent`; the two events of the link gate record
+neither, because Auth.js hands an adapter no request. Rows written by
 versions 2.0.0 to 2.4.0 hold the whole `User-Agent`; in their link / unlink
 events the address is the raw `X-Forwarded-For` header (without it the raw
-`X-Real-IP`), and a missing address or `User-Agent` is stored as `unknown`
+`X-Real-IP`), and a missing address or `User-Agent` is stored as `unknown`;
+an `account_unlinked` row of those versions names one account in its
+metadata (`providerAccountId` and `accountId`) and no number of rows, where
+later rows hold `accountsRemoved`, `providerAccountIds` and `accountIds`
 (read in the source of those versions). Nothing writes an `account_linked`
 event any more. Rows of that type in an existing database were written by the
 confirmation page `/link-account/confirm/[token]` of versions up to 2.3.0 or
@@ -408,17 +412,34 @@ Read these before deploying. They are real, not hypothetical.
     write; at that moment the database shows no grant and no Google account
     for the user, the state in which the password step writes a grant (the
     test writes the second one itself), and both links are then made. It
-    takes the password twice, so it is no way round the gate. The unlink
-    route removes one `Account` row per call and clears the
-    `hasGoogleAccount` flag of the user row at the first, so such a user has
-    to unlink twice; the account page reads the `Account` rows and shows
-    Google as linked until then (read in the code, not measured). The grant
-    is spent before the `Account` row is written: if that write fails, the
-    password step has to be repeated. Someone who needs more than 5 minutes
-    at Google is refused after doing everything right (the 5 minutes are a
-    design constant; no consent step was timed). The grant is stamped and
-    compared with the clock of the application server, so a difference
-    between the clocks of two instances shifts the window by that much.
+    takes the password twice, so it is no way round the gate. One unlink
+    removes every Google `Account` row that such a user has when its
+    `DELETE` runs, in the transaction that clears the `hasGoogleAccount`
+    flag of the user row, and its `account_unlinked` event says how many
+    rows went. Measured on 2026-10-05 against PostgreSQL, outside the suite,
+    with two Google rows on one user: one call removed both and left another
+    user's Google row alone, the event said two, and a second call answered
+    `not_linked` and recorded nothing; the unit test of the route shows the
+    same on a modelled client. Before this version the route removed one row
+    per call and cleared the flag at the first (measured the same way with
+    the route as it was: after one call a Google `Account` row was left,
+    while the flag said there was none). A row that is written after that
+    `DELETE` stays. Measured on 2026-10-05 at the adapter and the unlink
+    route against PostgreSQL, outside the suite: a link that had spent its
+    grant was held back before its `INSERT` by a second client, a second
+    grant was written and its link made, the unlink answered 200 and removed
+    that row, and the first link then wrote its own. The user had a Google
+    `Account` row while the flag said there was none; `/api/account/info`,
+    which the account page asks, reads the `Account` rows and answered that
+    Google was linked, and a further unlink removed the row. Outside a test
+    this takes three password checks that overlap (two link steps and the
+    unlink), so it is no way round the gate either. The grant is spent
+    before the `Account` row is written: if that write fails, the password
+    step has to be repeated. Someone who needs more than 5 minutes at Google
+    is refused after doing everything right (the 5 minutes are a design
+    constant; no consent step was timed). The grant is stamped and compared
+    with the clock of the application server, so a difference between the
+    clocks of two instances shifts the window by that much.
   - **The refusal page depends on request context.** An adapter cannot give
     Auth.js an error code of its own: Auth.js wraps every adapter error and
     redirects to the error page with `error=Configuration`. So the gate notes

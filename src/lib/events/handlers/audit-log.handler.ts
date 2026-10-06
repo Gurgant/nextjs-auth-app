@@ -193,36 +193,4 @@ export class AuditLogHandler implements IEventHandler {
 
     return logs;
   }
-
-  /**
-   * Get audit statistics
-   */
-  getStats() {
-    const stats = {
-      totalLogs: this.auditLogs.length,
-      bySeverity: new Map<string, number>(),
-      byAction: new Map<string, number>(),
-      recentErrors: [] as AuditLogEntry[],
-    };
-
-    for (const log of this.auditLogs) {
-      // Count by severity
-      const severityCount = stats.bySeverity.get(log.severity) || 0;
-      stats.bySeverity.set(log.severity, severityCount + 1);
-
-      // Count by action
-      const actionCount = stats.byAction.get(log.action) || 0;
-      stats.byAction.set(log.action, actionCount + 1);
-
-      // Collect recent errors
-      if (
-        (log.severity === "error" || log.severity === "critical") &&
-        log.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000)
-      ) {
-        stats.recentErrors.push(log);
-      }
-    }
-
-    return stats;
-  }
 }

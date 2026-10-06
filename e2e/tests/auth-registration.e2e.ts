@@ -28,18 +28,21 @@ import {
  * so it never reaches the server. No failed sign-ins, no 2FA codes.
  */
 
-// Server responses are hardcoded English in src, not in messages/*.json:
-// register-user.command.ts (success), error-factory.ts validation.fromZod,
-// business-errors.ts ResourceAlreadyExistsError("User").
-const SIGN_UP_SUCCESS = "Account created successfully! Please sign in.";
-const VALIDATION_FAILED = "Validation failed";
-const USER_EXISTS = "User already exists";
+// What RegisterUserCommand answers comes from the message files, in the
+// locale of the form (the `Success` and `Errors` namespaces): the success, a
+// form that fails the command's schema, an address that is taken.
+const SIGN_UP_SUCCESS = en.Success.accountCreated;
+const VALIDATION_FAILED = en.Errors.validationFailed;
+const USER_EXISTS = en.Errors.userAlreadyExists;
 
 // passwordSchema (src/lib/validation/schemas.ts): >= 8, upper, lower, digit, special.
 const STRONG_PASSWORD = "Regist3r!Pass";
 const OTHER_STRONG_PASSWORD = "0ther!Passw0rd";
 // Passes the input's native minLength=8, fails passwordSchema (no upper, digit, special).
 const WEAK_PASSWORD = "weakpassword";
+
+// The home page of the locale and nothing after it: no path, no query.
+const HOME_URL = /^https?:\/\/[^/]+\/en$/;
 
 const submitButton = (page: Page) => page.locator('form button[type="submit"]');
 
@@ -265,7 +268,7 @@ test.describe("Registration (/en/register)", () => {
     test.describe.configure({ mode: "serial" });
     const email = uniqueEmail("e2e-register");
 
-    test("valid sign-up shows the success message, redirects to /en?registered=true and does not sign in", async ({
+    test("valid sign-up shows the success message, goes to the home page /en and does not sign in", async ({
       page,
     }) => {
       await openRegistrationForm(page);
@@ -278,8 +281,9 @@ test.describe("Registration (/en/register)", () => {
       await submitButton(page).click();
 
       await expect(formAlert(page)).toHaveText(SIGN_UP_SUCCESS);
-      // onSuccess pushes /{locale}?registered=true after 2 s.
-      await expect(page).toHaveURL(/\/en\?registered=true$/);
+      // onSuccess pushes /{locale} after 2 s: the address has no query.
+      await expect(page).toHaveURL(HOME_URL);
+      await waitForSignedOutHome(page);
       await expectSignedOut(page);
     });
 
