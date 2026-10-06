@@ -10,6 +10,7 @@ import {
   expectSignedOut,
   formAlert,
   openEmailSignIn,
+  plainText,
   submitCredentials,
   uniqueEmail,
   waitForSignedOutHome,
@@ -48,7 +49,8 @@ const submitButton = (page: Page) => page.locator('form button[type="submit"]');
 
 const termsCheckbox = (page: Page) =>
   page.getByRole("checkbox", {
-    name: en.Registration.agreeToTerms,
+    // The sentence holds two links; the name of the checkbox is its text.
+    name: plainText(en.Registration.agreeToTerms),
     exact: true,
   });
 

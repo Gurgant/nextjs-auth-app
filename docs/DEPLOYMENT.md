@@ -346,4 +346,5 @@ push was not measured again for 2.5.0 or 2.5.1.
 Work through the **Production Hardening Checklist in `SECURITY.md`** and read
 its Known Limitations: the limits of session revocation, 2FA on Google
 sign-in, in-memory rate limits, the encryption scheme, and the demo content
-listed in the README.
+listed in the README, with the two placeholder pages (`/{locale}/terms`,
+`/{locale}/privacy`) that need your own texts.

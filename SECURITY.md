@@ -476,6 +476,8 @@ Three more limits of the gate concern a project that adds a provider, sets
 - [ ] Never run `pnpm db:seed` or `pnpm create-user` against production, and
       delete the demo accounts (`admin@example.com` / `Admin123!`, …) if they
       exist there.
+- [ ] Replace the placeholder pages `/{locale}/terms` and `/{locale}/privacy`,
+      which the registration form links to, with your own texts.
 - [ ] Serve over **HTTPS** and set `NEXTAUTH_URL` to the `https://` origin.
 - [ ] Configure a real e-mail provider (`RESEND_API_KEY`, a verified
       `EMAIL_FROM`).

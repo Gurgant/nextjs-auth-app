@@ -143,6 +143,44 @@ test.describe("User dashboard", () => {
   });
 });
 
+test.describe("The link at the top of a dashboard", () => {
+  // dashboard/user/page.tsx and dashboard/pro/page.tsx, hardcoded English:
+  // the link leads to the account page and its label says so. It has one
+  // arrow, the icon, and no arrow character in its text.
+  const cases = [
+    { user: USERS.user, path: "/en/dashboard/user", testId: "user-dashboard" },
+    { user: USERS.pro, path: "/en/dashboard/pro", testId: "pro-dashboard" },
+  ];
+  for (const { user, path, testId } of cases) {
+    test(`${path}: 'Back to account' leads a ${user.role} to /en/account`, async ({
+      page,
+    }) => {
+      await signInViaApi(page, user);
+      await page.goto(path);
+
+      const dashboard = page.getByTestId(testId);
+      const link = dashboard.getByRole("link", {
+        name: "Back to account",
+        exact: true,
+      });
+      await expect(link).toHaveAttribute("href", "/en/account");
+      await expect(link).toHaveText("Back to account");
+      await expect(link.locator("svg")).toHaveCount(1);
+      await expect(dashboard.getByText("Main Dashboard")).toHaveCount(0);
+      await link.click();
+
+      await expect(page).toHaveURL(ACCOUNT_URL);
+      await expect(
+        page.getByRole("heading", {
+          level: 1,
+          name: en.Account.title,
+          exact: true,
+        }),
+      ).toBeVisible(CLIENT_RENDER);
+    });
+  }
+});
+
 test.describe("Authenticated home", () => {
   test("session survives a reload: the home still greets the user after page.reload()", async ({
     page,
@@ -253,7 +291,14 @@ test.describe("Access control", () => {
         exact: true,
       }),
     ).toBeVisible();
-    // The one link of "Admin Actions": the metrics endpoint, a route handler.
+    // The sections of the page. The last one, "Diagnostics", holds the one
+    // link of the page: the metrics endpoint, a route handler.
+    await expect(panel.getByRole("heading", { level: 2 })).toHaveText([
+      "Recent Users",
+      "Recent Security Events",
+      "Diagnostics",
+    ]);
+    await expect(panel.getByRole("link")).toHaveCount(1);
     await expect(
       panel.getByRole("link", { name: "System Metrics", exact: true }),
     ).toHaveAttribute("href", "/api/admin/metrics");

@@ -74,6 +74,22 @@ export function apiPost(page: Page, url: string, options: PostOptions = {}) {
   });
 }
 
+/**
+ * A text of the message files as the page shows it: without the tags of a
+ * rich text. Registration.agreeToTerms wraps the names of its two documents
+ * in <terms>…</terms> and <privacy>…</privacy>, and the form renders each as a
+ * link (t.rich in src/components/auth/registration-form.tsx).
+ */
+export const plainText = (message: string): string =>
+  message.replace(/<\/?\w+>/g, "");
+
+/** What the tag `name` of a rich text wraps: the text of that link. */
+export function taggedText(message: string, name: string): string {
+  const match = new RegExp(`<${name}>(.*?)</${name}>`).exec(message);
+  if (!match) throw new Error(`The message has no <${name}> tag: ${message}`);
+  return match[1];
+}
+
 export async function isGoogleEnabled(page: Page): Promise<boolean> {
   const res = await apiGet(page, "/api/auth/providers");
   expect(res.ok()).toBeTruthy();
@@ -105,16 +121,20 @@ export async function expectSignedOut(page: Page) {
 }
 
 /**
- * Wait until the signed-out home page is hydrated. Both markers are rendered
- * only on the client after the provider list is known: the Google button when
- * Google is configured, otherwise the e-mail form itself.
+ * Wait until the signed-out home page is hydrated and knows that nobody is
+ * signed in. Its sign-in entry is in the first HTML (the e-mail form where
+ * Google is not configured), so no element of it shows that React has taken
+ * over. The session status does: the server renders "loading", and only the
+ * answer to the browser's own session request turns it into
+ * "unauthenticated". The Google button, where there is one, is rendered in
+ * the same step.
  */
 export async function waitForSignedOutHome(page: Page) {
-  await expect(
-    page
-      .getByTestId("sign-in-with-google-button")
-      .or(page.locator("input#email")),
-  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("signed-out-home")).toHaveAttribute(
+    "data-session-status",
+    "unauthenticated",
+    { timeout: 20_000 },
+  );
 }
 
 /** Open the e-mail sign-in form on /{locale}, whatever the Google setup. */

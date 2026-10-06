@@ -38,7 +38,7 @@ export default async function UserDashboardPage({
       data-dashboard-type="user"
     >
       <div className="max-w-4xl mx-auto px-4">
-        {/* Navigation Back to Main Dashboard */}
+        {/* Back to the account page: the icon is the one arrow of the link */}
         <div className="mb-6">
           <Link
             href={`/${locale}/account`}
@@ -49,6 +49,7 @@ export default async function UserDashboardPage({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -57,7 +58,7 @@ export default async function UserDashboardPage({
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            ← Back to Main Dashboard
+            Back to account
           </Link>
         </div>
 

@@ -1,10 +1,11 @@
 {
   "Home": {
     "title": "Willkommen in unserer App",
-    "subtitle": "Einfache Authentifizierung mit Google OAuth",
+    "subtitle": "Melden Sie sich mit Google oder mit E-Mail und Passwort an",
+    "subtitleWithoutGoogle": "Melden Sie sich mit E-Mail und Passwort an",
     "welcomeBack": "Willkommen zurück, {name}!",
     "successfullySignedIn": "Sie sind erfolgreich angemeldet!",
-    "secureAuth": "Sichere Authentifizierung mit branchenstandard Verschlüsselung"
+    "secureAuth": "Sichere Authentifizierung mit branchenüblicher Verschlüsselung"
   },
   "Auth": {
     "signInWithGoogle": "Mit Google anmelden",
@@ -68,13 +69,39 @@
     "emailAddress": "E-Mail-Adresse",
     "createPassword": "Passwort Erstellen",
     "confirmPassword": "Passwort Bestätigen",
-    "agreeToTerms": "Ich stimme den Nutzungsbedingungen und der Datenschutzrichtlinie zu",
+    "agreeToTerms": "Ich stimme den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu",
+    "opensInNewTab": "wird in einem neuen Tab geöffnet",
     "createAccount": "Konto Erstellen",
     "creating": "Konto wird erstellt...",
     "namePlaceholder": "Max Mustermann",
     "emailPlaceholder": "sie@beispiel.com",
     "passwordPlaceholder": "••••••••",
     "confirmPasswordPlaceholder": "••••••••"
+  },
+  "Legal": {
+    "placeholderTitle": "Platzhaltertext",
+    "placeholderNotice": "Dieser Platzhaltertext gehört zum Starter-Kit. Er ist kein Rechtsdokument. Wer diese Anwendung betreibt, muss ihn vor dem Livegang durch einen eigenen Text ersetzen.",
+    "outlineHeading": "Was ein solches Dokument üblicherweise regelt",
+    "stillOpenInOtherTab": "Wenn Sie vom Registrierungsformular kommen, ist es im anderen Tab noch geöffnet.",
+    "goToRegistration": "Zur Registrierungsseite",
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "outline": {
+        "provider": "Wer den Dienst anbietet und wie der Anbieter zu erreichen ist",
+        "accounts": "Wer sich registrieren darf und wofür Kontoinhaber verantwortlich sind",
+        "use": "Welche Nutzung des Dienstes erlaubt ist und wann ein Konto gesperrt oder geschlossen werden kann",
+        "liability": "Haftung, anwendbares Recht und wie sich die Bedingungen ändern können"
+      }
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung",
+      "outline": {
+        "controller": "Wer für die personenbezogenen Daten verantwortlich ist und wie diese Stelle zu erreichen ist",
+        "data": "Welche personenbezogenen Daten erhoben werden, zu welchem Zweck und auf welcher Rechtsgrundlage",
+        "retention": "Wie lange die Daten gespeichert werden und wer sie außerdem erhält",
+        "rights": "Welche Rechte Betroffene an ihren Daten haben und wie sie diese ausüben"
+      }
+    }
   },
   "Account": {
     "title": "Kontoeinstellungen",

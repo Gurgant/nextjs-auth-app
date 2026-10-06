@@ -121,8 +121,9 @@ measurement behind it where there is one: [SECURITY.md](SECURITY.md).
 
 Taken on 2026-10-06 from a local `next dev`, with the three demo users of
 `pnpm db:seed` and with Google sign-in configured: without Google the home
-page shows the e-mail form directly. The two account pictures and the user
-dashboard are parts of their pages. On the admin page "Active Sessions" is
+page shows the e-mail form directly, and the line under its title reads
+"Sign in with e-mail and password". The two account pictures are parts of
+their page. On the admin page "Active Sessions" is
 always 0 and "System Health" is static (see
 [Scope and limits](#scope-and-limits)); its two security events were written
 by the application during the capture, when one demo user enabled 2FA and
@@ -189,10 +190,12 @@ Google sign-in is optional — set it up with
 src/
 ├── app/
 │   ├── [locale]/          # pages: home, sign-in, register, account, dashboards, admin,
-│   │                      # auth error, e-mail verification
+│   │                      # auth error, e-mail verification, terms and privacy
+│   │                      # (two placeholder pages)
 │   └── api/               # Auth.js, link/unlink Google, account info,
 │                          # admin metrics, health
-├── components/            # auth forms, account management, layouts, UI kit
+├── components/            # auth forms, account management, layouts, UI kit,
+│                          # the body of the two placeholder pages
 ├── hooks/                 # client hooks (account data, Google availability)
 ├── lib/
 │   ├── actions/           # server actions (account actions take identity from auth();
@@ -290,6 +293,8 @@ basis.
   fixed list per role; the PRO dashboard shows sample figures, a static
   feature list and buttons that do nothing; on the admin page
   "System Health: OK" is static and "Active Sessions" is always 0.
+- **Placeholder pages**: `/{locale}/terms` and `/{locale}/privacy`, linked
+  from the registration form, hold placeholder text and say so: replace both.
 - **Not implemented**: password reset; backup codes in the sign-in form.
 - **English only**: the dashboards, the admin page and the 2FA step of the
   sign-in form; also single texts elsewhere, among them two notes in the 2FA

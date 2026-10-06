@@ -1,7 +1,8 @@
 {
   "Home": {
     "title": "Bienvenido a Nuestra App",
-    "subtitle": "Autenticación simple con Google OAuth",
+    "subtitle": "Inicia sesión con Google, o con correo electrónico y contraseña",
+    "subtitleWithoutGoogle": "Inicia sesión con correo electrónico y contraseña",
     "welcomeBack": "¡Bienvenido de nuevo, {name}!",
     "successfullySignedIn": "¡Has iniciado sesión exitosamente!",
     "secureAuth": "Autenticación segura con cifrado estándar de la industria"
@@ -68,13 +69,39 @@
     "emailAddress": "Dirección de Correo",
     "createPassword": "Crear Contraseña",
     "confirmPassword": "Confirmar Contraseña",
-    "agreeToTerms": "Acepto los Términos de Servicio y Política de Privacidad",
+    "agreeToTerms": "Acepto los <terms>Términos de Servicio</terms> y la <privacy>Política de Privacidad</privacy>",
+    "opensInNewTab": "se abre en una pestaña nueva",
     "createAccount": "Crear Cuenta",
     "creating": "Creando cuenta...",
     "namePlaceholder": "Juan Pérez",
     "emailPlaceholder": "tu@ejemplo.com",
     "passwordPlaceholder": "••••••••",
     "confirmPasswordPlaceholder": "••••••••"
+  },
+  "Legal": {
+    "placeholderTitle": "Texto de ejemplo",
+    "placeholderNotice": "Este texto de ejemplo viene con el kit de inicio. No es un documento legal. Quien opere esta aplicación tiene que sustituirlo por su propio texto antes de ponerla en producción.",
+    "outlineHeading": "Qué suele incluir un documento así",
+    "stillOpenInOtherTab": "Si vienes del formulario de registro, sigue abierto en la otra pestaña.",
+    "goToRegistration": "Ir a la página de registro",
+    "terms": {
+      "title": "Términos de Servicio",
+      "outline": {
+        "provider": "Quién ofrece el servicio y cómo contactarlo",
+        "accounts": "Quién puede registrarse y de qué es responsable el titular de una cuenta",
+        "use": "Qué uso del servicio está permitido y cuándo se puede suspender o cerrar una cuenta",
+        "liability": "La responsabilidad, la ley aplicable y cómo pueden cambiar los términos"
+      }
+    },
+    "privacy": {
+      "title": "Política de Privacidad",
+      "outline": {
+        "controller": "Quién es responsable de los datos personales y cómo contactarlo",
+        "data": "Qué datos personales se recogen, con qué finalidad y sobre qué base jurídica",
+        "retention": "Cuánto tiempo se conservan los datos y quién más los recibe",
+        "rights": "Qué derechos tienen las personas sobre sus datos y cómo ejercerlos"
+      }
+    }
   },
   "Account": {
     "title": "Configuración de Cuenta",

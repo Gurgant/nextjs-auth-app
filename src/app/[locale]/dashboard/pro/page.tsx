@@ -40,7 +40,7 @@ export default async function ProUserDashboardPage({
       data-testid="pro-dashboard"
     >
       <div className="max-w-6xl mx-auto px-4">
-        {/* Navigation Back to Main Dashboard */}
+        {/* Back to the account page: the icon is the one arrow of the link */}
         <div className="mb-6">
           <Link
             href={`/${locale}/account`}
@@ -51,6 +51,7 @@ export default async function ProUserDashboardPage({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -59,7 +60,7 @@ export default async function ProUserDashboardPage({
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            ← Back to Main Dashboard
+            Back to account
           </Link>
         </div>
 

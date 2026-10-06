@@ -55,6 +55,8 @@ export const WARM_UP_ROUTES: readonly WarmUpRoute[] = [
     path: "/en/verify-email/no-such-token",
     entry: "/[locale]/verify-email/[token]",
   },
+  { path: "/en/terms", entry: "/[locale]/terms" },
+  { path: "/en/privacy", entry: "/[locale]/privacy" },
   { path: "/en/no-such-page", entry: "/_not-found", notFound: true },
 ];
 

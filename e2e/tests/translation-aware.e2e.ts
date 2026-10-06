@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { isGoogleEnabled, waitForSignedOutHome } from "../support/app";
+import {
+  isGoogleEnabled,
+  plainText,
+  taggedText,
+  waitForSignedOutHome,
+} from "../support/app";
 import enMessages from "../../messages/en.json";
 import esMessages from "../../messages/es.json";
 import frMessages from "../../messages/fr.json";
@@ -55,7 +60,7 @@ test.describe("UI text comes from messages/<locale>.json", () => {
   });
 
   for (const locale of LOCALES) {
-    test(`/${locale} home shows Home.title and the e-mail sign-in entry point`, async ({
+    test(`/${locale} home shows Home.title, the ways to sign in on this server and the e-mail sign-in entry point`, async ({
       page,
     }) => {
       const m = MESSAGES[locale];
@@ -69,13 +74,26 @@ test.describe("UI text comes from messages/<locale>.json", () => {
         m.Home.title,
       );
 
+      // The line under the title says how one can sign in, and the
+      // description of the page is the same sentence. It names Google only
+      // where the server offers Google.
+      const google = await isGoogleEnabled(page);
+      const waysToSignIn = google
+        ? m.Home.subtitle
+        : m.Home.subtitleWithoutGoogle;
+      await expect(main.getByTestId("home-subtitle")).toHaveText(waysToSignIn);
+      await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+        "content",
+        waysToSignIn,
+      );
+
       const googleButton = page.getByTestId("sign-in-with-google-button");
       const emailToggle = page.getByTestId("sign-in-with-email-toggle");
       const googleInstead = main.getByRole("button", {
         name: m.Auth.signInWithGoogleInstead,
         exact: true,
       });
-      if (await isGoogleEnabled(page)) {
+      if (google) {
         // Chooser first: Google button plus the e-mail toggle.
         await expect(googleButton).toHaveText(m.Auth.signInWithGoogle);
         await expect(emailToggle).toHaveText(m.Auth.signInWithEmail);
@@ -107,8 +125,69 @@ test.describe("UI text comes from messages/<locale>.json", () => {
     });
   }
 
+  // The server knows whether Google is configured and sends that with the
+  // page (GoogleSignInProvider in the layout): the first HTML is the page as
+  // it stays.
+  test.describe("in a browser that runs no script", () => {
+    test.use({ javaScriptEnabled: false });
+
+    test("the first HTML of the home page holds the sentence about the ways to sign in on this server and the entry that goes with it, in the five locales", async ({
+      page,
+    }) => {
+      const google = await isGoogleEnabled(page);
+
+      for (const locale of LOCALES) {
+        const m = MESSAGES[locale];
+        await page.goto(`/${locale}`);
+
+        const main = page.locator("main");
+        await expect(main.getByRole("heading", { level: 1 })).toHaveText(
+          m.Home.title,
+        );
+        await expect(main.getByTestId("home-subtitle")).toHaveText(
+          google ? m.Home.subtitle : m.Home.subtitleWithoutGoogle,
+        );
+        const emailToggle = page.getByTestId("sign-in-with-email-toggle");
+        const emailField = main.locator("input#email");
+        if (google) {
+          // The chooser; the e-mail form comes with a click.
+          await expect(emailToggle).toHaveText(m.Auth.signInWithEmail);
+          await expect(emailField).toHaveCount(0);
+        } else {
+          // The e-mail form itself, and no chooser.
+          await expect(emailField).toBeVisible();
+          await expect(emailToggle).toHaveCount(0);
+        }
+      }
+    });
+  });
+
+  test("/en home does not ask for the provider list: what it shows came with the page", async ({
+    page,
+  }) => {
+    const m = MESSAGES.en;
+    const google = await isGoogleEnabled(page);
+    const asked = { providers: 0, session: 0 };
+    page.on("request", (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname === "/api/auth/providers") asked.providers += 1;
+      if (pathname === "/api/auth/session") asked.session += 1;
+    });
+
+    await page.goto("/en");
+    await waitForSignedOutHome(page);
+    await expect(page.locator("main").getByTestId("home-subtitle")).toHaveText(
+      google ? m.Home.subtitle : m.Home.subtitleWithoutGoogle,
+    );
+
+    // The listener saw the request that the page does send, for the session:
+    // its silence about the provider list means something.
+    expect(asked.session).toBeGreaterThan(0);
+    expect(asked.providers).toBe(0);
+  });
+
   for (const locale of LOCALES) {
-    test(`/${locale}/register labels each field with its Registration.* text`, async ({
+    test(`/${locale}/register labels each field with its Registration.* text and links the two documents of its terms sentence`, async ({
       page,
     }) => {
       const r = MESSAGES[locale].Registration;
@@ -133,9 +212,28 @@ test.describe("UI text comes from messages/<locale>.json", () => {
       await expect(
         form.getByLabel(r.confirmPassword, { exact: true }),
       ).toHaveAttribute("id", "confirmPassword");
+      // The terms sentence holds two links: the label of the checkbox is its
+      // text, and each link leads to its page under this locale.
       await expect(
-        form.getByLabel(r.agreeToTerms, { exact: true }),
+        form.getByLabel(plainText(r.agreeToTerms), { exact: true }),
       ).toHaveAttribute("id", "terms");
+      // The accessible name of the checkbox is that sentence and nothing
+      // more: no tag left as text (an apostrophe before a tag would do that),
+      // and not the links' hint about the new tab, which is their description.
+      await expect(
+        form.getByRole("checkbox", {
+          name: plainText(r.agreeToTerms),
+          exact: true,
+        }),
+      ).toHaveAttribute("id", "terms");
+      for (const document of ["terms", "privacy"]) {
+        const link = form.getByRole("link", {
+          name: taggedText(r.agreeToTerms, document),
+          exact: true,
+        });
+        await expect(link).toHaveAttribute("href", `/${locale}/${document}`);
+        await expect(link).toHaveAccessibleDescription(r.opensInNewTab);
+      }
       await expect(form.locator('button[type="submit"]')).toHaveText(
         r.createAccount,
       );
