@@ -232,7 +232,9 @@ export default function HomePage() {
                 </svg>
               </div>
               <div className="space-y-2">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                {/* Two lines in most languages and on a phone: balanced, so
+                    that the second is not one short word under the first. */}
+                <h1 className="text-4xl font-bold text-balance bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {t("title")}
                 </h1>
                 {/* How one can sign in here. The sentence that names Google

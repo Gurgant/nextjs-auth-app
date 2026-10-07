@@ -362,7 +362,7 @@ export async function setupTwoFactorAuth(
     return await createErrorResponseI18n(
       "errors.failedToSetupTwoFactor",
       locale,
-      "Failed to setup two-factor authentication",
+      "Failed to set up two-factor authentication",
     );
   }
 }

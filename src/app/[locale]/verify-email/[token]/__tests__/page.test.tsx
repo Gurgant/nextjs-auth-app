@@ -5,6 +5,12 @@
  * mail scanner), and the failure. The page is a server component: it is
  * awaited and its result rendered. verifyEmailToken is mocked;
  * getTranslations (mocked in jest.setup.js) reads messages/<locale>.json.
+ *
+ * Each screen has two links, and each leads where its label says: "Go to
+ * Dashboard" to /{locale}/dashboard, which the server answers with the
+ * dashboard of the visitor's role or, without a session, with the sign-in
+ * page (src/app/[locale]/dashboard/page.tsx), and "Manage Account" to the
+ * account page.
  */
 import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
@@ -55,8 +61,11 @@ async function renderPage(locale: Locale) {
 }
 
 const heading = () => screen.getByRole("heading", { level: 1 }).textContent;
+/** The links of the screen, in their order: [label, address]. */
 const links = () =>
-  screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+  screen
+    .getAllByRole("link")
+    .map((link) => [link.textContent, link.getAttribute("href")]);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -86,7 +95,10 @@ describe.each(LOCALES)("%s", (locale) => {
     expect(screen.getByText(t.successMessage)).toBeInTheDocument();
     expect(screen.queryByText(t.alreadyVerifiedMessage)).toBeNull();
     expect(screen.queryByText(t.requestNewVerification)).toBeNull();
-    expect(links()).toEqual([`/${locale}/account`, `/${locale}/account`]);
+    expect(links()).toEqual([
+      [t.goToDashboard, `/${locale}/dashboard`],
+      [t.manageAccount, `/${locale}/account`],
+    ]);
   });
 
   it("an address that was already verified: its own screen, not the failure and not the success text", async () => {
@@ -104,7 +116,10 @@ describe.each(LOCALES)("%s", (locale) => {
     expect(screen.queryByText(t.successMessage)).toBeNull();
     expect(screen.queryByText(t.failureTitle)).toBeNull();
     expect(screen.queryByText(t.requestNewVerification)).toBeNull();
-    expect(links()).toEqual([`/${locale}/account`, `/${locale}/account`]);
+    expect(links()).toEqual([
+      [t.goToDashboard, `/${locale}/dashboard`],
+      [t.manageAccount, `/${locale}/account`],
+    ]);
   });
 
   it("a failure: the failure screen with the message of the action", async () => {
@@ -118,7 +133,10 @@ describe.each(LOCALES)("%s", (locale) => {
     expect(screen.getByText(t.requestNewVerification)).toBeInTheDocument();
     expect(screen.queryByText(t.alreadyVerifiedMessage)).toBeNull();
     expect(screen.queryByText(t.successMessage)).toBeNull();
-    expect(links()).toEqual([`/${locale}/account`, `/${locale}`]);
+    expect(links()).toEqual([
+      [t.goToAccountSettings, `/${locale}/account`],
+      [t.backToHome, `/${locale}`],
+    ]);
   });
 });
 

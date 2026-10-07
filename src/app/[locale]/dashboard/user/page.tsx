@@ -171,7 +171,7 @@ export default async function UserDashboardPage({
                         clipRule="evenodd"
                       />
                     </svg>
-                    Not Verified
+                    Unverified
                   </span>
                 )}
               </span>

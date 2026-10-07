@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { AccountPageWrapper } from "@/components/account/account-page-wrapper";
 import { DashboardLayout } from "@/components/layouts";
@@ -7,11 +8,16 @@ interface Props {
   params: Promise<{ locale: string }>;
 }
 
-// Metadata for better SEO and performance
-export function generateMetadata() {
+// As the terms, privacy and verification pages: the heading of the page, then
+// the name of the application, in the language of the address.
+export async function generateMetadata({ params }: Props) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Account" });
+  const tLayout = await getTranslations({ locale, namespace: "Layout" });
+
   return {
-    title: "Account Management",
-    description: "Manage your account settings, security, and preferences",
+    title: `${t("title")} - ${tLayout("appTitle")}`,
+    description: t("subtitle"),
     robots: "noindex", // Private page
   };
 }

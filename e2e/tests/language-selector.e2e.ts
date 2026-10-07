@@ -281,10 +281,27 @@ test("/verify-email/[token]: a visitor whose address the page has just verified 
     verifiedEvents: 0,
   });
 
+  // The two links of the screen, each leading where its label says: the
+  // dashboard (which the server answers with the one of the visitor's role,
+  // role-access.e2e.ts) and the account page.
+  const linksOfTheScreen = async (m: Messages, locale: Locale) => {
+    const link = (name: string) =>
+      page.locator("main").getByRole("link", { name, exact: true });
+    await expect(link(m.EmailVerification.goToDashboard)).toHaveAttribute(
+      "href",
+      `/${locale}/dashboard`,
+    );
+    await expect(link(m.EmailVerification.manageAccount)).toHaveAttribute(
+      "href",
+      `/${locale}/account`,
+    );
+  };
+
   await openHydrated(page, `/en${rest}`);
   await expect(
     mainHeading(page, 1, en.EmailVerification.successTitle),
   ).toBeVisible();
+  await linksOfTheScreen(en, "en");
   const afterTheFirstRequest = await inDatabase();
   expect(afterTheFirstRequest).toMatchObject({
     tokenUsed: true,
@@ -307,6 +324,7 @@ test("/verify-email/[token]: a visitor whose address the page has just verified 
         .locator("main")
         .getByText(m.Errors.verificationTokenUsed, { exact: true }),
     ).toHaveCount(0);
+    await linksOfTheScreen(m, "fr");
     expect(await inDatabase()).toEqual(afterTheFirstRequest);
   };
 

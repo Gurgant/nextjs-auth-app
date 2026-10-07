@@ -186,6 +186,71 @@ test.describe("UI text comes from messages/<locale>.json", () => {
     expect(asked.providers).toBe(0);
   });
 
+  // The title of the home page takes one line or two. Where it takes two, the
+  // browser is asked for lines of even length (text-wrap: balance on the
+  // <h1>), so that the last line is not one short word under a full first
+  // one ("Benvenuto nella nostra / app"; balanced: "Benvenuto / nella nostra
+  // app").
+  test("the title of the home page does not end with one word alone on its last line: five locales, at 1280 px and at 390 px", async ({
+    page,
+  }) => {
+    let titlesOnTwoLines = 0;
+
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 390, height: 844 },
+    ]) {
+      await page.setViewportSize(viewport);
+
+      for (const locale of LOCALES) {
+        await page.goto(`/${locale}`);
+        await waitForSignedOutHome(page);
+        const title = page.locator("main").getByRole("heading", { level: 1 });
+        await expect(title).toHaveText(MESSAGES[locale].Home.title);
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+        });
+
+        // The words of the title, line by line: words whose boxes start at
+        // the same height stand on one line.
+        const lines = await title.evaluate((heading) => {
+          const text = heading.firstChild as Text;
+          const range = document.createRange();
+          const found: { top: number; words: string[] }[] = [];
+          for (const word of (text.textContent ?? "").matchAll(/\S+/g)) {
+            range.setStart(text, word.index);
+            range.setEnd(text, word.index + word[0].length);
+            const { top } = range.getBoundingClientRect();
+            const line = found.find((other) => Math.abs(other.top - top) < 4);
+            if (line) line.words.push(word[0]);
+            else found.push({ top, words: [word[0]] });
+          }
+          return found.map((line) => line.words.join(" "));
+        });
+
+        // The measurement read the whole title.
+        expect(lines.join(" ")).toBe(MESSAGES[locale].Home.title);
+        if (lines.length > 1) titlesOnTwoLines += 1;
+        const lastLine = lines[lines.length - 1];
+        const endsWithOneWord = lines.length > 1 && !lastLine.includes(" ");
+        expect({
+          locale,
+          width: viewport.width,
+          lines,
+          endsWithOneWord,
+        }).toEqual({
+          locale,
+          width: viewport.width,
+          lines,
+          endsWithOneWord: false,
+        });
+      }
+    }
+
+    // Some title did take two lines: the check above had something to see.
+    expect(titlesOnTwoLines).toBeGreaterThan(0);
+  });
+
   for (const locale of LOCALES) {
     test(`/${locale}/register labels each field with its Registration.* text and links the two documents of its terms sentence`, async ({
       page,

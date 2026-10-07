@@ -59,8 +59,10 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
   4. **Enforces TOTP 2FA when enabled**: without a valid code it throws the
      custom `2fa_required` / `2fa_invalid` `CredentialsSignin` errors, which
      the client form (`src/components/auth/credentials-form.tsx`) turns into a
-     second, code-entry stage. Backup codes are verified and consumed here
-     (the form itself only submits TOTP codes).
+     second, code-entry stage. Backup codes are verified and consumed here:
+     a control of that stage switches its field from the six digits of the
+     authenticator to a backup code, and the form sends `totpCode` or
+     `backupCode`, never both.
   5. Failed passwords and codes feed the database lockout
      (`registerFailedLogin`, policy in `src/lib/auth/lockout.ts`); a success
      resets it.
@@ -303,18 +305,41 @@ test. A unit test (`src/test/unit/__tests__/message-keys.test.ts`) fails when
 a key of `messages/en.json` is read by no application file under `src/`
 (tests do not count), or when a message file writes a key twice in one
 object; its header lists the forms of a read that it knows. Every page lives
-under `src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt
-still contain English-only strings. One text is a rich text:
+under `src/app/[locale]/`. The dashboards and the admin page still contain
+English-only strings, and the security-alert e-mail has English texts only
+(`createSecurityAlertTemplate` in `src/lib/email.ts`; its two callers hand
+it no locale). The verification e-mail has its texts in the same file, in
+the five languages, with the name of the application as each language's
+pages show it. Three texts are rich texts.
 `Registration.agreeToTerms` wraps the names of its two documents in
 `<terms>…</terms>` and `<privacy>…</privacy>`, and the registration form
 renders each as a link to `/{locale}/terms` and `/{locale}/privacy`
 (`t.rich`); a unit test (`src/test/unit/__tests__/front-page-texts.test.ts`)
-fails when a message file drops one of the tags. In such a message an ASCII
-apostrophe right before a tag opens a quotation and the tag is shown as
-text, so the Italian sentence writes `l’<privacy>` with a typographic one;
-`rich-messages.real-formatter.test.ts` in the same directory formats the
-five sentences with the installed next-intl, in a Node process of its own
-(Jest loads a stand-in for next-intl).
+fails when a message file drops one of the tags. The two notes of the 2FA
+set-up dialog (`TwoFactorSetup.replaceOldEntryNote` and `newestEntryTip`)
+open with a label in `<strong>…</strong>`, and the tip stresses one word
+(`<em>`) and shows the secret (`<code>{secret}</code>`). In such a message
+an ASCII apostrophe right before a tag opens a quotation and the tag is
+shown as text, so the Italian sentence writes `l’<privacy>` with a
+typographic one. `rich-messages.real-formatter.test.ts` in the same
+directory looks inside every text of the five files: each has the arguments
+and the tags of the English text of its key, by name, and each is formatted
+by the installed next-intl, with a value for every argument and an element
+for every tag, without an error and with no brace or tag left as text. It
+runs in a Node process of its own (Jest loads a stand-in for next-intl). A
+translation that renames `{provider}` or drops `{date}` has all its keys,
+so neither the validator nor the key guard sees it.
+
+Each language has its conventions (`CONTRIBUTING.md`, "Conventions of each
+language"): sentence case outside English, one term for one thing, no
+sentence copied word for word from English, and no text that sends the
+reader to a support team. `message-conventions.test.ts` in the same
+directory searches the message files and both parts of the verification
+e-mail for the wordings that the editors removed, each in the shape v2.5.2
+had it in. It is a list of narrow searches and no proof-reader: a text can
+break a convention and pass, and its header says what was left to a
+reader. In `messages/fr.json` the no-break space that French puts before
+`?`, `!`, `:` and `;` is written as the escape `\u00a0`.
 
 What the server actions and the two commands answer comes from the `Errors`
 and `Success` namespaces, and the field errors of the forms that an action

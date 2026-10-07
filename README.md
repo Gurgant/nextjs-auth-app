@@ -26,7 +26,8 @@ not measured.
   throttled per e-mail and per IP, with a temporary **account lockout** in
   the database after repeated failed sign-ins.
 - **TOTP two-factor authentication enforced in `authorize()`**: once a user
-  enables it, a password-only sign-in is refused on the server. Secrets and
+  enables it, a password-only sign-in is refused on the server. A backup
+  code can take the place of the authenticator code, once. Secrets and
   backup codes are encrypted at rest.
 - **Optional Google sign-in.** A Google account is linked to an existing
   user only after the server has checked that user's password, and none of
@@ -88,9 +89,14 @@ measurement behind it where there is one: [SECURITY.md](SECURITY.md).
   nothing imports, on an exported name that is mentioned nowhere but in its
   definition, on a link written as a literal that no page or route handler
   serves and on a message key that no application file reads (each guard
-  lists in its file what it cannot see), and when the installed Auth.js is
-  not the one whose source the security statements were read in. CI fails if
-  known server-only code shows up in the browser bundles.
+  lists in its file what it cannot see), on a translation whose arguments
+  or tags are not those of the English text or that the installed next-intl
+  cannot format, on a text with one of the wordings that the editors of the
+  five languages removed (a list of narrow searches, not a proof-reader:
+  [CONTRIBUTING.md](CONTRIBUTING.md#conventions-of-each-language)), and
+  when the installed Auth.js is not the one whose source the security
+  statements were read in. CI fails if known server-only code shows up in
+  the browser bundles.
 - **Documents** — [SECURITY.md](SECURITY.md) and `docs/` state what was
   measured or what the code does, and say so where a statement was read in a
   library's source and not measured; this README is their summary.
@@ -119,7 +125,9 @@ measurement behind it where there is one: [SECURITY.md](SECURITY.md).
   </tr>
 </table>
 
-Taken on 2026-10-06 from a local `next dev`, with the three demo users of
+Taken on 2026-10-06 (the Italian home page, the 2FA step and the 2FA
+status of the account page again on 2026-10-07, after their texts changed)
+from a local `next dev`, with the three demo users of
 `pnpm db:seed` and with Google sign-in configured: without Google the home
 page shows the e-mail form directly, and the line under its title reads
 "Sign in with e-mail and password". The two account pictures are parts of
@@ -295,11 +303,13 @@ basis.
   "System Health: OK" is static and "Active Sessions" is always 0.
 - **Placeholder pages**: `/{locale}/terms` and `/{locale}/privacy`, linked
   from the registration form, hold placeholder text and say so: replace both.
-- **Not implemented**: password reset; backup codes in the sign-in form.
-- **English only**: the dashboards, the admin page and the 2FA step of the
-  sign-in form; also single texts elsewhere, among them two notes in the 2FA
-  setup dialog, the security-alert e-mail and the JSON errors of
-  `/api/admin/metrics`.
+- **Not implemented**: password reset; new backup codes for an account that
+  keeps 2FA enabled (the eight codes are made when 2FA is enabled).
+- **English only**: the dashboards and the admin page; the security-alert
+  e-mail, which is sent when 2FA is enabled or disabled and is English under
+  every locale; also single texts elsewhere, among them what a screen reader
+  is told about the language selector and the show-password button, and the
+  JSON errors of `/api/admin/metrics`.
 - **Before a deployment**, read
   [SECURITY.md](SECURITY.md#known-limitations). Among the limits:
   - Google sign-in is not asked for a TOTP code, and disabling 2FA needs

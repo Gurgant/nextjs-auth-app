@@ -18,6 +18,28 @@ export interface EmailTemplate {
   text?: string;
 }
 
+/**
+ * A name as one line: every run of white space and control characters is one
+ * space, and none stands at an end. With its line breaks kept, a name would
+ * put lines of its own into the text part of a mail.
+ */
+function onOneLine(value: string): string {
+  return value.replace(/[\s\p{Cc}]+/gu, " ").trim();
+}
+
+/**
+ * A value as text for the HTML of a mail: none of its characters is markup,
+ * in an element and in a quoted attribute alike.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Email verification template
 export function createEmailVerificationTemplate(
   userEmail: string,
@@ -25,10 +47,17 @@ export function createEmailVerificationTemplate(
   verificationLink: string,
   locale: string = "en",
 ): EmailTemplate {
+  // appName: the name of the application as the pages of each language show
+  // it (Layout.appTitle of messages/<locale>.json; a unit test compares the
+  // two). greeting: a user without a name, or with a name of spaces only, is
+  // greeted with the salutation alone, without a word in the place of the
+  // name. The name is one line in both parts of the mail.
+  const name = onOneLine(userName);
   const translations = {
     en: {
+      appName: "Auth App",
       subject: "Verify your email address",
-      greeting: `Hello ${userName || "there"},`,
+      greeting: (who: string) => (who ? `Hello ${who},` : "Hello,"),
       message: "Please click the button below to verify your email address.",
       button: "Verify Email",
       footer:
@@ -38,49 +67,53 @@ export function createEmailVerificationTemplate(
         "If the button doesn't work, copy and paste this link into your browser:",
     },
     es: {
-      subject: "Verifica tu dirección de correo",
-      greeting: `Hola ${userName || "usuario"},`,
+      appName: "App de Autenticación",
+      subject: "Verifica tu dirección de correo electrónico",
+      greeting: (who: string) => (who ? `Hola, ${who}:` : "Hola:"),
       message:
-        "Por favor haz clic en el botón de abajo para verificar tu dirección de correo.",
-      button: "Verificar Correo",
+        "Haz clic en el botón de abajo para verificar tu dirección de correo electrónico.",
+      button: "Verificar correo electrónico",
       footer:
-        "Si no creaste esta cuenta, puedes ignorar este correo de manera segura.",
+        "Si no creaste esta cuenta, puedes ignorar este correo sin problema.",
       expires: "Este enlace expira en 30 minutos.",
       alternative:
         "Si el botón no funciona, copia y pega este enlace en tu navegador:",
     },
     fr: {
-      subject: "Vérifiez votre adresse e-mail",
-      greeting: `Bonjour ${userName || "utilisateur"},`,
+      appName: "App d'authentification",
+      subject: "Vérifiez votre adresse email",
+      greeting: (who: string) => (who ? `Bonjour ${who},` : "Bonjour,"),
       message:
-        "Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse e-mail.",
-      button: "Vérifier l'e-mail",
+        "Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse email.",
+      button: "Vérifier l'adresse email",
       footer:
-        "Si vous n'avez pas créé ce compte, vous pouvez ignorer cet e-mail en toute sécurité.",
+        "Si vous n'avez pas créé ce compte, vous pouvez ignorer cet email sans risque.",
       expires: "Ce lien expire dans 30 minutes.",
       alternative:
-        "Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur:",
+        "Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur\u00a0:",
     },
     it: {
+      appName: "App di accesso",
       subject: "Verifica il tuo indirizzo email",
-      greeting: `Ciao ${userName || "utente"},`,
+      greeting: (who: string) => (who ? `Ciao ${who},` : "Ciao,"),
       message:
-        "Per favore clicca sul pulsante qui sotto per verificare il tuo indirizzo email.",
-      button: "Verifica Email",
+        "Clicca sul pulsante qui sotto per verificare il tuo indirizzo email.",
+      button: "Verifica email",
       footer:
-        "Se non hai creato questo account, puoi ignorare questa email in sicurezza.",
+        "Se non hai creato questo account, puoi ignorare tranquillamente questa email.",
       expires: "Questo link scade tra 30 minuti.",
       alternative:
         "Se il pulsante non funziona, copia e incolla questo link nel tuo browser:",
     },
     de: {
-      subject: "E-Mail-Adresse bestätigen",
-      greeting: `Hallo ${userName || "Benutzer"},`,
+      appName: "Anmelde-App",
+      subject: "E-Mail-Adresse verifizieren",
+      greeting: (who: string) => (who ? `Hallo ${who},` : "Guten Tag,"),
       message:
-        "Bitte klicken Sie auf die Schaltfläche unten, um Ihre E-Mail-Adresse zu bestätigen.",
-      button: "E-Mail bestätigen",
+        "Bitte klicken Sie auf die Schaltfläche unten, um Ihre E-Mail-Adresse zu verifizieren.",
+      button: "E-Mail verifizieren",
       footer:
-        "Falls Sie dieses Konto nicht erstellt haben, können Sie diese E-Mail sicher ignorieren.",
+        "Falls Sie dieses Konto nicht erstellt haben, können Sie diese E-Mail einfach ignorieren.",
       expires: "Dieser Link läuft in 30 Minuten ab.",
       alternative:
         "Falls die Schaltfläche nicht funktioniert, kopieren Sie diesen Link und fügen Sie ihn in Ihren Browser ein:",
@@ -89,6 +122,10 @@ export function createEmailVerificationTemplate(
 
   const t =
     translations[locale as keyof typeof translations] || translations.en;
+
+  // What is not a constant of this file is escaped where it goes into the
+  // HTML: the name was typed at registration, and the link is an argument.
+  const link = escapeHtml(verificationLink);
 
   const html = `
     <!DOCTYPE html>
@@ -111,18 +148,18 @@ export function createEmailVerificationTemplate(
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🔐 Auth App</div>
+            <div class="logo">🔐 ${t.appName}</div>
           </div>
           <div class="content">
-            <h2>${t.greeting}</h2>
+            <h2>${t.greeting(escapeHtml(name))}</h2>
             <p>${t.message}</p>
             <p style="text-align: center;">
-              <a href="${verificationLink}" class="button">${t.button}</a>
+              <a href="${link}" class="button">${t.button}</a>
             </p>
             <p style="color: #666; font-size: 14px;"><strong>${t.expires}</strong></p>
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
             <p style="font-size: 14px; color: #666;">${t.alternative}</p>
-            <p class="link">${verificationLink}</p>
+            <p class="link">${link}</p>
           </div>
           <div class="footer">
             <p>${t.footer}</p>
@@ -132,17 +169,21 @@ export function createEmailVerificationTemplate(
     </html>
   `;
 
-  const text = `
-    ${t.greeting}
-    
-    ${t.message}
-    
-    ${t.button}: ${verificationLink}
-    
-    ${t.expires}
-    
-    ${t.footer}
-  `;
+  // The text part holds the name and the link as they are. It has no button:
+  // the link stands on a line of its own under the words of the button, and
+  // no colon leads to it (French would need a no-break space before one).
+  const text = [
+    t.greeting(name),
+    "",
+    t.message,
+    "",
+    t.button,
+    verificationLink,
+    "",
+    t.expires,
+    "",
+    t.footer,
+  ].join("\n");
 
   return {
     to: userEmail,
@@ -160,12 +201,16 @@ export function createSecurityAlertTemplate(
   details: string,
   locale: string = "en",
 ): EmailTemplate {
+  // The name and the sentence about what happened come from the caller: both
+  // are escaped where they go into the HTML.
+  const name = escapeHtml(onOneLine(userName));
   const translations = {
     en: {
       subject: "Security Alert - Your Account",
-      greeting: `Hello ${userName || "there"},`,
+      greeting: name ? `Hello ${name},` : "Hello,",
       message: "We detected important activity on your account:",
-      footer: "If this wasn't you, please contact support immediately.",
+      footer:
+        "If this wasn't you, please contact the administrator of this site immediately.",
       time: "Time",
       action: "Review Account",
     },
@@ -194,8 +239,8 @@ export function createSecurityAlertTemplate(
           <p>${t.greeting}</p>
           <p>${t.message}</p>
           <div class="alert">
-            <strong>${details}</strong><br>
-            <small>${t.time}: ${new Date().toLocaleString()}</small>
+            <strong>${escapeHtml(details)}</strong><br>
+            <small>${t.time}: ${escapeHtml(new Date().toLocaleString())}</small>
           </div>
           <p style="color: #dc3545;"><strong>${t.footer}</strong></p>
         </div>

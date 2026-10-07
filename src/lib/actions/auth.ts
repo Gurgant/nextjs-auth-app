@@ -282,7 +282,7 @@ export async function addPasswordToGoogleUser(
       return await createErrorResponseI18n(
         "errors.onlyGoogleUsers",
         locale,
-        "Only Google authenticated users can add passwords",
+        "Only Google-authenticated users can add passwords",
       );
     }
 

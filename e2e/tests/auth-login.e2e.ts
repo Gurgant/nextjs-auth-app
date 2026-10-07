@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import en from "../../messages/en.json";
+import de from "../../messages/de.json";
 import {
   USERS,
   apiGet,
@@ -269,16 +270,19 @@ test("2FA user: the correct password alone shows the code step and creates no se
 
   const totp = page.locator("input#totpCode");
   await expect(totp).toBeVisible();
-  // The 2FA prompt and button label are hardcoded English in
-  // credentials-form.tsx (not in messages/*.json).
+  // The label of the field, the hint and the button are texts of the message
+  // files, like the rest of the form.
+  await expect(
+    page.getByLabel(en.CredentialsForm.twoFactorCodeLabel, { exact: true }),
+  ).toHaveAttribute("id", "totpCode");
   await expect(
     page
       .locator("form")
-      .getByText(
-        "Enter the 6-digit code from your authenticator app to finish signing in.",
-      ),
+      .getByText(en.CredentialsForm.twoFactorCodeHint, { exact: true }),
   ).toBeVisible();
-  await expect(submitButton(page)).toHaveText("Verify code");
+  await expect(submitButton(page)).toHaveText(
+    en.CredentialsForm.verifyCodeButton,
+  );
   await expect(submitButton(page)).toBeDisabled();
   await expect(formAlert(page)).toHaveCount(0);
 
@@ -288,6 +292,41 @@ test("2FA user: the correct password alone shows the code step and creates no se
   await expect(submitButton(page)).toBeDisabled();
 
   await expect(page).toHaveURL(/\/en$/);
+  await expectSignedOut(page);
+});
+
+test("2FA user under /de: the code step is in German, with nothing of it left in English", async ({
+  page,
+}) => {
+  // A correct password is no failed sign-in: nothing is spent from the budget.
+  await openEmailSignIn(page, "de");
+  await submitCredentials(
+    page,
+    USERS.twoFactor.email,
+    USERS.twoFactor.password,
+  );
+
+  const form = page.locator("form");
+  await expect(
+    page.getByLabel(de.CredentialsForm.twoFactorCodeLabel, { exact: true }),
+  ).toHaveAttribute("id", "totpCode");
+  await expect(
+    form.getByText(de.CredentialsForm.twoFactorCodeHint, { exact: true }),
+  ).toBeVisible();
+  await expect(submitButton(page)).toHaveText(
+    de.CredentialsForm.verifyCodeButton,
+  );
+  // The step used to be English in every language. The same searches find
+  // the English texts on the English page (the test above).
+  await expect(
+    form.getByText(en.CredentialsForm.twoFactorCodeHint, { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByLabel(en.CredentialsForm.twoFactorCodeLabel, { exact: true }),
+  ).toHaveCount(0);
+  await expect(formAlert(page)).toHaveCount(0);
+
+  await expect(page).toHaveURL(/\/de$/);
   await expectSignedOut(page);
 });
 
