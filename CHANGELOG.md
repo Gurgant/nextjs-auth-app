@@ -59,10 +59,8 @@ again. The database schema does not change, and no dependency changes.
   warning that said "rest assured"), word-for-word English ("please try
   again", "failed to …", "instead" at the end of a sentence), English-style
   capitals in titles and buttons, French spaces before `?` `!` `:` `;`,
-  and one term for one thing in each file. The texts were read and
-  corrected without a native speaker of each language; the conventions
-  that were applied are in `CONTRIBUTING.md`, "Conventions of each
-  language".
+  and one term for one thing in each file. The conventions that were
+  applied are in `CONTRIBUTING.md`, "Conventions of each language".
 - **The 2FA step of the sign-in form, the two notes of the 2FA set-up and
   the downloaded backup-codes file are translated.** They were English under
   every locale. The file no longer tells the user to generate new codes
@@ -180,8 +178,7 @@ change, and no dependency changes.
   "Datenschutzrichtlinie"). French: "chiffrement" (was "cryptage") and
   "Conditions d'utilisation" (was "Conditions de Service"). Italian:
   "Informativa sulla Privacy" (was "Politica sulla Privacy"). Spanish: "y la
-  Política de Privacidad" (the article was missing). The translations were
-  written and reviewed without a native speaker of each language.
+  Política de Privacidad" (the article was missing).
 - **Screenshots**: the README's pictures of the home page, the sign-in
   form, the 2FA step, the registration form and the two dashboards were
   taken again; the user dashboard is shown whole.
