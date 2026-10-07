@@ -1,6 +1,8 @@
 import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
+import CryptoJS from "crypto-js";
 import { PrismaClient, type Role } from "../../src/generated/prisma/index";
+import { requireEncryptionKey } from "../../src/lib/env-rules";
 import { uniqueEmail } from "./app";
 import { assertNotDevelopmentDatabase, resolveE2EDatabaseUrl } from "./test-db";
 
@@ -62,6 +64,64 @@ export async function createTestUser(
   });
 
   return { id: user.id, email, password, name, role };
+}
+
+/**
+ * `text` encrypted with another key than `key`, such that `key` reads the
+ * result as the empty text. A bounded search: most values of another key are
+ * read that way, the others throw or give a few bytes.
+ */
+function unreadableWith(key: string, text: string): string {
+  const anotherKey = key.split("").reverse().join("") + "-another";
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const row = CryptoJS.AES.encrypt(text, anotherKey).toString();
+    let read: string | undefined;
+    try {
+      read = CryptoJS.AES.decrypt(row, key).toString(CryptoJS.enc.Utf8);
+    } catch {
+      // Not readable at all with this key: another row.
+    }
+    if (read === "") return row;
+  }
+  throw new Error("No value of another key was read as the empty text");
+}
+
+/**
+ * Turns two-factor authentication on for a user of the test's own, in the
+ * database: a TOTP secret and the given backup codes, both encrypted as the
+ * application stores them (encrypt() in src/lib/security.ts), with the
+ * ENCRYPTION_KEY that the global setup encrypts the seeded 2FA user with.
+ * Enabling it through the account page would send the security alert; this
+ * sends nothing.
+ *
+ * With `writtenWith: "another key"` the values are stored as they are after
+ * ENCRYPTION_KEY was changed: encrypted with a key that is not the server's,
+ * and each chosen so that the server's key reads it as the empty text, which
+ * is what it reads most values of another key as.
+ */
+export async function enableTwoFactorInDatabase(
+  prisma: PrismaClient,
+  user: OwnUser,
+  secrets: {
+    totpSecret: string;
+    backupCodes: readonly string[];
+    writtenWith?: "the key of the server" | "another key";
+  },
+): Promise<void> {
+  const key = requireEncryptionKey();
+  const encrypted =
+    secrets.writtenWith === "another key"
+      ? (text: string) => unreadableWith(key, text)
+      : (text: string) => CryptoJS.AES.encrypt(text, key).toString();
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      twoFactorEnabled: true,
+      twoFactorSecret: encrypted(secrets.totpSecret),
+      backupCodes: secrets.backupCodes.map(encrypted),
+    },
+  });
 }
 
 /**

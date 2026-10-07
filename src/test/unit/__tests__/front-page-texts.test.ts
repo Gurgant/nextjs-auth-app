@@ -135,9 +135,10 @@ describe("wordings that were decided", () => {
     }
   });
 
-  it("the French footer line says chiffrement", () => {
+  it("the French footer line says chiffrement, and not word for word what the English one says", () => {
+    // "standard de l'industrie" copied "industry-standard".
     expect(frMessages.Home.secureAuth).toBe(
-      "Authentification sécurisée avec chiffrement standard de l'industrie",
+      "Authentification sécurisée, chiffrement conforme aux standards du secteur",
     );
   });
 });

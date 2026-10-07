@@ -56,6 +56,23 @@ export async function generateQRCode(
   }
 }
 
+// What a stored value has to be before anything is compared with it. A secret
+// or a code that was written with another ENCRYPTION_KEY is read, most of
+// the time, as the empty text (there is no key rotation, see SECURITY.md).
+// otplib has a code for the empty secret, which anyone can compute, and "-"
+// without its hyphen is the empty text as well: only a whole secret and a
+// whole code can match.
+//   - a TOTP secret is base32, sixteen characters or more
+//     (generateTOTPSecret above);
+//   - a backup code is eight letters and digits, written XXXX-XXXX
+//     (generateBackupCodes in src/lib/security.ts).
+const WHOLE_TOTP_SECRET = /^[A-Z2-7]{16,}$/;
+const WHOLE_BACKUP_CODE = /^[A-Z0-9]{8}$/;
+
+/** A backup code without its hyphen and spaces, in capitals. */
+const normalizeBackupCode = (code: string) =>
+  code.replace(/[-\s]/g, "").toUpperCase();
+
 // Validate a TOTP code against a secret. Tolerance comes from the module-level
 // authenticator options (window: 1 → ±30s).
 export function validateTOTPCode(token: string, secret: string): boolean {
@@ -64,9 +81,13 @@ export function validateTOTPCode(token: string, secret: string): boolean {
     if (!/^\d{6}$/.test(normalizedToken)) {
       return false;
     }
+    const normalizedSecret = secret.trim().toUpperCase();
+    if (!WHOLE_TOTP_SECRET.test(normalizedSecret)) {
+      return false;
+    }
     return authenticator.verify({
       token: normalizedToken,
-      secret: secret.trim().toUpperCase(),
+      secret: normalizedSecret,
     });
   } catch {
     return false;
@@ -79,17 +100,26 @@ export function validateBackupCode(
   encryptedBackupCodes: string[],
 ): { valid: boolean; remainingCodes: string[] } {
   try {
-    const normalizedInput = code.replace(/[-\s]/g, "").toUpperCase();
+    const normalizedInput = normalizeBackupCode(code);
+    // "-", "" and anything else that is no whole code: never valid, whatever
+    // the rows hold.
+    if (!WHOLE_BACKUP_CODE.test(normalizedInput)) {
+      return { valid: false, remainingCodes: encryptedBackupCodes };
+    }
     const remainingCodes: string[] = [];
     let codeFound = false;
 
     for (const encryptedCode of encryptedBackupCodes) {
       try {
-        const decryptedCode = decrypt(encryptedCode)
-          .replace(/[-\s]/g, "")
-          .toUpperCase();
+        const decryptedCode = normalizeBackupCode(decrypt(encryptedCode));
 
-        if (decryptedCode === normalizedInput && !codeFound) {
+        // A row that is no whole code (unreadable with this key) never
+        // matches.
+        if (
+          !codeFound &&
+          WHOLE_BACKUP_CODE.test(decryptedCode) &&
+          decryptedCode === normalizedInput
+        ) {
           codeFound = true;
           // Don't add the used code to remaining codes
         } else {
@@ -134,7 +164,7 @@ export async function setupTwoFactor(
     };
   } catch (error) {
     console.error("Error setting up 2FA:", error);
-    throw new Error("Failed to setup two-factor authentication");
+    throw new Error("Failed to set up two-factor authentication");
   }
 }
 

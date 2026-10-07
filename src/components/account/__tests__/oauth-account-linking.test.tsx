@@ -5,9 +5,10 @@
  * text that the routes send for readers of the API; and it starts the Google
  * sign-in only after the route accepted the password.
  *
- * useTranslations (mocked in jest.setup.js) returns the message key, so the
- * text on the screen is the key the component read. fetch and signIn are
- * mocks; the routes themselves have their own tests.
+ * The translator stand-in below returns the message key, so the text on the
+ * screen is the key the component read; a text that is handed values shows
+ * them after its key. fetch and signIn are mocks; the routes themselves have
+ * their own tests.
  */
 import fs from "fs";
 import path from "path";
@@ -18,6 +19,10 @@ import { OAuthAccountLinking } from "../oauth-account-linking";
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ locale: "it" }),
+}));
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
+    values ? `${key} ${JSON.stringify(values)}` : key,
 }));
 jest.mock("@/hooks/use-google-sign-in", () => ({
   useGoogleSignInEnabled: () => true,
@@ -60,8 +65,8 @@ function both(key: string) {
   return { link: key, unlink: key };
 }
 
-/** Opens the password prompt of the card, types the password and submits. */
-function submitPassword(operation: "link" | "unlink") {
+/** Opens the password prompt of the card. */
+function openPrompt(operation: "link" | "unlink") {
   render(
     <OAuthAccountLinking
       accountInfo={{
@@ -77,6 +82,11 @@ function submitPassword(operation: "link" | "unlink") {
       name: operation === "link" ? "linkAccount" : "unlink",
     }),
   );
+}
+
+/** Opens the password prompt of the card, types the password and submits. */
+function submitPassword(operation: "link" | "unlink") {
+  openPrompt(operation);
   fireEvent.change(screen.getByLabelText("currentPassword"), {
     target: { value: PASSWORD },
   });
@@ -96,6 +106,22 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks();
+});
+
+// The sentence of the prompt names the provider: "Enter your password to link
+// your {provider} account". It is handed the name as Google writes it, not
+// the id "google" that the routes and Auth.js use.
+describe("the password prompt", () => {
+  it.each([
+    ["link", 'enterPasswordToLink {"provider":"Google"}'],
+    ["unlink", 'enterPasswordToUnlink {"provider":"Google"}'],
+  ] as const)("to %s names the provider Google", (operation, sentence) => {
+    openPrompt(operation);
+
+    expect(screen.getByText(sentence)).toBeInTheDocument();
+    // The id is what the route is sent, and nothing the visitor reads.
+    expect(document.body.textContent).not.toContain('"provider":"google"');
+  });
 });
 
 describe("a refusal of the link route", () => {

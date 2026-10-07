@@ -26,6 +26,10 @@ import { useSafeLocale } from "@/hooks/use-safe-locale";
 import { useGoogleSignInEnabled } from "@/hooks/use-google-sign-in";
 import type { LinkAccountErrorCode } from "@/lib/auth/link-account-errors";
 
+// The name of a provider as a visitor reads it. Its id ("google") is what the
+// link routes and Auth.js are sent.
+const PROVIDER_NAMES = { google: "Google" } as const;
+
 interface AccountLinkingProps {
   accountInfo: {
     hasGoogleAccount: boolean;
@@ -285,9 +289,13 @@ export function OAuthAccountLinking({
             </CardTitle>
             <CardDescription>
               {linkingProvider
-                ? t("enterPasswordToLink", { provider: linkingProvider })
+                ? t("enterPasswordToLink", {
+                    provider: PROVIDER_NAMES[linkingProvider],
+                  })
                 : t("enterPasswordToUnlink", {
-                    provider: unlinkingProvider || "",
+                    provider: unlinkingProvider
+                      ? PROVIDER_NAMES[unlinkingProvider]
+                      : "",
                   })}
             </CardDescription>
           </CardHeader>

@@ -32,6 +32,7 @@ export function TwoFactorSetup({
   const t = useTranslations("TwoFactorSetup");
   const tComponentErrors = useTranslations("ComponentErrors");
   const tLoadingStates = useTranslations("LoadingStates");
+  const tLayout = useTranslations("Layout");
 
   const [step, setStep] = useState<"setup" | "verify" | "complete">("setup");
   const [setupData, setSetupData] = useState<{
@@ -127,26 +128,44 @@ export function TwoFactorSetup({
   const downloadBackupCodes = () => {
     if (!setupData?.backupCodes) return;
 
-    const content = `Auth App - Two-Factor Authentication Backup Codes
-    
-Generated: ${new Date().toLocaleString()}
-Email: ${user.email}
+    // The file is written in the language of the page, its date too. It says
+    // what the application does: a code is entered in the sign-in form
+    // (credentials-form.tsx), it works once, and new codes are made only
+    // when 2FA is disabled and enabled again (enableTwoFactorAuth).
+    // One moment, in the browser's own zone, for the date inside the file
+    // and for the day in its name.
+    const now = new Date();
+    const day = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    const content = [
+      t("backupFile.title", { appName: tLayout("appTitle") }),
+      "",
+      t("backupFile.generated", { date: now.toLocaleString(locale) }),
+      t("backupFile.email", { email: user.email ?? "" }),
+      "",
+      t("backupFile.important"),
+      "",
+      ...setupData.backupCodes.map((code, index) => `${index + 1}. ${code}`),
+      "",
+      t("backupFile.instructions"),
+      ...[
+        t("backupFile.useWhenLocked"),
+        t("backupFile.usedOnce"),
+        t("backupFile.newCodes"),
+        t("backupFile.keepPrivate"),
+      ].map((line) => `- ${line}`),
+    ].join("\n");
 
-IMPORTANT: Store these codes in a safe place. Each code can only be used once.
-
-${setupData.backupCodes.map((code, index) => `${index + 1}. ${code}`).join("\n")}
-
-Instructions:
-- Use these codes if you lose access to your authenticator app
-- Each code can only be used once
-- Generate new codes if you use more than half of them
-- Keep these codes secure and private`;
-
-    const blob = new Blob([content], { type: "text/plain" });
+    // The texts have accents in four of the five languages: the type says
+    // how they are written.
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `auth-app-backup-codes-${new Date().toISOString().split("T")[0]}.txt`;
+    a.download = `auth-app-backup-codes-${day}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -341,9 +360,9 @@ Instructions:
             </div>
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-2">
               <p className="text-xs text-yellow-800">
-                <strong>⚠️ IMPORTANT:</strong> If you&apos;ve already added this
-                account to your authenticator app, delete the old entry first,
-                then scan this new QR code or enter this new secret.
+                {t.rich("replaceOldEntryNote", {
+                  strong: (chunks) => <strong>⚠️ {chunks}</strong>,
+                })}
               </p>
             </div>
           </div>
@@ -373,12 +392,14 @@ Instructions:
               />
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs text-blue-800">
-                  <strong>💡 TIP:</strong> Make sure you&apos;re using the code
-                  from the <em>newest</em> entry in your authenticator app with
-                  the secret:{" "}
-                  <code className="font-mono">
-                    {setupData.manualEntrySecret}
-                  </code>
+                  {t.rich("newestEntryTip", {
+                    secret: setupData.manualEntrySecret,
+                    strong: (chunks) => <strong>💡 {chunks}</strong>,
+                    em: (chunks) => <em>{chunks}</em>,
+                    code: (chunks) => (
+                      <code className="font-mono">{chunks}</code>
+                    ),
+                  })}
                 </p>
               </div>
             </div>

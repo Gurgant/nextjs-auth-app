@@ -1,5 +1,142 @@
 # Changelog
 
+## [v2.5.3] - 2026-10-07
+
+Two security fixes around two-factor sign-in and the e-mails, a backup code
+can be entered at sign-in, and every text of the five languages was read
+again. The database schema does not change, and no dependency changes.
+
+### 🔒 Security
+
+- **After a change of `ENCRYPTION_KEY`, the second factor could be passed
+  without the user's authenticator.** The kit has no key rotation: a new key
+  reads most stored 2FA secrets and backup codes as the empty text (measured
+  outside the suite: 1754 of 2000 secrets, 1882 of 2000 backup codes). Up to
+  2.5.2, on a deployment whose key had been changed after users enabled 2FA,
+  someone who knew the password of such a user could then sign in:
+  - with the six digits that TOTP gives for the empty secret, which anyone
+    can compute, typed into the sign-in form (measured in a browser with
+    the old check: it reached the account page; the old function accepted
+    them for 1759 of 2000 secrets written with another key);
+  - with `-` as `backupCode` in a hand-made request to the credentials
+    endpoint (the old function accepted it for 200 of 200 users whose eight
+    codes were written with another key).
+    `validateTOTPCode` now checks a code only against a whole secret (base32,
+    sixteen characters or more), and `validateBackupCode` compares only a whole
+    code (eight letters and digits) with a whole stored code: in the same
+    measurement they accepted neither, for no secret and no user. Such a user
+    is answered as with a wrong code, and the attempt is counted, until an
+    operator clears the 2FA columns (`docs/DEPLOYMENT.md`). `authorize()` is
+    unchanged. Tested by unit tests of the two functions and of `authorize()`,
+    and in a browser by `e2e/tests/two-factor-key-change.e2e.ts`. A deployment
+    that never changed the key was not affected.
+- **The e-mails wrote the user's name as it was typed.** A name may be any 2
+  to 100 characters, and the action that sends the verification e-mail needs
+  no session, so a mail of the site could be sent to another person's
+  address with markup of the sender's choosing in its HTML part, or with
+  lines of its own in the text part ("Your account is blocked. Open
+  https://…"). The name, the verification link and the sentence of the
+  security alert are now escaped where they go into HTML (`&`, `<`, `>`,
+  `"`, `'`), and every run of white space and control characters in the
+  name is one space. Zero-width and direction characters in a name are not
+  removed. Tested with hostile names in both parts, five languages.
+
+### 🔧 Changed
+
+- **A backup code can be entered at sign-in.** The server has accepted one
+  for a long time; the form had no field for it, while the downloaded file
+  told the user to use the codes. After the password, the 2FA step now
+  offers "Use a backup code instead". A code works once; a wrong one is
+  answered like a wrong authenticator code and counts toward the same
+  throttle and lockout. Measured in a browser against the real server and
+  database: a code signs in, the account page shows one code fewer, the same
+  code is refused the second time. New backup codes still come only from
+  disabling 2FA and enabling it again.
+- **Every text of the five languages was read again**, by one editor per
+  language, and 599 of the 1465 texts of 2.5.2 changed: English 16, Italian
+  139, Spanish 178, French 159, German 107. Errors (a wrong word, gender or
+  agreement; a sentence in the formal address among informal ones; a German
+  warning that said "rest assured"), word-for-word English ("please try
+  again", "failed to …", "instead" at the end of a sentence), English-style
+  capitals in titles and buttons, French spaces before `?` `!` `:` `;`,
+  and one term for one thing in each file. The texts were read and
+  corrected without a native speaker of each language; the conventions
+  that were applied are in `CONTRIBUTING.md`, "Conventions of each
+  language".
+- **The 2FA step of the sign-in form, the two notes of the 2FA set-up and
+  the downloaded backup-codes file are translated.** They were English under
+  every locale. The file no longer tells the user to generate new codes
+  (nothing does that) and says how new ones come about, says "each code can
+  only be used once" once, carries its date in the language of the page,
+  and names where a code is entered.
+- **The verification e-mail**: 18 texts corrected in the five languages; its
+  header names the application as the pages of that language do; without a
+  name it greets with the salutation alone ("Hello,", was "Hello there,";
+  "Ciao,", was "Ciao utente,"); in the text part the link stands on a line
+  of its own. The security-alert e-mail is still English for every reader
+  (`README.md`, Scope and limits).
+- **"Contact support" is "the administrator of this site"**, in the three
+  texts of the pages and in the alert e-mail: the kit has no support team.
+- **The application's name**: "Anmelde-App" in German (was the English
+  "Auth App") and "App di accesso" in Italian (was "App di Autenticazione",
+  the words the same pages use for the authenticator app).
+- Smaller corrections: the account page says "your Google account" (it
+  showed the provider's id in lower case); on the page that confirms an
+  e-mail address the link "Go to Dashboard" leads to the dashboard (it led
+  to the account page, like the link under it); the line that counts the
+  backup codes reads "Backup codes available: 1" (was "1 backup codes
+  available"); the account page has a title and a description in the
+  language of its address; the user dashboard says "Unverified", as the
+  account page does; the title of the home page no longer ends with one
+  word alone on its last line (five locales, measured at 1280 and 390 px;
+  at 320 px the French one still does).
+- **Screenshots**: the Italian home page, the 2FA step of the sign-in form
+  and the 2FA part of the account page were taken again.
+
+### ⬆️ Upgrading from v2.5.2
+
+- Nothing to push and nothing to install.
+- **If you ever changed `ENCRYPTION_KEY`**: users who had enabled 2FA
+  before the change can no longer sign in with e-mail and password until
+  their `twoFactorEnabled`, `twoFactorSecret` and `backupCodes` columns are
+  cleared (`docs/DEPLOYMENT.md`). Up to 2.5.2 the same users were exposed as
+  described under Security.
+- A fork that stores a TOTP secret in another form than the kit writes
+  (shorter than sixteen base32 characters, with padding, or in groups
+  separated by spaces): `validateTOTPCode` now refuses it. The kit writes
+  sixteen base32 characters (20000 of 20000 generated secrets, measured),
+  with the function and the `otplib` range it has had since v2.0.0.
+- **Message files.** A locale file of your own adds 19 keys (8 under
+  `CredentialsForm`, 11 under `TwoFactorSetup`) and may want to follow the
+  16 English texts that changed. Two new unit tests read the message files:
+  `rich-messages.real-formatter.test.ts` fails when a text does not have the
+  arguments and tags of the English text of its key, or when the installed
+  next-intl cannot format it; `message-conventions.test.ts` holds 37
+  searches for wordings the editors removed from the five languages (for
+  example "Per favore", "Por favor", "Échec de", a French `?` without its
+  no-break space). It is a list of narrow searches, not a proof-reader; a
+  text of your own that one of them catches is reworded, or the search is
+  narrowed with that text as a fixture.
+- Tests of your own that compare a changed text, or that wait for
+  "Invalid or expired code. Please try again." after a wrong 2FA code: the
+  form answers "Invalid code. Please try again." now, for both kinds of
+  code, in the language of the page.
+
+### 🧪 Tests
+
+- Jest: 2102 tests (was 1767): 2049 without a database (was 1714) and 53 in
+  the integration file (unchanged). Playwright: 122 tests in 15 spec files
+  (was 117 in 13), counted with `playwright test --list`.
+- Coverage: 83 % of statements (was 80 %); three runs gave 83.67 % each.
+- Message keys per locale: 312 (was 293).
+- The whole Playwright suite was run on the code of this release, before
+  the release texts were edited: 122 passed, exit code 0, no "Compiled"
+  line of the dev server after the first test.
+- The change went through three rounds of independent review; the two
+  findings under Security came from them. The figures quoted there for the
+  old and the new functions were measured again for this release, in one
+  run, with a right code under the right key as the case that must pass.
+
 ## [v2.5.2] - 2026-10-06
 
 The texts and pages a visitor meets first. The database schema does not

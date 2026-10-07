@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-06; run the commands
+Three layers. The numbers below were measured on 2026-10-07; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                                      |
 | ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 1714  | lib, hooks, components, actions, API route handlers                                 |
+| Unit        | Jest (jsdom / node)   | 2049  | lib, hooks, components, actions, API route handlers                                 |
 | Integration | Jest + test DB        | 53    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 117   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
+| End-to-end  | Playwright (Chromium) | 122   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (1767 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (1714) — no DB
+pnpm test             # every Jest suite (2102 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (2049) — no DB
 pnpm test:integration # the real-DB integration file only (53, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -57,22 +57,23 @@ unique index on `User.email`. No job of the CI workflow runs the real mode.
 Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
-Coverage (measured on 2026-10-06 with `pnpm test:coverage` and the test
-database, five times: 80.02 % four times and 80.09 % once): **80 % of
-statements** of the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
-without `src/app/**` (pages and route handlers), `src/middleware.ts`,
-`index.ts` barrels and the generated Prisma client (`src/generated/**`,
-counted until v2.1.0, when it made up most of the statements). The runs
-differ in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`,
-which one run reached and the others did not: one test decrypts with
-another key and accepts an error as well as a text that is not the secret,
-and that decryption throws in about one case in eight (measured outside the
-suite with the same calls of the library: 519 of 4000). The tests
-concentrate on the authentication and security modules (`src/lib/auth` 97 %,
-`src/lib/actions` 84 %); the components are covered less
-(`src/components/auth` 75 %, `src/components/security` 48 %): the sign-in
-form (`credentials-form.tsx`) is rendered and never submitted by a unit test
-(50 %), and none runs the account page wrapper (0 %). The six route handlers have a unit test file each, and nine
+Coverage (measured on 2026-10-07 with `pnpm test:coverage` and the test
+database, three times, 83.67 % each): **83 % of statements** of the files
+matched by `collectCoverageFrom` in `jest.config.js` — `src/` without
+`src/app/**` (pages and route handlers), `src/middleware.ts`, `index.ts`
+barrels and the generated Prisma client (`src/generated/**`, counted until
+v2.1.0, when it made up most of the statements). Up to 2.5.2 the runs
+differed in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`:
+one test decrypts with another key, and that decryption throws in about one
+case in eight (measured outside the suite with the same calls of the
+library: 519 of 4000). The tests of 2.5.3 decrypt many values written with
+another key in every run, and the three runs covered those lines each time.
+The tests concentrate on the authentication and security modules
+(`src/lib/auth` 97 %, `src/lib/actions` 84 %, `src/components/auth` 95 %,
+`src/components/security` 87 %): a unit test takes the sign-in form
+(`credentials-form.tsx`, 96 %) through its 2FA step with both kinds of code
+(a refused password and a request that throws are not submitted), and none
+runs the account page wrapper (0 %). The six route handlers have a unit test file each, and nine
 of the twelve pages under `src/app` are rendered by a unit test (not the
 registration page, the account page and the `/dashboard` redirect); they
 are outside this figure. The
@@ -478,7 +479,9 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   chosen one and once more after a reload, that the address is already
   verified, while the verification date, the `updatedAt` of the user row and
   the one `email_verified` event of the first request stay in the database
-  as they were. Before a test clicks the selector it waits for the session
+  as they were. On both screens the test also reads where the two links
+  lead: "Go to Dashboard" to `/{locale}/dashboard` and "Manage Account" to
+  the account page. Before a test clicks the selector it waits for the session
   request of the layout's session provider: the selector's button is
   server-rendered, and a click before hydration does nothing. That the
   request is sent from an effect was read in the source of next-auth
@@ -501,8 +504,12 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   what the registration and password-change actions answer (the `Errors` and
   `Success` namespaces; `auth-registration`, `terms-validation` and
   `session-revocation`). Strings that are hardcoded English in `src/` (the
-  2FA prompt, the dashboards and admin page, the language-selector label) are
-  asserted as literals. A text that holds rich-text tags
+  dashboards and admin page, the language-selector label) are asserted as
+  literals. The code step of the sign-in form is opened under `/en` and
+  under `/de` (`auth-login`): its label, hint and button are read from the
+  message files, and the German page is searched for the English ones. Its
+  backup-code field is opened under `/en` and under `/fr` in the same way
+  (`backup-code`). A text that holds rich-text tags
   (`Registration.agreeToTerms`) is compared as the page shows it, without
   them (`plainText` and `taggedText` in `e2e/support/app.ts`).
 - `legal-pages.e2e.ts` follows the two links of the terms sentence of the
@@ -524,14 +531,50 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   HTML, no element of the page shows that React has taken over:
   `waitForSignedOutHome` waits for the session status of the page
   (`data-session-status`), which the server renders as `loading` and only
-  the browser's own session request turns into `unauthenticated`.
+  the browser's own session request turns into `unauthenticated`. A third
+  test measures how the title of the home page wraps, in the five locales
+  at 1280 px and at 390 px: the `<h1>` asks the browser for lines of even
+  length (`text-wrap: balance`), and no title may end with one word alone
+  on its last line. Measured on 2026-10-07 with the class taken away: at
+  1280 px the Italian, the French and the German title ended with one word
+  ("Benvenuto nella nostra / app"), at 390 px the English one ("Welcome to
+  Our / App"), and the test failed. With the class the lines are
+  "Benvenuto / nella nostra app", "Bienvenue dans / notre application",
+  "Willkommen / in unserer App" and, at 390 px, "Welcome / to Our App"; the
+  Spanish title fits one line at 1280 px (444 of 448 px). The two widths of
+  the test are the only ones it holds. Measured once on 2026-10-07 at
+  320 px, outside the suite: the French title takes three lines and ends
+  with one word ("Bienvenue / dans notre / application"; "notre
+  application" is wider than the line there), and the other four take two
+  lines that end with two or three words.
 - The suite works with and without Google configured (it asks
   `/api/auth/providers`) and never clicks the Google button.
 - 2FA tests generate real TOTP codes with `otplib`; nothing is mocked at the
-  browser boundary.
+  browser boundary. `backup-code.e2e.ts` signs in with a backup code,
+  against the real server and database: a user of the test's own has 2FA
+  turned on in the database with three codes the test knows, encrypted as
+  the application stores them (`enableTwoFactorInDatabase` in
+  `e2e/support/db.ts`; turning it on through the account page would send
+  the security alert). The code is typed in lower case with a space for the
+  hyphen; the visitor lands signed in, the account page counts one code
+  fewer and so does the row; the same code is then refused with the answer
+  of a wrong code and no session, and the next code signs in.
+  `two-factor-key-change.e2e.ts` gives a user of its own 2FA values written
+  by another key than the server's, as they are after `ENCRYPTION_KEY` was
+  changed, each chosen so that the server reads it as the empty text. The
+  password with the six digits that `otplib` computes for the empty secret
+  (through the form), with "-" as a backup code and with the user's own
+  code (two hand-made requests) is answered as a wrong code each time, with
+  no session, three failures counted on the row and no backup code used up.
+  Measured on 2026-10-07 on the code before `validateTOTPCode` and
+  `validateBackupCode` asked for a whole secret and a whole code: the first
+  of the three signed in through the form and showed the account page.
 - Rate-limit budget: one full run performs 5 registrations, 4 failed
   sign-ins and 1 password change, inside the limits (registration: 5 per hour
-  per IP; the 6th would be refused). The counters live in the dev server's
+  per IP; the 6th would be refused). It also sends one wrong TOTP code, one
+  used backup code and the three codes of the key-change test, each counted
+  for its own account only (five failed codes in 15 minutes). The counters
+  live in the dev server's
   memory: with a reused server (`E2E_REUSE_SERVER=1`) they can carry over
   between runs — restart it if sign-up tests start failing with "Too many
   sign-up attempts".
@@ -705,6 +748,11 @@ requests (the two placeholder pages are new): every test passed, all 18
 new requests were answered with 200 and 200. The warm-up took 52.8 s, and
 Playwright reported 13.4 minutes for the run, on a machine that was busy
 with other work.
+
+Measured again on 2026-10-07, with the 122 tests of 2.5.3 and the same
+sixteen requests: every test passed, all 18 "Compiled" lines of the dev
+server came before the first test, and Playwright reported 8.1 minutes for
+the run.
 
 ### In CI
 

@@ -52,7 +52,24 @@ a sign-in, a link or a sign-out in [`docs/TESTING.md`](TESTING.md), under
   credentials `authorize()`: without a valid code the sign-in is refused and
   the form asks for the authenticator code.
   - Verification window **±1 time step (±30 s)**, covered by a unit test.
-  - Single-use **backup codes** are verified and removed on the server.
+  - Single-use **backup codes** are verified and removed on the server. The
+    code step of the form has a control that switches its field to a backup
+    code (`src/components/auth/credentials-form.tsx`); the form then sends
+    `backupCode` and no `totpCode`. `authorize()` compares it, without
+    hyphens and spaces and in capitals, with the decrypted codes of the
+    user, removes the one that matches from the row and goes on with the
+    sign-in. Only a whole code is compared, eight letters and digits on
+    both sides: "-" alone is no code, and neither is a row that the key
+    cannot read. A code that matches none, also one that was used before, is a
+    failed second factor like a wrong TOTP code: it counts toward the 2FA
+    throttle (five in 15 minutes per account, in memory) and the database
+    lockout, and the form gives one answer for both kinds of code. A request
+    that carries both is checked for the TOTP code first; the backup code is
+    looked at, and used up, only when that one is wrong (the form never
+    sends both). Measured in a browser against the real server and database
+    (`e2e/tests/backup-code.e2e.ts`): a code signs in, the row then holds
+    one code fewer, the same code is refused the second time, and the next
+    one signs in.
   - TOTP secrets and backup codes are **encrypted at rest** (see
     `ENCRYPTION_KEY` below).
 
@@ -418,12 +435,18 @@ A captured code can be replayed within its validity window (up to about 90 s).
 **Backup-code removal is not atomic**: two concurrent sign-ins can both accept
 the same code.
 
-#### Backup codes cannot be entered in the sign-in form
+#### Backup codes are made once
 
-The form accepts a 6-digit TOTP code only, although the server verifies and
-removes backup codes. A user who loses the authenticator cannot finish an
-e-mail + password sign-in in the form: it sends no backup code
-(`src/components/auth/credentials-form.tsx`).
+The eight codes are made when 2FA is enabled (`enableTwoFactorAuth`), shown
+in the set-up dialog and offered as a text file; the last button of the
+dialog stays disabled until the file was downloaded. Afterwards the account
+page shows how many are left and never the codes, and no action makes new
+ones. Only disabling 2FA and enabling it again does (which needs only a
+session, see above); the disabling deletes the old codes. A user who has
+used all eight and loses the authenticator cannot finish an e-mail +
+password sign-in. The downloaded file says the first two things: that new
+codes come only from disabling 2FA and enabling it again, and that its own
+codes then stop working.
 
 ### Linking Google needs the password, within these limits
 
@@ -546,7 +569,7 @@ reaches it through Auth.js was read in the source, not measured. If it does
 not, the link is refused all the same, and the visitor reads "Configuration
 Error" on the English page. Each refusal makes Auth.js log an `AdapterError`
 at error level, twice, with a stack trace (read in the source, not measured).
-The refusal page keeps the heading "Sign In Error".
+The refusal page keeps the heading "Sign-In Error".
 
 #### The gate's two events carry no IP address and no `User-Agent`
 
@@ -620,8 +643,20 @@ sent to the browser and the ciphertext it returns is decrypted and stored —
 keep the pending secret on the server instead before production. There is no
 key rotation: after changing `ENCRYPTION_KEY`, users with 2FA can no longer
 sign in with e-mail + password until an operator clears `twoFactorEnabled`,
-`twoFactorSecret` and `backupCodes`; then they can enroll again. For
-production prefer **AES-256-GCM** with a managed key (KMS).
+`twoFactorSecret` and `backupCodes`; then they can enroll again. The new
+key reads most of the old values as the empty text (measured with the
+application's encryption, outside the suite: 1754 of 2000 secrets and 1882
+of 2000 backup codes; the others cannot be read at all or give a few bytes
+of something else). Nothing is accepted against a stored value that is no
+whole secret (base32, sixteen characters or more) or no whole backup code
+(eight letters and digits): not the six digits that `otplib` computes for
+the empty secret, which anyone can compute, not "-" as a backup code, and
+not the user's own codes. Measured with values written by another key: by
+unit tests of `validateTOTPCode`, `validateBackupCode` and `authorize()`,
+and in a browser against the real server and database
+(`e2e/tests/two-factor-key-change.e2e.ts`), where each of the three
+attempts is answered as a wrong code and counted as one. For production
+prefer **AES-256-GCM** with a managed key (KMS).
 
 #### Google's tokens in rows of earlier versions
 

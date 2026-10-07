@@ -61,7 +61,8 @@ breaks for you, that itself is a bug worth reporting.
   `src/test/unit/__tests__/link-targets.test.ts`. The header of that file
   lists what the check does not see, such as a target built at run time.
 - If you touch UI strings, update **all five** locale files in `messages/`
-  (`pnpm validate-translations` enforces key parity). `pnpm test:unit` fails
+  (`pnpm validate-translations` enforces key parity) and write each text by
+  the conventions of its language (below). `pnpm test:unit` fails
   when a key of `messages/en.json` is read by no application file under
   `src/` (tests do not count), or when a message file writes a key twice:
   delete the key from the five files, or add it to the allow-list in
@@ -74,6 +75,79 @@ breaks for you, that itself is a bug worth reporting.
   should explain their reasoning in the PR description and update
   `SECURITY.md`, and its full text in `docs/SECURITY-DETAILS.md`, when they
   change the posture.
+
+## Conventions of each language
+
+After v2.5.2 an editor for each language read every text of `messages/` and
+of the verification e-mail (`src/lib/email.ts`). What they settled is below.
+
+Two unit tests read the texts, and neither is a proof-reader:
+
+- `src/test/unit/__tests__/rich-messages.real-formatter.test.ts` fails when a
+  translation has other arguments (`{name}`) or tags (`<terms>`) than the
+  English text of its key, or when the installed next-intl cannot format a
+  text.
+- `src/test/unit/__tests__/message-conventions.test.ts` searches for the
+  wordings that the editors removed, each in the shape v2.5.2 had it in
+  ("Per favore", "Por favor", a French "?" without its no-break space, a
+  German participle in title case, "contact support"). It is a list of
+  narrow searches: a text can break a convention below and pass, so a new
+  text still needs a reader of that language. If it ever stops a text that
+  is right, narrow the search and add the text to its `allowed` list; do not
+  reword the text.
+
+In every language: placeholders and tags stay as they are, and no ASCII
+apostrophe stands right before `<` or `{`. No text sends the reader to a
+support team, because the kit has none: it names the administrator of the
+site. One thing has one name. A translation says what the English text says
+in its own words, not word for word.
+
+- **English** — Title Case for buttons, headings and field labels ("Go to
+  Dashboard", "Email Address"); sentence case for sentences, hints, status
+  lines and error lines. The sign-in controls keep the capitals of Google's
+  own "Sign in with Google". "sign in" is the verb and "sign-in" the noun;
+  no "log in" or "login". "set up" is the verb and "setup" the noun.
+  "two-factor authentication" in headings and sentences, "2FA" on buttons
+  and in short lines. What the authenticator app is given is the "secret";
+  what it shows, and a backup code, is a "code". "email", except in the two
+  lines under the title of the home page.
+- **Italian** — informal "tu". Sentence case: a capital on the first word
+  and on proper names only (the names of the two legal documents keep
+  theirs), and lower case after a colon. No "Per favore" and no "Si prega
+  di": "Riprova." "Failed to X" is "Impossibile + infinitive", "X failed" is
+  "non riuscita/o". "attivare / disattivare", not "abilitare"; "la 2FA" is
+  feminine and has its article in a sentence. "segreto" for the 2FA secret,
+  "codice di verifica" for the six digits, "codici di backup". "email",
+  never "e-mail". A button named in a sentence stands in «…» and repeats its
+  label.
+- **Spanish** — informal "tú". Sentence case; after a colon that follows a
+  label, a capital ("Importante: Guarda …"). "correo electrónico" for the
+  address and for the sign-in method, never "email"; "correo de
+  verificación" for the message; apart from that, the short "correo" stands
+  only on the two sign-in buttons. "panel de control"; "activar /
+  desactivar"; "la 2FA"; "clave" for the 2FA secret, "código de
+  verificación" for the six digits, "códigos de respaldo". No "Por favor";
+  "Failed to X" is "No se pudo …", "try again" is "Inténtalo de nuevo.",
+  "successfully" is "correctamente"; "Escribe", not "Ingresa"; "no válido",
+  "obligatoria". A button named in a sentence stands in «…» and repeats its
+  label.
+- **French** — "vous". Sentence case, and lower case after a colon. A
+  no-break space before `?`, `!`, `:` and `;` and inside « », written in the
+  files as the escape `\u00a0`, so that a diff shows it. "Failed to X" is
+  "Impossible de + infinitive", "X failed" is "X a échoué"; "Veuillez +
+  infinitive" for a request; no "avec succès". "email", "par email et mot de
+  passe", "la 2FA", "secret" for the 2FA secret, "code de vérification" for
+  the six digits, "codes de secours", "jeton", "terminer" for a set-up that
+  is finished, "lier / délier". A button named in a sentence stands in
+  « … » and repeats its label.
+- **German** — formal "Sie". Only nouns have a capital, in headings and on
+  buttons too ("Konto löschen"). An error line is a whole sentence with its
+  article ("Das Konto konnte nicht gelöscht werden."); a success line stays
+  short ("Konto erfolgreich gelöscht"). "Konto", "anmelden / Anmeldung",
+  "Passwort", "E-Mail" with its hyphen, "verifizieren", "aktivieren /
+  deaktivieren", "die 2FA", "Schlüssel" for the 2FA secret; compounds of
+  German nouns in one word ("Kontoverknüpfung"). A button named in a
+  sentence stands in „…“ and repeats its label.
 
 ## Reporting security issues
 
