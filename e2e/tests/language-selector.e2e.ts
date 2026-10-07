@@ -60,7 +60,7 @@ const FRAGMENT = "#part";
 const UNKNOWN_TOKEN = "a1B2".repeat(8);
 
 // Between them the tests of this file choose each of the five languages and
-// leave from three of them.
+// leave from each of them.
 const OPENED: Record<string, OpenedPage> = {
   "/": {
     as: null,
@@ -77,6 +77,24 @@ const OPENED: Record<string, OpenedPage> = {
     from: "en",
     to: "fr",
     shows: (page, m) => mainHeading(page, 1, m.Registration.title),
+  },
+  // The two placeholder pages that the terms sentence of the registration
+  // form links to.
+  "/terms": {
+    as: null,
+    path: "/terms",
+    query: QUERY,
+    from: "it",
+    to: "de",
+    shows: (page, m) => mainHeading(page, 1, m.Legal.terms.title),
+  },
+  "/privacy": {
+    as: null,
+    path: "/privacy",
+    query: QUERY,
+    from: "fr",
+    to: "it",
+    shows: (page, m) => mainHeading(page, 1, m.Legal.privacy.title),
   },
   // The page reads `error` from the query: the title of that error shows
   // that the query arrived, not only that the address bar has it.

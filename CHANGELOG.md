@@ -1,5 +1,90 @@
 # Changelog
 
+## [v2.5.2] - 2026-10-06
+
+The texts and pages a visitor meets first. The database schema does not
+change, and no dependency changes.
+
+### 🔧 Changed
+
+- **The line under the title of the home page says how to sign in.** Where
+  Google sign-in is configured it reads "Sign in with Google, or with e-mail
+  and password"; where it is not, "Sign in with e-mail and password" (five
+  languages). It read "Simple authentication with Google OAuth" in both
+  cases, also where the page had no Google button. The layout's default
+  meta description, for the pages that set none themselves, follows the
+  same rule.
+- **The home page no longer waits to learn whether Google is configured.**
+  The layout hands the answer to the page
+  (`src/components/auth/google-sign-in-provider.tsx`), and
+  `useGoogleSignInEnabled()` asks `/api/auth/providers` only where no such
+  provider is above it. The sentence and the sign-in entry are in the first
+  HTML. Measured in Chromium, five locales at two widths, the first HTML
+  against the settled page: without Google the card grew from 312 to 384 px
+  at 1280 px and everything under the title moved; now nothing moves. With
+  placeholder Google keys the title and the card move by 0 or 1 px. The
+  value follows the running server, not the build (measured with one build
+  served with and without the keys).
+- **Terms of Service and Privacy Policy have a page each.** The required
+  checkbox of the registration form named two documents that did not exist.
+  `/{locale}/terms` and `/{locale}/privacy` are new, in five languages,
+  and both are **placeholders**: each says that it is sample text of the
+  starter kit and not a legal document, and that whoever operates the
+  application replaces it before going live. The two names in the label are
+  links that open in a new tab; the form keeps what was typed and the
+  checkbox is not toggled (measured in Chromium, and by keyboard).
+- **User and PRO dashboard**: the link reads "Back to account". It read
+  "← Back to Main Dashboard" next to an arrow icon, and led to the account
+  page then as now.
+- **Admin page**: the section with the one remaining link, "System Metrics",
+  is called "Diagnostics" (was "Admin Actions").
+- **Translations corrected.** German: "branchenüblicher Verschlüsselung"
+  (the footer line was not correct German) and "Datenschutzerklärung" (was
+  "Datenschutzrichtlinie"). French: "chiffrement" (was "cryptage") and
+  "Conditions d'utilisation" (was "Conditions de Service"). Italian:
+  "Informativa sulla Privacy" (was "Politica sulla Privacy"). Spanish: "y la
+  Política de Privacidad" (the article was missing). The translations were
+  written and reviewed without a native speaker of each language.
+- **Screenshots**: the README's pictures of the home page, the sign-in
+  form, the 2FA step, the registration form and the two dashboards were
+  taken again; the user dashboard is shown whole.
+
+### ⬆️ Upgrading from v2.5.1
+
+- Nothing to push and nothing to install: `prisma/schema.prisma`,
+  `package.json` dependencies and the lockfile are unchanged.
+- **Before going live, replace the two placeholder pages**
+  (`src/app/[locale]/terms`, `src/app/[locale]/privacy`, texts under
+  `Legal` in `messages/`). The registration form checks the box in the
+  browser only, as before, and stores no acceptance.
+- A project with a locale file of its own adds 17 keys (15 under `Legal`,
+  `Home.subtitleWithoutGoogle`, `Registration.opensInNewTab`) and writes
+  `Registration.agreeToTerms` with the tags `<terms>` and `<privacy>`
+  around the two names. An ASCII apostrophe directly before a tag makes the
+  formatter swallow the tag (measured with the installed
+  intl-messageformat); the Italian text uses the typographic one, and a unit
+  test fails on the other.
+- E2E tests of your own that took the Google button or the e-mail field as
+  the sign that the home page had hydrated: both can now be in the first
+  HTML. The helper `waitForSignedOutHome` waits for
+  `data-session-status="unauthenticated"` on the signed-out home instead.
+
+### 🧪 Tests
+
+- Jest: 1767 tests (was 1598): 1714 without a database (was 1545) and 53 in
+  the integration file (unchanged). Playwright: 117 tests in 13 spec files
+  (was 105 in 12), counted with `playwright test --list`.
+- Coverage: 80 % of statements (was 78 %); five runs gave 80.02 % four times
+  and 80.09 % once.
+- Message keys per locale: 293 (was 276). The E2E warm-up asks sixteen
+  routes (was fourteen).
+- The whole Playwright suite was run once on the code of this release,
+  before one comment and the release texts were edited: 117 passed, exit
+  code 0, no "Compiled" line of the dev server after the first test. The
+  change went through an independent review: four major findings (two
+  German titles cut off on a phone, the home page moving when it settled, a
+  test that could not fail, a link that led to an empty form), all closed.
+
 ## [v2.5.1] - 2026-10-06
 
 A security fix for the address the browser returns to after a sign-in,

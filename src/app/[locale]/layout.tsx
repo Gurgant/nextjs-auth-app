@@ -5,7 +5,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { locales } from "@/i18n";
 import { type Locale } from "@/config/i18n";
+import { isGoogleConfigured } from "@/lib/auth-config";
 import { AuthSessionProvider } from "@/components/auth/session-provider";
+import { GoogleSignInProvider } from "@/components/auth/google-sign-in-provider";
 import { LanguageSelector } from "@/components/language-selector";
 import Link from "next/link";
 import "../globals.css";
@@ -23,7 +25,12 @@ export async function generateMetadata({
 
   return {
     title: t("appTitle"),
-    description: tHome("subtitle"),
+    // The sentence of the home page about the ways to sign in, for the pages
+    // that set no description themselves. The one that names Google is true
+    // only where Google is configured.
+    description: isGoogleConfigured
+      ? tHome("subtitle")
+      : tHome("subtitleWithoutGoogle"),
   };
 }
 
@@ -87,7 +94,15 @@ export default async function LocaleLayout({
                   </div>
                 </div>
               </nav>
-              <main className="flex-1">{children}</main>
+              <main className="flex-1">
+                {/* Whether Google sign-in is configured is known here, on
+                    the server. Handed to the page, it is in the first HTML:
+                    the home page shows its final sentence and its final
+                    sign-in entry from the start, and asks nothing. */}
+                <GoogleSignInProvider enabled={isGoogleConfigured}>
+                  {children}
+                </GoogleSignInProvider>
+              </main>
             </div>
           </NextIntlClientProvider>
         </AuthSessionProvider>

@@ -20,7 +20,9 @@ export default function HomePage() {
   const { data: session, status } = useSession();
   const [showCredentials, setShowCredentials] = useState(false);
   // Without Google configured, the email form is the only way in: show it
-  // directly instead of a one-option chooser.
+  // directly instead of a one-option chooser. The layout hands the answer
+  // down with the page, so it is known at the first render, on the server
+  // too; it is null only where no provider is above this page.
   const googleEnabled = useGoogleSignInEnabled();
   // Only shown in the two-option chooser: with one method there is nothing
   // to tell apart.
@@ -201,7 +203,14 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div
+      className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-blue-50 via-white to-purple-50"
+      data-testid="signed-out-home"
+      // "loading" in the HTML of the server and until the browser's own
+      // request for the session is answered: the one thing on this page that
+      // tells a page that React has taken over from one that has only arrived.
+      data-session-status={status}
+    >
       <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
         <div className="w-full max-w-md">
           {/* Hero Section */}
@@ -226,7 +235,22 @@ export default function HomePage() {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   {t("title")}
                 </h1>
-                <p className="text-gray-600 text-lg">{t("subtitle")}</p>
+                {/* How one can sign in here. The sentence that names Google
+                    is true only where Google is configured. The answer
+                    comes with the page, so the sentence is in the first
+                    HTML and nothing moves afterwards. Without an answer
+                    (no provider above the page) the line says nothing:
+                    either sentence could be the wrong one. */}
+                <p
+                  className="text-gray-600 text-lg text-balance"
+                  data-testid="home-subtitle"
+                >
+                  {googleEnabled === null
+                    ? null
+                    : googleEnabled
+                      ? t("subtitle")
+                      : t("subtitleWithoutGoogle")}
+                </p>
               </div>
             </div>
           </div>

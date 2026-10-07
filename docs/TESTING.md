@@ -5,9 +5,9 @@ to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                                      |
 | ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 1545  | lib, hooks, components, actions, API route handlers                                 |
+| Unit        | Jest (jsdom / node)   | 1714  | lib, hooks, components, actions, API route handlers                                 |
 | Integration | Jest + test DB        | 53    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 105   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
+| End-to-end  | Playwright (Chromium) | 117   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (1598 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (1545) — no DB
+pnpm test             # every Jest suite (1767 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (1714) — no DB
 pnpm test:integration # the real-DB integration file only (53, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -58,22 +58,24 @@ Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
 Coverage (measured on 2026-10-06 with `pnpm test:coverage` and the test
-database, twice: 78.17 % and 78.10 %): **78 % of statements** of
-the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
+database, five times: 80.02 % four times and 80.09 % once): **80 % of
+statements** of the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
 without `src/app/**` (pages and route handlers), `src/middleware.ts`,
 `index.ts` barrels and the generated Prisma client (`src/generated/**`,
-counted until v2.1.0, when it made up most of the statements). The two runs
+counted until v2.1.0, when it made up most of the statements). The runs
 differ in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`,
-which the first run reached and the second did not: one test decrypts with
+which one run reached and the others did not: one test decrypts with
 another key and accepts an error as well as a text that is not the secret,
 and that decryption throws in about one case in eight (measured outside the
 suite with the same calls of the library: 519 of 4000). The tests
-concentrate on the authentication and security modules (`src/lib/auth` 93 %,
+concentrate on the authentication and security modules (`src/lib/auth` 97 %,
 `src/lib/actions` 84 %); the components are covered less
-(`src/components/auth` 50 %, `src/components/security` 48 %), and no unit
-test runs the sign-in form (`credentials-form.tsx`) or the account page
-wrapper (0 %). The six route handlers and four of the ten pages under
-`src/app` have a unit test file each; they are outside this figure. The
+(`src/components/auth` 75 %, `src/components/security` 48 %): the sign-in
+form (`credentials-form.tsx`) is rendered and never submitted by a unit test
+(50 %), and none runs the account page wrapper (0 %). The six route handlers have a unit test file each, and nine
+of the twelve pages under `src/app` are rendered by a unit test (not the
+registration page, the account page and the `/dashboard` redirect); they
+are outside this figure. The
 error layer is tested by itself
 (`src/lib/errors/__tests__/error-layer.test.ts`). The events layer is tested
 with its real bus and listeners (`src/lib/events/__tests__/event-provider.test.ts`).
@@ -500,7 +502,29 @@ The fixture user with 2FA has its TOTP secret encrypted with your
   `Success` namespaces; `auth-registration`, `terms-validation` and
   `session-revocation`). Strings that are hardcoded English in `src/` (the
   2FA prompt, the dashboards and admin page, the language-selector label) are
-  asserted as literals.
+  asserted as literals. A text that holds rich-text tags
+  (`Registration.agreeToTerms`) is compared as the page shows it, without
+  them (`plainText` and `taggedText` in `e2e/support/app.ts`).
+- `legal-pages.e2e.ts` follows the two links of the terms sentence of the
+  registration form, under `/en` and under `/de`: each opens its placeholder
+  page in a new tab that has no `window.opener`, the form keeps what was
+  typed, and the checkbox stays as it was, unticked for the first link and
+  ticked for the second. It also opens both pages directly in the five
+  locales, without a session, and at two phone widths (390 and 320 px),
+  where the heading has to show the whole name of the document: the name
+  is one long word in German, and the heading is a gradient clipped to its
+  text, so a word that does not fit is cut off without sticking out.
+- The home page gets from the layout whether Google is configured, so its
+  first HTML is the page as it stays. Two tests of
+  `translation-aware.e2e.ts` hold that: one opens the five home pages in a
+  browser that runs no script and reads the sentence about the ways to sign
+  in and the entry of this server (the e-mail form, or the chooser); the
+  other counts the requests of a loaded page and finds one for the session
+  and none for the provider list. Because the e-mail form is in the first
+  HTML, no element of the page shows that React has taken over:
+  `waitForSignedOutHome` waits for the session status of the page
+  (`data-session-status`), which the server renders as `loading` and only
+  the browser's own session request turns into `unauthenticated`.
 - The suite works with and without Google configured (it asks
   `/api/auth/providers`) and never clicks the Google button.
 - 2FA tests generate real TOTP codes with `otplib`; nothing is mocked at the
@@ -532,7 +556,7 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
   first pass is requested again. Neither pass checks whether a route was
   compiled; a compile in the second pass still comes before the first test.
   The routes are listed in one place only, `WARM_UP_ROUTES` in
-  `e2e/support/warm-up.ts`: fourteen requests, one per dev-server entry (the
+  `e2e/support/warm-up.ts`: sixteen requests, one per dev-server entry (the
   locale is a parameter of the same entry, so `/en/...` is enough). The last
   one is for the page `next dev` serves when no page matches (the entry
   `/_not-found`): one spec opens the URL of a page that was removed. It is
@@ -674,6 +698,13 @@ fourteen requests (`CI=1 pnpm test:e2e`, one full run on the same machine):
 every test passed, all 16 "Compiled" lines of the dev server came before the
 first test, and the fourteen requests were answered as on 2026-10-05. The
 warm-up took 45.9 s, and Playwright reported 5.8 minutes for the run.
+
+Measured again on 2026-10-06, with the 117 tests of 2.5.2 and sixteen
+requests (the two placeholder pages are new): every test passed, all 18
+"Compiled" lines of the dev server came before the first test, and the two
+new requests were answered with 200 and 200. The warm-up took 52.8 s, and
+Playwright reported 13.4 minutes for the run, on a machine that was busy
+with other work.
 
 ### In CI
 

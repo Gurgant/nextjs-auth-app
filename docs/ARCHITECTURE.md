@@ -65,8 +65,22 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
      (`registerFailedLogin`, policy in `src/lib/auth/lockout.ts`); a success
      resets it.
 - **Google provider** — registered only when `GOOGLE_CLIENT_ID` and
-  `GOOGLE_CLIENT_SECRET` are both set. The UI asks `/api/auth/providers`
-  (`src/hooks/use-google-sign-in.ts`) and hides Google when it is absent.
+  `GOOGLE_CLIENT_SECRET` are both set (`isGoogleConfigured`). The layout
+  hands that answer to the page (`GoogleSignInProvider` in
+  `src/components/auth/google-sign-in-provider.tsx`, a client component
+  that imports nothing from the server), so it is in the first HTML:
+  `useGoogleSignInEnabled()` (`src/hooks/use-google-sign-in.ts`) answers at
+  the first render, the UI hides Google where it is absent, and the home
+  page shows from the start the e-mail form or the chooser, under the
+  sentence that fits (`Home.subtitle` names Google,
+  `Home.subtitleWithoutGoogle` does not). The hook asks
+  `/api/auth/providers` only where no provider is above it. The same
+  sentence is the layout's default meta description
+  (`src/app/[locale]/layout.tsx`), for the pages that set none themselves
+  (the terms, privacy, verification and account pages set their own). The
+  pages are rendered when they are requested, so the answer is the running
+  server's and not the build's (measured with `next start` on one build,
+  with and without the two variables).
   Google sign-ins go through the `signIn`/`jwt` callbacks, not `authorize()`,
   so they are not asked for a TOTP code. A Google sign-in marks the e-mail
   verified only when Google's ID token has `email_verified: true` for the
@@ -97,7 +111,11 @@ Browser ──► src/middleware.ts        locale routing only (next-intl)
   wraps role-restricted API routes (`/api/admin/metrics`).
 - Pages enforce access themselves: `auth()` + `hasRole()` + `redirect()` in
   `dashboard/*` and `admin/page.tsx`, and the `AuthGuard` server component on
-  `/account`. The middleware does not check authentication. With the session
+  `/account`. The other pages need no session: the home page, `/register`,
+  `/auth/signin`, `/auth/error`, `/verify-email/[token]`, and `/terms` and
+  `/privacy`, the two placeholder pages that the terms sentence of the
+  registration form links to (README, "Scope and limits"). The middleware
+  does not check authentication. With the session
   check above it could not call `auth()` as it is: Next.js middleware runs in
   the Edge runtime by default and the check uses Prisma (read in the Next.js
   documentation, not measured).
@@ -286,7 +304,17 @@ a key of `messages/en.json` is read by no application file under `src/`
 (tests do not count), or when a message file writes a key twice in one
 object; its header lists the forms of a read that it knows. Every page lives
 under `src/app/[locale]/`. The dashboards, the admin page and the 2FA prompt
-still contain English-only strings.
+still contain English-only strings. One text is a rich text:
+`Registration.agreeToTerms` wraps the names of its two documents in
+`<terms>…</terms>` and `<privacy>…</privacy>`, and the registration form
+renders each as a link to `/{locale}/terms` and `/{locale}/privacy`
+(`t.rich`); a unit test (`src/test/unit/__tests__/front-page-texts.test.ts`)
+fails when a message file drops one of the tags. In such a message an ASCII
+apostrophe right before a tag opens a quotation and the tag is shown as
+text, so the Italian sentence writes `l’<privacy>` with a typographic one;
+`rich-messages.real-formatter.test.ts` in the same directory formats the
+five sentences with the installed next-intl, in a Node process of its own
+(Jest loads a stand-in for next-intl).
 
 What the server actions and the two commands answer comes from the `Errors`
 and `Success` namespaces, and the field errors of the forms that an action

@@ -107,9 +107,14 @@ jest.mock("next/server", () => {
   };
 });
 
-// Mock next-intl for component tests
+// Mock next-intl for component tests: a translator answers with the key, and
+// so does t.rich (the tags of a rich text are not rendered here).
 jest.mock("next-intl", () => ({
-  useTranslations: () => (key) => key,
+  useTranslations: () => {
+    const translate = (key) => key;
+    translate.rich = (key) => key;
+    return translate;
+  },
   useLocale: () => "en",
 }));
 

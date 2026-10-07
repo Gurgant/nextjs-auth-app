@@ -261,9 +261,9 @@ export default async function AdminDashboardPage({
           </div>
         </div>
 
-        {/* Admin Actions */}
+        {/* Diagnostics: one link, to the metrics endpoint */}
         <div className="bg-white rounded-lg shadow-md p-6 mt-6">
-          <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
+          <h2 className="text-xl font-semibold mb-4">Diagnostics</h2>
           <div className="flex flex-wrap gap-4">
             <a
               href="/api/admin/metrics"

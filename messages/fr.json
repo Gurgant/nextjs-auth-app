@@ -1,10 +1,11 @@
 {
   "Home": {
     "title": "Bienvenue dans Notre App",
-    "subtitle": "Authentification simple avec Google OAuth",
+    "subtitle": "Connectez-vous avec Google, ou par email et mot de passe",
+    "subtitleWithoutGoogle": "Connectez-vous par email et mot de passe",
     "welcomeBack": "Bon retour, {name}!",
     "successfullySignedIn": "Vous êtes connecté avec succès!",
-    "secureAuth": "Authentification sécurisée avec cryptage standard de l'industrie"
+    "secureAuth": "Authentification sécurisée avec chiffrement standard de l'industrie"
   },
   "Auth": {
     "signInWithGoogle": "Se connecter avec Google",
@@ -68,13 +69,39 @@
     "emailAddress": "Adresse Email",
     "createPassword": "Créer un Mot de Passe",
     "confirmPassword": "Confirmer le Mot de Passe",
-    "agreeToTerms": "J'accepte les Conditions de Service et la Politique de Confidentialité",
+    "agreeToTerms": "J'accepte les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>",
+    "opensInNewTab": "s'ouvre dans un nouvel onglet",
     "createAccount": "Créer un Compte",
     "creating": "Création du compte...",
     "namePlaceholder": "Jean Dupont",
     "emailPlaceholder": "vous@exemple.com",
     "passwordPlaceholder": "••••••••",
     "confirmPasswordPlaceholder": "••••••••"
+  },
+  "Legal": {
+    "placeholderTitle": "Texte d'exemple",
+    "placeholderNotice": "Ce texte d'exemple est fourni avec le kit de démarrage. Ce n'est pas un document juridique. L'exploitant de cette application doit le remplacer par son propre texte avant la mise en production.",
+    "outlineHeading": "Ce qu'un tel document contient habituellement",
+    "stillOpenInOtherTab": "Si vous venez du formulaire d'inscription, il est toujours ouvert dans l'autre onglet.",
+    "goToRegistration": "Aller à la page d'inscription",
+    "terms": {
+      "title": "Conditions d'utilisation",
+      "outline": {
+        "provider": "Qui fournit le service et comment le contacter",
+        "accounts": "Qui peut s'inscrire et de quoi le titulaire d'un compte est responsable",
+        "use": "Quel usage du service est autorisé et quand un compte peut être suspendu ou fermé",
+        "liability": "La responsabilité, le droit applicable et la façon dont les conditions peuvent changer"
+      }
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "outline": {
+        "controller": "Qui est responsable des données personnelles et comment le contacter",
+        "data": "Quelles données personnelles sont collectées, dans quel but et sur quelle base légale",
+        "retention": "Combien de temps les données sont conservées et qui d'autre les reçoit",
+        "rights": "Quels droits les personnes ont sur leurs données et comment les exercer"
+      }
+    }
   },
   "Account": {
     "title": "Paramètres du Compte",

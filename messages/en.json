@@ -1,7 +1,8 @@
 {
   "Home": {
     "title": "Welcome to Our App",
-    "subtitle": "Simple authentication with Google OAuth",
+    "subtitle": "Sign in with Google, or with e-mail and password",
+    "subtitleWithoutGoogle": "Sign in with e-mail and password",
     "welcomeBack": "Welcome back, {name}!",
     "successfullySignedIn": "You're successfully signed in!",
     "secureAuth": "Secure authentication with industry-standard encryption"
@@ -68,13 +69,39 @@
     "emailAddress": "Email Address",
     "createPassword": "Create Password",
     "confirmPassword": "Confirm Password",
-    "agreeToTerms": "I agree to the Terms of Service and Privacy Policy",
+    "agreeToTerms": "I agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>",
+    "opensInNewTab": "opens in a new tab",
     "createAccount": "Create Account",
     "creating": "Creating account...",
     "namePlaceholder": "John Doe",
     "emailPlaceholder": "you@example.com",
     "passwordPlaceholder": "••••••••",
     "confirmPasswordPlaceholder": "••••••••"
+  },
+  "Legal": {
+    "placeholderTitle": "Placeholder text",
+    "placeholderNotice": "This placeholder text ships with the starter kit. It is not a legal document. Whoever operates this application has to replace it with their own text before going live.",
+    "outlineHeading": "What such a document usually covers",
+    "stillOpenInOtherTab": "If you came here from the registration form, it is still open in the other tab.",
+    "goToRegistration": "Go to the registration page",
+    "terms": {
+      "title": "Terms of Service",
+      "outline": {
+        "provider": "Who provides the service and how to reach them",
+        "accounts": "Who may register, and what the holder of an account is responsible for",
+        "use": "Which use of the service is allowed, and when an account can be suspended or closed",
+        "liability": "Liability, the applicable law, and how the terms can change"
+      }
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "outline": {
+        "controller": "Who is responsible for the personal data and how to reach them",
+        "data": "Which personal data is collected, for what purpose and on what legal basis",
+        "retention": "How long the data is kept and who else receives it",
+        "rights": "Which rights people have over their data and how to exercise them"
+      }
+    }
   },
   "Account": {
     "title": "Account Settings",

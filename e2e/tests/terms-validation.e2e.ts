@@ -4,6 +4,7 @@ import {
   expectSignedInAs,
   expectSignedOut,
   openEmailSignIn,
+  plainText,
   submitCredentials,
   uniqueEmail,
 } from "../support/app";
@@ -33,7 +34,8 @@ function registrationForm(page: Page) {
   return {
     form,
     terms: form.getByRole("checkbox", {
-      name: en.Registration.agreeToTerms,
+      // The sentence holds two links; the name of the checkbox is its text.
+      name: plainText(en.Registration.agreeToTerms),
       exact: true,
     }),
     submit: form.getByRole("button", {

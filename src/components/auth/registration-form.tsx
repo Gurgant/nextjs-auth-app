@@ -17,6 +17,14 @@ interface RegistrationFormProps {
   locale: Locale;
 }
 
+// The two links of the terms sentence: underlined, so that they are told
+// from the text around them by more than their colour.
+const LEGAL_LINK_CLASS =
+  "font-medium text-green-700 underline underline-offset-2 hover:text-green-800 transition-colors duration-200";
+
+// The element that says what both links do: they open a new tab.
+const LEGAL_LINKS_HINT_ID = "terms-links-hint";
+
 export function RegistrationForm({ locale }: RegistrationFormProps) {
   const t = useTranslations("Registration");
   const tAuth = useTranslations("Auth");
@@ -159,7 +167,15 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
             }
           />
 
-          {/* Terms Agreement */}
+          {/* Terms Agreement. The sentence names two documents, and each
+              name is a link to the page of that document (two placeholder
+              pages of the kit). A link opens a new tab, so the form keeps
+              what was typed. It stands inside the label: a click on a link
+              in a label is not passed on to the label's control, and the
+              name of the checkbox is the text of the whole sentence. That
+              a link opens a new tab is said in its description, from an
+              element outside the label that is not shown: text inside a
+              link would become part of the checkbox's name. */}
           <div className="flex items-start">
             <div className="flex items-center h-5">
               <input
@@ -174,8 +190,36 @@ export function RegistrationForm({ locale }: RegistrationFormProps) {
             </div>
             <div className="ml-3 text-sm">
               <label htmlFor="terms" className="text-gray-600">
-                {t("agreeToTerms")}
+                {t.rich("agreeToTerms", {
+                  terms: (name) => (
+                    <Link
+                      href={`/${locale}/terms`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      prefetch={false}
+                      aria-describedby={LEGAL_LINKS_HINT_ID}
+                      className={LEGAL_LINK_CLASS}
+                    >
+                      {name}
+                    </Link>
+                  ),
+                  privacy: (name) => (
+                    <Link
+                      href={`/${locale}/privacy`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      prefetch={false}
+                      aria-describedby={LEGAL_LINKS_HINT_ID}
+                      className={LEGAL_LINK_CLASS}
+                    >
+                      {name}
+                    </Link>
+                  ),
+                })}
               </label>
+              <span id={LEGAL_LINKS_HINT_ID} hidden>
+                {t("opensInNewTab")}
+              </span>
             </div>
           </div>
 
