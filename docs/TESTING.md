@@ -1,13 +1,13 @@
 # Testing
 
-Three layers. The numbers below were measured on 2026-10-06; run the commands
+Three layers. The numbers below were measured on 2026-10-07; run the commands
 to check them yourself.
 
 | Layer       | Runner                | Count | What it covers                                                                      |
 | ----------- | --------------------- | ----- | ----------------------------------------------------------------------------------- |
-| Unit        | Jest (jsdom / node)   | 1714  | lib, hooks, components, actions, API route handlers                                 |
+| Unit        | Jest (jsdom / node)   | 2049  | lib, hooks, components, actions, API route handlers                                 |
 | Integration | Jest + test DB        | 53    | UserRepository, registration, lockout, session checks, link gate on real PostgreSQL |
-| End-to-end  | Playwright (Chromium) | 117   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
+| End-to-end  | Playwright (Chromium) | 122   | sign-in, 2FA, registration, RBAC, i18n, session endings in a real browser           |
 
 ## Prerequisites
 
@@ -19,8 +19,8 @@ pnpm db:push:test     # schema on the test DB (port 5433)
 ## Unit + integration (Jest)
 
 ```bash
-pnpm test             # every Jest suite (1767 tests) — the integration file needs the test DB
-pnpm test:unit        # everything except the real-DB integration file (1714) — no DB
+pnpm test             # every Jest suite (2102 tests) — the integration file needs the test DB
+pnpm test:unit        # everything except the real-DB integration file (2049) — no DB
 pnpm test:integration # the real-DB integration file only (53, port 5433)
 pnpm test:coverage    # with a coverage report
 ```
@@ -57,22 +57,22 @@ unique index on `User.email`. No job of the CI workflow runs the real mode.
 Measured on 2026-10-05 with `TEST_MODE=real` and a `DATABASE_URL` on port
 15433: every test of the file passed.
 
-Coverage (measured on 2026-10-06 with `pnpm test:coverage` and the test
-database, five times: 80.02 % four times and 80.09 % once): **80 % of
-statements** of the files matched by `collectCoverageFrom` in `jest.config.js` — `src/`
-without `src/app/**` (pages and route handlers), `src/middleware.ts`,
-`index.ts` barrels and the generated Prisma client (`src/generated/**`,
-counted until v2.1.0, when it made up most of the statements). The runs
-differ in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`,
-which one run reached and the others did not: one test decrypts with
-another key and accepts an error as well as a text that is not the secret,
-and that decryption throws in about one case in eight (measured outside the
-suite with the same calls of the library: 519 of 4000). The tests
-concentrate on the authentication and security modules (`src/lib/auth` 97 %,
-`src/lib/actions` 84 %). Of the components, `src/components/auth` is at
-75 % and `src/components/security` at 48 %: a unit test
-takes the sign-in form (`credentials-form.tsx`) through its 2FA step only (a
-refused password and a request that throws are not submitted), and none
+Coverage (measured on 2026-10-07 with `pnpm test:coverage` and the test
+database, three times, 83.67 % each): **83 % of statements** of the files
+matched by `collectCoverageFrom` in `jest.config.js` — `src/` without
+`src/app/**` (pages and route handlers), `src/middleware.ts`, `index.ts`
+barrels and the generated Prisma client (`src/generated/**`, counted until
+v2.1.0, when it made up most of the statements). Up to 2.5.2 the runs
+differed in two lines of `src/lib/security.ts`, the `catch` of `decrypt()`:
+one test decrypts with another key, and that decryption throws in about one
+case in eight (measured outside the suite with the same calls of the
+library: 519 of 4000). The tests of 2.5.3 decrypt many values written with
+another key in every run, and the three runs covered those lines each time.
+The tests concentrate on the authentication and security modules
+(`src/lib/auth` 97 %, `src/lib/actions` 84 %, `src/components/auth` 95 %,
+`src/components/security` 87 %): a unit test takes the sign-in form
+(`credentials-form.tsx`, 96 %) through its 2FA step with both kinds of code
+(a refused password and a request that throws are not submitted), and none
 runs the account page wrapper (0 %). The six route handlers have a unit test file each, and nine
 of the twelve pages under `src/app` are rendered by a unit test (not the
 registration page, the account page and the `/dashboard` redirect); they
@@ -748,6 +748,11 @@ requests (the two placeholder pages are new): every test passed, all 18
 new requests were answered with 200 and 200. The warm-up took 52.8 s, and
 Playwright reported 13.4 minutes for the run, on a machine that was busy
 with other work.
+
+Measured again on 2026-10-07, with the 122 tests of 2.5.3 and the same
+sixteen requests: every test passed, all 18 "Compiled" lines of the dev
+server came before the first test, and Playwright reported 8.1 minutes for
+the run.
 
 ### In CI
 

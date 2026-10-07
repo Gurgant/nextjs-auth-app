@@ -57,6 +57,20 @@ release pipeline.
 A database that an earlier version has used is upgraded as described below,
 the newest release first.
 
+### From 2.5.2 to 2.5.3
+
+The schema, the dependencies and the lockfile do not change: there is
+nothing to push and nothing to install.
+
+If `ENCRYPTION_KEY` was changed after users enabled 2FA, the stored 2FA
+secrets and backup codes cannot be read with the new key. Up to 2.5.2 a
+second factor could be passed against such values by someone who knew the
+password; from 2.5.3 nothing is accepted against them, so these users
+cannot sign in with e-mail and password until their `twoFactorEnabled`,
+`twoFactorSecret` and `backupCodes` columns are cleared and they enable 2FA
+again (`SECURITY.md`, Known Limitations; measured by
+`e2e/tests/two-factor-key-change.e2e.ts`). There is no key rotation.
+
 ### From 2.5.1 to 2.5.2
 
 The schema, the dependencies and the lockfile do not change: there is
@@ -345,7 +359,7 @@ The column `User.primaryAuthMethod` is dropped and `User.lastLoginMethod` is
 added (read in the schema of the two tags). `CHANGELOG.md` says under
 "Upgrading a database from v2.0.0" that `pnpm prisma:push` refuses when a
 row still has a value in `primaryAuthMethod`, and what to run then; that
-push was not measured again for 2.5.0, 2.5.1 or 2.5.2.
+push was not measured again for 2.5.0, 2.5.1, 2.5.2 or 2.5.3.
 
 ## Before you go live
 
