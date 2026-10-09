@@ -653,7 +653,7 @@ the warm-up existed: 10 compiles inside tests, between 1.1 s and 7.6 s each
     `next dev` changed the wording of its compile lines.
   - No output at all fails the run when `CI` is set. Without `CI` the guard
     prints a notice with the possible causes.
-  - Three limits, read in the source of next 15.5.26 and Playwright 1.55.1
+  - Three limits, read in the source of next 15.5.27 and Playwright 1.55.1
     and not measured: a rebuild that ends with errors or warnings prints no
     "Compiled" line, so the guard does not see it; `--reporter=...` on the
     command line replaces the reporters of the config, the guard included;
