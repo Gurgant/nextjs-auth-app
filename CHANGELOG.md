@@ -1,5 +1,49 @@
 # Changelog
 
+## [v2.5.4] - 2026-10-10
+
+Two dependency updates for published advisories. The application's own code
+and the database schema do not change.
+
+### 🔒 Security
+
+- **Next.js 15.5.27** (was 15.5.26), with `eslint-config-next` at the same
+  version. It fixes two advisories about cache poisoning of statically
+  generated pages in self-hosted applications (GHSA-4jqv-mc3x-m676 and
+  GHSA-mcj8-r9mp-w47p, both moderate).
+- **sharp 0.35.5** (was 0.35.4), the image library that Next.js takes as an
+  optional dependency. Its prebuilt binaries come with librsvg 2.63.2, which
+  fixes a memory vulnerability in the decoding of SVG images
+  (GHSA-wq5f-xc86-pv6w, high). Measured after the install: sharp reports
+  librsvg 2.63.2 and turns an SVG into a PNG.
+- `pnpm audit --prod` reports no known vulnerabilities (before the update:
+  these three). `pnpm audit` over the development tools as well lists two
+  advisories of the Jest toolchain for which no patched version exists
+  (`braces`, `sprintf-js`); neither package is part of what is served.
+  `pnpm-workspace.yaml` names them.
+
+### ⬆️ Upgrading from v2.5.3
+
+- Run `pnpm install`. Nothing to push.
+- A project built on the starter takes the same two versions: `next` and
+  `eslint-config-next` in `package.json`, and the floor for `sharp` under
+  `overrides` in `pnpm-workspace.yaml`.
+
+### 🧪 Tests
+
+- The counts are those of v2.5.3: 2102 Jest tests (2049 without a database,
+  53 in the integration file) and 122 Playwright tests.
+- The lockfile changes only `next`, `@next/env`, `@next/swc-*`,
+  `@next/eslint-plugin-next`, `eslint-config-next`, `sharp` and its
+  `@img/*` binary packages: 847 packages before and after.
+- On the new versions: type-check, lint, the translation validator, the
+  2049 tests without a database, `next build` and the client-bundle check
+  pass. The integration file and the Playwright suite ran in CI on the pull
+  request of this release, where both jobs are required for a merge.
+- `docs/TESTING.md` names the version of Next.js whose source was read for
+  the compile lines of the dev server: the file that prints them is byte for
+  byte the one of 15.5.26.
+
 ## [v2.5.3] - 2026-10-07
 
 Two security fixes around two-factor sign-in and the e-mails, a backup code
