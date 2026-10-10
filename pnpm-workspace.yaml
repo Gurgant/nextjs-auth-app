@@ -20,7 +20,7 @@ onlyBuiltDependencies:
 overrides:
   "postcss@<8.5.23": "8.5.23" # next pins 8.4.31
   "nanoid@<3.3.18": "^3.3.18" # via postcss
-  "sharp@<0.35.4": "^0.35.4" # next optional dep; next allows ^0.35.4
+  "sharp@<0.35.5": "^0.35.5" # next optional dep; next allows ^0.35.4
   "browserslist@<4.28.7": "^4.28.7"
   "@babel/core@<7.29.6": "^7.29.6" # jest toolchain
   "defu@<6.1.5": "^6.1.5" # prisma > @prisma/config > c12
@@ -41,3 +41,7 @@ overrides:
   "glob@>=10.0.0 <10.5.0": "^10.5.0"
   "ajv@>=6.0.0 <6.15.0": "^6.15.0"
   "@humanfs/node@<0.16.8": "^0.16.8"
+  # No patched version exists for two advisories of the Jest toolchain
+  # (checked on 2026-10-10), so there is nothing to override them to:
+  # braces <=3.0.3 (GHSA-vfj7-8cjw-p6xm, via micromatch) and sprintf-js
+  # <=1.1.3 (GHSA-hp3w-g68c-fv3c, via js-yaml 3). `pnpm audit --prod` is clean.
