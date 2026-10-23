@@ -57,6 +57,11 @@ release pipeline.
 A database that an earlier version has used is upgraded as described below,
 the newest release first.
 
+### From 2.5.4 to 2.5.5
+
+Run `pnpm install`: Next.js is 15.5.28. The schema does not change, so there
+is nothing to push.
+
 ### From 2.5.3 to 2.5.4
 
 Run `pnpm install`: Next.js is 15.5.27 and `sharp` is 0.35.5. The schema
@@ -364,7 +369,8 @@ The column `User.primaryAuthMethod` is dropped and `User.lastLoginMethod` is
 added (read in the schema of the two tags). `CHANGELOG.md` says under
 "Upgrading a database from v2.0.0" that `pnpm prisma:push` refuses when a
 row still has a value in `primaryAuthMethod`, and what to run then; that
-push was not measured again for 2.5.0, 2.5.1, 2.5.2, 2.5.3 or 2.5.4.
+push was not measured again for 2.5.0, 2.5.1, 2.5.2, 2.5.3, 2.5.4 or
+2.5.5.
 
 ## Before you go live
 

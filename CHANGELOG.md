@@ -1,5 +1,46 @@
 # Changelog
 
+## [v2.5.5] - 2026-10-23
+
+One dependency update for two Next.js advisories published on 2026-10-22.
+The application's own code and the database schema do not change.
+
+### 🔒 Security
+
+- **Next.js 15.5.28** (was 15.5.27), with `eslint-config-next` at the same
+  version. It fixes:
+  - GHSA-2464-fhr4-w9xw (critical): unauthenticated remote code execution
+    in the Image Optimization API when SVG files are used, in every
+    Next.js from 10.0.0 through 15.5.27;
+  - GHSA-p3m5-59mp-jv5r, CVE-2026-94482 (high): denial of service in the
+    App Router through Server Actions, from 13.0.0 through 15.5.27.
+- `pnpm audit --prod` reports no known vulnerabilities (before the update:
+  these two). `pnpm audit` over the development tools as well lists one
+  advisory of the Jest toolchain for which no patched version exists
+  (`braces`); the `sprintf-js` advisory named in v2.5.4 was withdrawn on
+  2026-10-22. `pnpm-workspace.yaml` names what is left.
+
+### ⬆️ Upgrading from v2.5.4
+
+- Run `pnpm install`. Nothing to push.
+- A project built on the starter takes `next` and `eslint-config-next`
+  15.5.28 in `package.json`.
+
+### 🧪 Tests
+
+- The counts are those of v2.5.3: 2102 Jest tests (2049 without a database,
+  53 in the integration file) and 122 Playwright tests.
+- The lockfile changes only `next`, `@next/env`, `@next/swc-*`,
+  `@next/eslint-plugin-next` and `eslint-config-next`: 847 packages before
+  and after.
+- On the new version: type-check, lint, the 2049 tests without a database,
+  `next build` and the client-bundle check pass. The integration file and
+  the Playwright suite ran in CI on the pull request of this release, where
+  both jobs are required for a merge.
+- `docs/TESTING.md` names the version of Next.js whose source was read for
+  the compile lines of the dev server: the file that prints them is byte for
+  byte the one of 15.5.27.
+
 ## [v2.5.4] - 2026-10-10
 
 Two dependency updates for published advisories. The application's own code
